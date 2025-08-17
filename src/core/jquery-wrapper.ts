@@ -32,27 +32,48 @@ export function createSmartDollar(data: unknown) {
     }
   } as any;
 
-  // Add data properties directly to the $ function
-  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-    const obj = data as Record<string, unknown>;
-    for (const [key, value] of Object.entries(obj)) {
-      // Create chainable wrappers for each property
-      $[key] = new ChainableWrapper(value);
-    }
-  } else if (Array.isArray(data)) {
-    // For arrays, make the function itself act like the array
-    Object.setPrototypeOf($, ChainableWrapper.prototype);
-    ($ as any).data = data;
-    
-    // Add array methods
-    const wrapper = new ChainableWrapper(data);
-    $.__proto__ = wrapper.__proto__;
-    ($ as any).data = data;
-  }
-
-  // Add valueOf method to unwrap when used in expressions
-  $.valueOf = () => data;
-  $.toString = () => JSON.stringify(data);
+  // Create a simpler wrapper that just acts as the data accessor
+  // This avoids complex property assignment that doesn't work well in VM
+  const wrapper = new ChainableWrapper(data);
   
-  return $;
+  // Create a proxy that combines function behavior with property access
+  return new Proxy($, {
+    get(target, prop, receiver) {
+      // Handle function calls
+      if (prop === Symbol.toPrimitive || prop === 'valueOf') {
+        return () => data;
+      }
+      if (prop === 'toString') {
+        return () => JSON.stringify(data);
+      }
+      
+      // If it's a method call, delegate to function
+      if (typeof target[prop] === 'function') {
+        return target[prop].bind(target);
+      }
+      
+      // For property access, delegate to the wrapper
+      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        const obj = data as Record<string, unknown>;
+        if (typeof prop === 'string' && prop in obj) {
+          return new ChainableWrapper(obj[prop]);
+        }
+      }
+      
+      // For arrays, delegate to wrapper methods
+      if (Array.isArray(data) && typeof prop === 'string' && prop in wrapper) {
+        const value = (wrapper as any)[prop];
+        if (typeof value === 'function') {
+          return value.bind(wrapper);
+        }
+        return value;
+      }
+      
+      return undefined;
+    },
+    
+    apply(target, thisArg, argumentsList) {
+      return target.apply(thisArg, argumentsList);
+    }
+  });
 }

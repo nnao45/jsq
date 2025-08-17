@@ -1,5 +1,6 @@
 import { JsqOptions, VMExecutionContext } from '@/types/cli';
 import { ChainableWrapper } from './chainable';
+import { VMChainableWrapper } from './vm-chainable';
 import { LibraryManager } from './library-manager';
 import { VMExecutor } from './vm-executor';
 import { createSmartDollar } from './jquery-wrapper';
@@ -31,7 +32,115 @@ export class ExpressionEvaluator {
         : {};
 
       // Create the smart $ that acts as both data container and constructor
-      const $ = createSmartDollar(data);
+      let $: any;
+      
+      if (this.options.unsafe) {
+        // In unsafe mode, use the full smart dollar implementation
+        $ = createSmartDollar(data);
+      } else {
+        // In VM mode, create a simple object that doesn't rely on Proxy
+        // but still supports direct property access like $.property
+        $ = function(input?: unknown) {
+          if (arguments.length === 0) {
+            return new VMChainableWrapper(data);
+          } else {
+            return new VMChainableWrapper(input);
+          }
+        };
+        
+        // For VM compatibility, make $ behave like the data object itself
+        // by copying all properties as chainable wrappers
+        if (typeof data === 'object' && data !== null) {
+          if (!Array.isArray(data)) {
+            // For objects, add each property as a chainable wrapper
+            const obj = data as Record<string, unknown>;
+            for (const [key, value] of Object.entries(obj)) {
+              if (key !== 'name' && key !== 'length' && key !== 'prototype' && 
+                  key !== 'valueOf' && key !== 'toString') {
+                try {
+                  Object.defineProperty($, key, {
+                    value: new VMChainableWrapper(value),
+                    enumerable: true,
+                    configurable: true,
+                    writable: false
+                  });
+                } catch (error) {
+                  // Fallback if defineProperty fails
+                  ($  as any)[key] = new VMChainableWrapper(value);
+                }
+              }
+            }
+          } else {
+            // For arrays, make $ behave like the array itself
+            // by copying the array data and providing direct access
+            const arrayWrapper = new VMChainableWrapper(data);
+            
+            // Add each array element as an indexed property
+            for (let i = 0; i < (data as unknown[]).length; i++) {
+              try {
+                Object.defineProperty($, i.toString(), {
+                  value: new VMChainableWrapper((data as unknown[])[i]),
+                  enumerable: true,
+                  configurable: true,
+                  writable: false
+                });
+              } catch (error) {
+                ($  as any)[i] = new VMChainableWrapper((data as unknown[])[i]);
+              }
+            }
+            
+            // Add array methods without conflict with Function properties
+            const arrayMethods = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'sum'];
+            
+            for (const method of arrayMethods) {
+              if (typeof (arrayWrapper as any)[method] === 'function') {
+                try {
+                  Object.defineProperty($, method, {
+                    value: (arrayWrapper as any)[method].bind(arrayWrapper),
+                    enumerable: false, // Don't make methods enumerable
+                    configurable: true,
+                    writable: false
+                  });
+                } catch (error) {
+                  // Skip methods that conflict with function properties
+                  console.warn(`Warning: Could not add array method ${method} to $ function`);
+                }
+              }
+            }
+            
+            // Add length as 'len' to avoid conflict
+            try {
+              Object.defineProperty($, 'len', {
+                value: arrayWrapper.length.bind(arrayWrapper),
+                enumerable: false,
+                configurable: true,
+                writable: false
+              });
+            } catch (error) {
+              ($  as any).len = arrayWrapper.length.bind(arrayWrapper);
+            }
+          }
+        }
+        
+        // Ensure valueOf and toString work correctly
+        try {
+          Object.defineProperty($, 'valueOf', {
+            value: () => data,
+            enumerable: false,
+            configurable: true,
+            writable: false
+          });
+          Object.defineProperty($, 'toString', {
+            value: () => JSON.stringify(data),
+            enumerable: false,
+            configurable: true,
+            writable: false
+          });
+        } catch (error) {
+          $.valueOf = () => data;
+          $.toString = () => JSON.stringify(data);
+        }
+      }
 
       // Create evaluation context
       const context = {
@@ -85,9 +194,15 @@ export class ExpressionEvaluator {
         result = this.safeEval(expression, context);
       }
       
-      // If the result is a ChainableWrapper, unwrap it
+      // If the result is a ChainableWrapper or VMChainableWrapper, unwrap it
       if (result && typeof result === 'object' && 'value' in result) {
-        return (result as ChainableWrapper).value;
+        const wrapped = result as ChainableWrapper | VMChainableWrapper;
+        return wrapped.value;
+      }
+      
+      // Also check if it's a plain object that looks like a wrapped result
+      if (result && typeof result === 'object' && 'data' in result && Object.keys(result).length === 1) {
+        return (result as any).data;
       }
       
       return result;

@@ -35,7 +35,7 @@ export class VMExecutor {
           try {
             return (${expression});
           } catch (error) {
-            throw new Error('Expression evaluation failed: ' + error.message);
+            throw new Error('Expression evaluation failed: ' + error.message + ' | Stack: ' + error.stack);
           }
         })()
       `;
@@ -57,6 +57,16 @@ export class VMExecutor {
         if (error.message.includes('Script execution was interrupted')) {
           throw new Error('Expression execution was interrupted');
         }
+        
+        // Provide more detailed error information
+        console.error('VM execution error details:', {
+          message: error.message,
+          stack: error.stack,
+          expression: expression,
+          contextKeys: Object.keys(contextData)
+        });
+        
+        throw new Error(`VM execution failed: ${error.message}`);
       }
       throw new Error(`VM execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -121,12 +131,120 @@ export class VMExecutor {
 
     for (const [key, value] of Object.entries(contextData)) {
       try {
-        // Only allow transferable data to the VM context
-        if (this.isTransferable(value)) {
+        // Check for VMChainableWrapper instances first
+        if (value && typeof value === 'object' && 'value' in value && (value as any).__isVMChainableWrapper) {
+          // This is a VMChainableWrapper - preserve all its methods
+          const wrapped = value as any;
+          const transferable: any = {
+            data: wrapped.data || wrapped.value,
+            __isVMChainableWrapper: true
+          };
+          
+          // Add value as a getter that returns data
+          Object.defineProperty(transferable, 'value', {
+            get: () => transferable.data,
+            enumerable: true,
+            configurable: true
+          });
+          
+          // Copy all methods from the wrapper
+          const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'];
+          for (const methodName of methodNames) {
+            if (typeof wrapped[methodName] === 'function') {
+              transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
+            }
+          }
+          
+          // Also copy any dynamic properties that might have been added
+          for (const prop of Object.getOwnPropertyNames(wrapped)) {
+            if (!methodNames.includes(prop) && prop !== 'value' && prop !== 'data' && typeof wrapped[prop] === 'function') {
+              transferable[prop] = this.createFunctionProxy(wrapped[prop].bind(wrapped));
+            }
+          }
+          
+          sanitized[key] = transferable;
+        } else if (this.isTransferable(value)) {
           sanitized[key] = this.deepClone(value);
         } else if (typeof value === 'function') {
           // For functions, create a wrapper that executes in the parent context
-          sanitized[key] = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
+          const proxiedFunction = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
+          
+          // Check if this function has properties (like the $ object)
+          const propNames = Object.getOwnPropertyNames(value);
+          const hasCustomProperties = propNames.some(prop => 
+            prop !== 'length' && prop !== 'name' && prop !== 'prototype' &&
+            prop !== 'constructor' && prop !== 'caller' && prop !== 'arguments'
+          );
+          
+          if (hasCustomProperties) {
+            // This is a function with properties (like our $ object)
+            // Copy all transferable properties to the proxied function
+            try {
+              for (const prop of propNames) {
+                if (prop !== 'length' && prop !== 'name' && prop !== 'prototype' &&
+                    prop !== 'constructor' && prop !== 'caller' && prop !== 'arguments') {
+                  try {
+                    const propValue = (value as any)[prop];
+                    
+                    // Check if property is transferable or needs special handling
+                    if (propValue && typeof propValue === 'object' && 'value' in propValue && (propValue as any).__isVMChainableWrapper) {
+                      // This is a VMChainableWrapper - preserve all its methods
+                      const wrapped = propValue as any;
+                      const transferable: any = {
+                        data: wrapped.data || wrapped.value,
+                        __isVMChainableWrapper: true
+                      };
+                      
+                      // Add value as a getter that returns data
+                      Object.defineProperty(transferable, 'value', {
+                        get: () => transferable.data,
+                        enumerable: true,
+                        configurable: true
+                      });
+                      
+                      // Copy all methods from the wrapper
+                      const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'];
+                      for (const methodName of methodNames) {
+                        if (typeof wrapped[methodName] === 'function') {
+                          transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
+                        }
+                      }
+                      
+                      Object.defineProperty(proxiedFunction, prop, {
+                        value: transferable,
+                        writable: true,
+                        enumerable: true,
+                        configurable: true
+                      });
+                    } else if (this.isTransferable(propValue)) {
+                      // Simple transferable value
+                      Object.defineProperty(proxiedFunction, prop, {
+                        value: this.deepClone(propValue),
+                        writable: true,
+                        enumerable: true,
+                        configurable: true
+                      });
+                    } else if (typeof propValue === 'object' && propValue !== null) {
+                      // Complex object - try to extract properties
+                      const extracted = this.extractObjectProperties(propValue);
+                      Object.defineProperty(proxiedFunction, prop, {
+                        value: extracted,
+                        writable: true,
+                        enumerable: true,
+                        configurable: true
+                      });
+                    }
+                  } catch (propError) {
+                    console.warn(`Warning: Could not copy property ${prop}:`, propError);
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn(`Warning: Could not copy function properties for ${key}:`, error);
+            }
+          }
+          
+          sanitized[key] = proxiedFunction;
         } else if (this.isLibraryObject(value)) {
           // For library objects (like lodash), create function proxies for methods
           sanitized[key] = this.createLibraryProxy(value);
@@ -193,7 +311,31 @@ export class VMExecutor {
     return (...args: unknown[]) => {
       try {
         // Execute the function in the parent context (outside the VM)
-        return fn(...args);
+        const result = fn(...args);
+        
+        // If the result is a VMChainableWrapper, convert it to a transferable format
+        if (result && typeof result === 'object' && 'value' in result) {
+          // This is likely a VMChainableWrapper or ChainableWrapper
+          const wrapped = result as any;
+          
+          // If it has methods, preserve them by creating a simple object representation
+          const transferable: any = {
+            value: wrapped.value,
+            data: wrapped.data || wrapped.value
+          };
+          
+          // Copy key methods if they exist
+          const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values'];
+          for (const methodName of methodNames) {
+            if (typeof wrapped[methodName] === 'function') {
+              transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
+            }
+          }
+          
+          return transferable;
+        }
+        
+        return result;
       } catch (error) {
         throw new Error(`Function execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
@@ -260,16 +402,54 @@ export class VMExecutor {
     
     try {
       const target = obj as Record<string, unknown>;
-      for (const key of Object.getOwnPropertyNames(target)) {
+      
+      // Check if this is a VMChainableWrapper-like object
+      if ('value' in target && typeof target.value !== 'function' && (target as any).__isVMChainableWrapper) {
+        // For chainable wrappers, we want to preserve their methods
+        for (const key of Object.getOwnPropertyNames(target)) {
+          try {
+            const value = target[key];
+            if (typeof value === 'function') {
+              // Create a bound function proxy for methods
+              extracted[key] = this.createFunctionProxy(value.bind(target));
+            } else if (this.isTransferable(value)) {
+              extracted[key] = this.deepClone(value);
+            }
+          } catch {
+            // Skip properties that can't be accessed
+          }
+        }
+        
+        // Also check constructor properties  
         try {
-          const value = target[key];
-          if (this.isTransferable(value)) {
-            extracted[key] = this.deepClone(value);
-          } else if (typeof value === 'function') {
-            extracted[key] = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
+          const proto = Object.getPrototypeOf(target);
+          if (proto && proto !== Object.prototype) {
+            for (const key of Object.getOwnPropertyNames(proto)) {
+              if (key !== 'constructor' && typeof proto[key] === 'function') {
+                try {
+                  extracted[key] = this.createFunctionProxy(proto[key].bind(target));
+                } catch {
+                  // Skip if can't access
+                }
+              }
+            }
           }
         } catch {
-          // Skip properties that can't be accessed or transferred
+          // Skip prototype processing if it fails
+        }
+      } else {
+        // Regular object handling
+        for (const key of Object.getOwnPropertyNames(target)) {
+          try {
+            const value = target[key];
+            if (this.isTransferable(value)) {
+              extracted[key] = this.deepClone(value);
+            } else if (typeof value === 'function') {
+              extracted[key] = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
+            }
+          } catch {
+            // Skip properties that can't be accessed or transferred
+          }
         }
       }
     } catch (error) {
