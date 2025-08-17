@@ -11,13 +11,12 @@ export class VMChainableWrapper {
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
       const obj = data as Record<string, unknown>;
       for (const [key, value] of Object.entries(obj)) {
-        if (key !== 'data' && key !== 'value' && typeof this[key as keyof this] === 'undefined') {
+        if (key !== 'data' && key !== 'value' && 
+            key !== 'constructor' && key !== '__isVMChainableWrapper' &&
+            typeof this[key as keyof this] === 'undefined') {
           try {
-            Object.defineProperty(this, key, {
-              get: () => new VMChainableWrapper(value),
-              enumerable: true,
-              configurable: true
-            });
+            // Use a direct property instead of getter for VM compatibility
+            (this as any)[key] = new VMChainableWrapper(value);
           } catch (error) {
             // Skip properties that can't be defined
           }

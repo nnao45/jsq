@@ -55,8 +55,10 @@ export class ExpressionEvaluator {
             // For objects, add each property as a chainable wrapper
             const obj = data as Record<string, unknown>;
             for (const [key, value] of Object.entries(obj)) {
-              if (key !== 'name' && key !== 'length' && key !== 'prototype' && 
-                  key !== 'valueOf' && key !== 'toString') {
+              // Allow data properties to override function properties
+              // Only skip properties that would break the function itself
+              if (key !== 'length' && key !== 'prototype' && 
+                  key !== 'constructor' && key !== 'call' && key !== 'apply' && key !== 'bind') {
                 try {
                   Object.defineProperty($, key, {
                     value: new VMChainableWrapper(value),
@@ -201,7 +203,7 @@ export class ExpressionEvaluator {
       }
       
       // Also check if it's a plain object that looks like a wrapped result
-      if (result && typeof result === 'object' && 'data' in result && Object.keys(result).length === 1) {
+      if (result && typeof result === 'object' && 'data' in result && (result as any).__isVMChainableWrapper) {
         return (result as any).data;
       }
       

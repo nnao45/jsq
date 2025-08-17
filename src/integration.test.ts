@@ -336,4 +336,327 @@ describe('Integration Tests', () => {
       expect(result.stderr).toContain('⚡ Running in unsafe mode');
     }, 10000);
   });
+
+  describe('Comprehensive jQuery-style API Tests', () => {
+    // Basic property access
+    it('should handle direct property access', async () => {
+      const input = '{"name": "Alice", "age": 30, "active": true}';
+      const expression = '$.name';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('Alice');
+    }, 10000);
+
+    // Array operations
+    it('should filter arrays with predicate functions', async () => {
+      const input = '{"numbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
+      const expression = '$.numbers.filter(n => n % 2 === 0)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([2, 4, 6, 8, 10]);
+    }, 10000);
+
+    it('should map arrays with transform functions', async () => {
+      const input = '{"prices": [10, 20, 30]}';
+      const expression = '$.prices.map(p => p * 1.1)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([11, 22, 33]);
+    }, 10000);
+
+    it('should find first matching element', async () => {
+      const input = '{"users": [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}, {"name": "Charlie", "age": 35}]}';
+      const expression = '$.users.find(u => u.age > 28)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({"name": "Bob", "age": 30});
+    }, 10000);
+
+    it('should filter by property value with where', async () => {
+      const input = '{"products": [{"name": "laptop", "category": "electronics"}, {"name": "book", "category": "education"}, {"name": "phone", "category": "electronics"}]}';
+      const expression = '$.products.where("category", "electronics")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([
+        {"name": "laptop", "category": "electronics"},
+        {"name": "phone", "category": "electronics"}
+      ]);
+    }, 10000);
+
+    it('should extract values with pluck', async () => {
+      const input = '{"employees": [{"name": "Alice", "salary": 50000}, {"name": "Bob", "salary": 60000}, {"name": "Charlie", "salary": 70000}]}';
+      const expression = '$.employees.pluck("salary")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([50000, 60000, 70000]);
+    }, 10000);
+
+    it('should sort by property with sortBy', async () => {
+      const input = '{"items": [{"name": "Zebra", "price": 100}, {"name": "Apple", "price": 50}, {"name": "Banana", "price": 75}]}';
+      const expression = '$.items.sortBy("name")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output[0].name).toBe("Apple");
+      expect(output[1].name).toBe("Banana");
+      expect(output[2].name).toBe("Zebra");
+    }, 10000);
+
+    it('should take first N elements', async () => {
+      const input = '{"sequence": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
+      const expression = '$.sequence.take(3)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([1, 2, 3]);
+    }, 10000);
+
+    it('should skip first N elements', async () => {
+      const input = '{"sequence": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
+      const expression = '$.sequence.skip(7)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([8, 9, 10]);
+    }, 10000);
+
+    // Aggregation operations
+    it('should calculate sum of numbers', async () => {
+      const input = '{"values": [10, 20, 30, 40, 50]}';
+      const expression = '$.values.sum()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(150);
+    }, 10000);
+
+    it('should calculate sum by property', async () => {
+      const input = '{"transactions": [{"amount": 100}, {"amount": 200}, {"amount": 150}]}';
+      const expression = '$.transactions.sum("amount")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(450);
+    }, 10000);
+
+    it('should get array length', async () => {
+      const input = '{"items": ["a", "b", "c", "d", "e"]}';
+      const expression = '$.items.length()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(5);
+    }, 10000);
+
+    it('should get object keys', async () => {
+      const input = '{"config": {"host": "localhost", "port": 3000, "secure": true}}';
+      const expression = '$.config.keys()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      const keys = JSON.parse(result.stdout);
+      expect(keys).toContain("host");
+      expect(keys).toContain("port");
+      expect(keys).toContain("secure");
+    }, 10000);
+
+    it('should get object values', async () => {
+      const input = '{"settings": {"debug": true, "timeout": 5000}}';
+      const expression = '$.settings.values()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      const values = JSON.parse(result.stdout);
+      expect(values).toContain(true);
+      expect(values).toContain(5000);
+    }, 10000);
+
+    // Complex chaining scenarios
+    it('should handle complex filter and map chain', async () => {
+      const input = '{"sales": [{"rep": "Alice", "amount": 1000, "month": "Jan"}, {"rep": "Bob", "amount": 1500, "month": "Jan"}, {"rep": "Alice", "amount": 2000, "month": "Feb"}]}';
+      const expression = '$.sales.filter(s => s.month === "Jan").map(s => s.amount * 1.1)';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([1100, 1650]);
+    }, 10000);
+
+    it('should chain multiple operations', async () => {
+      const input = '{"data": [{"score": 85, "grade": "B"}, {"score": 92, "grade": "A"}, {"score": 78, "grade": "C"}, {"score": 96, "grade": "A"}]}';
+      const expression = '$.data.filter(d => d.score > 80).sortBy("score").take(2).pluck("grade")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["B", "A"]);
+    }, 10000);
+
+    // Edge cases
+    it('should handle empty arrays', async () => {
+      const input = '{"empty": []}';
+      const expression = '$.empty.filter(x => true).length()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(0);
+    }, 10000);
+
+    it('should handle null values gracefully', async () => {
+      const input = '{"data": [{"value": 10}, {"value": null}, {"value": 20}]}';
+      const expression = '$.data.filter(d => d.value !== null).pluck("value")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([10, 20]);
+    }, 10000);
+
+    it('should handle nested objects', async () => {
+      const input = '{"company": {"departments": [{"name": "Engineering", "employees": [{"name": "Alice", "role": "Senior"}, {"name": "Bob", "role": "Junior"}]}, {"name": "Design", "employees": [{"name": "Charlie", "role": "Lead"}]}]}}';
+      const expression = '$.company.departments.find(d => d.name === "Engineering").employees.pluck("name")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["Alice", "Bob"]);
+    }, 10000);
+
+    // Data transformation scenarios
+    it('should transform API response format', async () => {
+      const input = '{"response": {"status": 200, "data": {"users": [{"id": 1, "first_name": "John", "last_name": "Doe", "email": "john@example.com"}, {"id": 2, "first_name": "Jane", "last_name": "Smith", "email": "jane@example.com"}]}}}';
+      const expression = '$.response.data.users.map(u => ({id: u.id, fullName: u.first_name + " " + u.last_name, contact: u.email}))';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output).toEqual([
+        {id: 1, fullName: "John Doe", contact: "john@example.com"},
+        {id: 2, fullName: "Jane Smith", contact: "jane@example.com"}
+      ]);
+    }, 10000);
+
+    it('should aggregate financial data', async () => {
+      const input = '{"portfolio": {"stocks": [{"symbol": "AAPL", "shares": 10, "price": 150}, {"symbol": "GOOGL", "shares": 5, "price": 2500}, {"symbol": "MSFT", "shares": 8, "price": 300}]}}';
+      const expression = '$.portfolio.stocks.map(s => s.shares * s.price).sum()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(16400); // 1500 + 12500 + 2400
+    }, 10000);
+
+    it('should process log analytics', async () => {
+      const input = '{"logs": [{"level": "INFO", "service": "api", "duration": 120}, {"level": "ERROR", "service": "db", "duration": 5000}, {"level": "WARN", "service": "api", "duration": 800}, {"level": "INFO", "service": "cache", "duration": 50}]}';
+      const expression = '$.logs.filter(l => l.level !== "INFO").sortBy("duration").pluck("service")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["api", "db"]);
+    }, 10000);
+
+    it('should handle inventory management', async () => {
+      const input = '{"inventory": [{"item": "laptop", "quantity": 50, "price": 1000, "category": "electronics"}, {"item": "desk", "quantity": 20, "price": 200, "category": "furniture"}, {"item": "phone", "quantity": 100, "price": 500, "category": "electronics"}]}';
+      const expression = '$.inventory.where("category", "electronics").filter(i => i.quantity > 60).pluck("item")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["phone"]);
+    }, 10000);
+
+    it('should calculate statistics', async () => {
+      const input = '{"metrics": {"response_times": [120, 150, 89, 200, 95, 180, 110, 165]}}';
+      const expression = '$.metrics.response_times.filter(t => t < 200).length()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(6);
+    }, 10000);
+
+    it('should handle e-commerce order analysis', async () => {
+      const input = '{"orders": [{"id": "order_1", "items": [{"name": "laptop", "price": 999}], "customer": {"tier": "premium"}}, {"id": "order_2", "items": [{"name": "mouse", "price": 25}, {"name": "keyboard", "price": 75}], "customer": {"tier": "basic"}}, {"id": "order_3", "items": [{"name": "monitor", "price": 400}], "customer": {"tier": "premium"}}]}';
+      const expression = '$.orders.filter(o => o.customer.tier === "premium").map(o => o.items.sum("price")).sum()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(1399); // 999 + 400
+    }, 10000);
+
+    it('should process social media analytics', async () => {
+      const input = '{"posts": [{"author": "alice", "likes": 45, "comments": 12, "shares": 8}, {"author": "bob", "likes": 89, "comments": 23, "shares": 15}, {"author": "alice", "likes": 67, "comments": 18, "shares": 12}, {"author": "charlie", "likes": 23, "comments": 5, "shares": 3}]}';
+      const expression = '$.posts.filter(p => p.likes > 50).sortBy("likes").take(2).pluck("author")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["alice", "bob"]);
+    }, 10000);
+
+    it('should handle performance monitoring data', async () => {
+      const input = '{"servers": [{"name": "web-1", "cpu": 75, "memory": 80, "status": "healthy"}, {"name": "web-2", "cpu": 45, "memory": 60, "status": "healthy"}, {"name": "db-1", "cpu": 90, "memory": 95, "status": "warning"}, {"name": "cache-1", "cpu": 25, "memory": 30, "status": "healthy"}]}';
+      const expression = '$.servers.filter(s => s.cpu > 70 || s.memory > 85).pluck("name")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(["web-1", "db-1"]);
+    }, 10000);
+
+    it('should handle time series data', async () => {
+      const input = '{"metrics": [{"timestamp": "2023-01-01T10:00:00Z", "value": 100}, {"timestamp": "2023-01-01T11:00:00Z", "value": 120}, {"timestamp": "2023-01-01T12:00:00Z", "value": 90}, {"timestamp": "2023-01-01T13:00:00Z", "value": 110}]}';
+      const expression = '$.metrics.filter(m => m.value > 100).length()';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe(2);
+    }, 10000);
+
+    it('should process configuration validation', async () => {
+      const input = '{"config": {"services": [{"name": "api", "port": 3000, "enabled": true}, {"name": "worker", "port": 3001, "enabled": false}, {"name": "scheduler", "port": 3002, "enabled": true}]}}';
+      const expression = '$.config.services.filter(s => s.enabled).pluck("port")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([3000, 3002]);
+    }, 10000);
+
+    it('should handle nested array transformations', async () => {
+      const input = '{"teams": [{"name": "frontend", "members": [{"name": "Alice", "skills": ["React", "TypeScript"]}, {"name": "Bob", "skills": ["Vue", "JavaScript"]}]}, {"name": "backend", "members": [{"name": "Charlie", "skills": ["Node.js", "Python"]}, {"name": "David", "skills": ["Go", "Rust"]}]}]}';
+      const expression = '$.teams.find(t => t.name === "frontend").members.pluck("skills")';
+      
+      const result = await runJsq(expression, input);
+      
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([["React", "TypeScript"], ["Vue", "JavaScript"]]);
+    }, 10000);
+  });
 });
