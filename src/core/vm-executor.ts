@@ -1,11 +1,53 @@
-import vm from 'vm';
+import ivm from 'isolated-vm';
 import { VMExecutionContext } from '@/types/cli';
 
 export class VMExecutor {
   private context: VMExecutionContext;
+  private isolate: ivm.Isolate;
+  private persistentContext: ivm.Context;
+  private jail: ivm.Reference<any>;
+  private isInitialized = false;
 
   constructor(context: VMExecutionContext) {
     this.context = context;
+    // Create an isolated VM instance with memory limits for security
+    this.isolate = new ivm.Isolate({ 
+      memoryLimit: 128, // 128MB memory limit
+      inspector: false  // Disable debugging for security
+    });
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.isInitialized) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: VM already initialized');
+      }
+      return;
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Debug: Initializing VM...');
+    }
+
+    // Create persistent context once
+    this.persistentContext = await this.isolate.createContext();
+    this.jail = this.persistentContext.global;
+
+    // Setup all globals and methods once
+    await this.setupPersistentEnvironment();
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Debug: VM initialization complete');
+    }
+    
+    this.isInitialized = true;
+  }
+
+  async dispose(): Promise<void> {
+    if (this.isolate) {
+      await this.isolate.dispose();
+    }
+    this.isInitialized = false;
   }
 
   async executeExpression(
@@ -18,37 +60,57 @@ export class VMExecutor {
     }
 
     try {
-      // Create a safe context using Node.js vm module
-      const sandbox = this.createSafeSandbox(contextData);
+      // Ensure the persistent VM is initialized
+      await this.ensureInitialized();
       
-      // Set up timeout and options
-      const options: vm.RunningScriptOptions = {
-        timeout: this.context.timeout || 5000, // 5 second timeout
-        displayErrors: true,
-        breakOnSigint: true,
-      };
+      // Transfer only data to the persistent context
+      await this.transferDataOnly(contextData);
+
+      // Transform the expression to use VM methods
+      const transformedExpression = this.transformExpressionForVM(expression);
 
       // Wrap the expression in a function to handle return values properly
+      // For complex objects/arrays, stringify before returning to handle VM boundary issues
       const code = `
         (function() {
           "use strict";
           try {
-            return (${expression});
+            var result = (${transformedExpression});
+            // Handle VM boundary transfer for complex data
+            if (result && (typeof result === 'object' || (result && typeof result.length === 'number'))) {
+              return jsonStringify(result);
+            }
+            return result;
           } catch (error) {
             throw new Error('Expression evaluation failed: ' + error.message + ' | Stack: ' + error.stack);
           }
         })()
       `;
 
-      // Create and run the script in the sandbox
-      const script = new vm.Script(code, {
-        filename: '<jsq-expression>',
-        timeout: options.timeout,
+      // Create and run the script in the persistent context
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: Compiling script with code:', code);
+      }
+      const script = await this.isolate.compileScript(code, {
+        filename: '<jsq-expression>'
       });
 
-      const result = script.runInNewContext(sandbox, options);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: Running script in VM...');
+      }
+      const result = await script.run(this.persistentContext, {
+        timeout: 30000 // 30 second timeout
+      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: Script execution completed, result type:', typeof result);
+      }
       
-      return result;
+      // Process the result for VM boundary transfer
+      const processedResult = await this.processResult(result);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: VM result processed successfully:', typeof processedResult);
+      }
+      return processedResult;
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('Script execution timed out')) {
@@ -72,224 +134,564 @@ export class VMExecutor {
     }
   }
 
-  private createSafeSandbox(contextData: Record<string, unknown>): vm.Context {
-    // Create a minimal, safe sandbox environment
-    const sandbox: Record<string, unknown> = {
-      // Basic globals that are safe to use
-      console: {
-        log: (...args: unknown[]) => console.log(...args),
-        error: (...args: unknown[]) => console.error(...args),
-        warn: (...args: unknown[]) => console.warn(...args),
-      },
-      
-      // Safe built-in objects
-      JSON,
-      Math,
-      Date,
-      Array,
-      Object,
-      String,
-      Number,
-      Boolean,
-      RegExp,
-      
-      // Utility functions
-      typeof: (obj: unknown) => typeof obj,
-      isArray: Array.isArray,
-      parseInt,
-      parseFloat,
-      isNaN,
-      isFinite,
-      
-      // Add context data
-      ...this.sanitizeContextData(contextData),
-    };
-
-    // Explicitly remove dangerous globals
-    const dangerousGlobals = [
-      'process', 'global', 'Buffer', 'require', 'module', 'exports',
-      'setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 
-      'clearInterval', 'clearImmediate', '__dirname', '__filename',
-      'eval', 'Function', 'GeneratorFunction', 'AsyncFunction',
-    ];
-
-    for (const dangerous of dangerousGlobals) {
-      sandbox[dangerous] = undefined;
-    }
-
-    return vm.createContext(sandbox, {
-      name: 'jsq-safe-context',
-      codeGeneration: {
-        strings: false, // Disable eval-like string compilation
-        wasm: false,    // Disable WebAssembly
-      },
+  private async setupPersistentEnvironment(): Promise<void> {
+    // Setup safe console functions using References
+    const consoleLog = new ivm.Reference((...args: unknown[]) => {
+      console.log(...args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)));
     });
+    const consoleError = new ivm.Reference((...args: unknown[]) => {
+      console.error(...args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)));
+    });
+    const consoleWarn = new ivm.Reference((...args: unknown[]) => {
+      console.warn(...args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)));
+    });
+    
+    await this.jail.set('console', new ivm.ExternalCopy({
+      log: consoleLog,
+      error: consoleError,
+      warn: consoleWarn
+    }).copyInto());
+
+    // Setup Math object with all its methods as References
+    const mathObj: Record<string, any> = {};
+    for (const [key, value] of Object.entries(Math)) {
+      if (typeof value === 'function') {
+        mathObj[key] = new ivm.Reference(value);
+      } else {
+        mathObj[key] = value;
+      }
+    }
+    await this.jail.set('Math', new ivm.ExternalCopy(mathObj).copyInto());
+
+    // JSON will be set up in the native methods script
+
+    // Setup basic constructors and utilities
+    await this.jail.set('Array', new ivm.Reference((...args: any[]) => new Array(...args)));
+    const objectKeys = new ivm.Reference((obj: any) => Object.keys(obj));
+    const objectValues = new ivm.Reference((obj: any) => Object.values(obj));
+    const objectEntries = new ivm.Reference((obj: any) => Object.entries(obj));
+    await this.jail.set('Object', new ivm.ExternalCopy({
+      keys: objectKeys,
+      values: objectValues,
+      entries: objectEntries
+    }).copyInto());
+    await this.jail.set('String', new ivm.Reference((value?: any) => String(value)));
+    await this.jail.set('Number', new ivm.Reference((value?: any) => Number(value)));
+    await this.jail.set('Boolean', new ivm.Reference((value?: any) => Boolean(value)));
+    
+    // Setup utility functions
+    await this.jail.set('isArray', new ivm.Reference((obj: any) => Array.isArray(obj)));
+    await this.jail.set('parseInt', new ivm.Reference((string: string, radix?: number) => parseInt(string, radix)));
+    await this.jail.set('parseFloat', new ivm.Reference((string: string) => parseFloat(string)));
+    await this.jail.set('isNaN', new ivm.Reference((value: any) => isNaN(value)));
+    await this.jail.set('isFinite', new ivm.Reference((value: any) => isFinite(value)));
+
+    // Setup helper function for array detection in VM
+    await this.jail.set('__isArray', new ivm.Reference((obj: any) => {
+      return obj && typeof obj === 'object' && typeof obj.length === 'number' && obj.constructor && obj.constructor.name === 'Array';
+    }));
+
+    // Setup helper function to get array data from VMChainableWrapper
+    await this.jail.set('__getArrayData', new ivm.Reference((obj: any) => {
+      if (obj && obj.data && Array.isArray(obj.data)) {
+        return obj.data;
+      }
+      if (Array.isArray(obj)) {
+        return obj;
+      }
+      return [];
+    }));
+    
+    // Setup VMChainable method references
+    await this.setupVMChainableMethods();
   }
 
-  private sanitizeContextData(contextData: Record<string, unknown>): Record<string, unknown> {
-    const sanitized: Record<string, unknown> = {};
+  private async setupVMChainableMethods(): Promise<void> {
+    // Create native JavaScript functions that work entirely within the VM context
+    const nativeMethodsScript = `
+      // Setup a simple JSON.stringify function first
+      function jsonStringify(obj) {
+        if (obj === null) return 'null';
+        if (obj === undefined) return 'undefined';
+        if (typeof obj === 'string') return '"' + obj.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"') + '"';
+        if (typeof obj === 'number' || typeof obj === 'boolean') return '' + obj;
+        
+        // Handle arrays
+        if (obj && typeof obj === 'object' && typeof obj.length === 'number') {
+          var items = [];
+          for (var i = 0; i < obj.length; i++) {
+            items.push(jsonStringify(obj[i]));
+          }
+          return '[' + items.join(',') + ']';
+        }
+        
+        // Handle objects
+        if (typeof obj === 'object') {
+          var pairs = [];
+          for (var key in obj) {
+            if (obj.hasOwnProperty && obj.hasOwnProperty(key)) {
+              pairs.push(jsonStringify(key) + ':' + jsonStringify(obj[key]));
+            }
+          }
+          return '{' + pairs.join(',') + '}';
+        }
+        
+        return '' + obj;
+      }
+      
+      // Make it available as JSON.stringify
+      if (typeof JSON === 'undefined') {
+        var JSON = { stringify: jsonStringify };
+      } else if (!JSON.stringify) {
+        JSON.stringify = jsonStringify;
+      }
+      
+      // Helper function to extract array data
+      function getArrayData(obj) {
+        // Debug what we received
+        try {
+          if (typeof console !== 'undefined' && console.log) {
+            console.log('getArrayData received:', typeof obj, obj);
+            if (obj && typeof obj === 'object') {
+              console.log('Object keys:', Object.keys(obj));
+              if (obj.data) console.log('obj.data:', obj.data, 'length:', typeof obj.data === 'object' ? obj.data.length : 'n/a');
+              if (obj.value) console.log('obj.value:', obj.value, 'length:', typeof obj.value === 'object' ? obj.value.length : 'n/a');
+            }
+          }
+        } catch (e) {
+          // Ignore console errors
+        }
+        
+        // Handle VMChainableWrapper-like objects
+        if (obj && obj.data && typeof obj.data.length === 'number') {
+          return obj.data;
+        }
+        if (obj && obj.value && typeof obj.value.length === 'number') {
+          return obj.value;
+        }
+        // Handle direct arrays
+        if (obj && typeof obj.length === 'number') {
+          return obj;
+        }
+        // Handle objects with array properties
+        if (obj && typeof obj === 'object') {
+          // Check if this is a plain object that might contain arrays
+          for (var key in obj) {
+            if (obj.hasOwnProperty(key) && obj[key] && typeof obj[key].length === 'number') {
+              return obj[key];
+            }
+          }
+        }
+        return [];
+      }
+      
+      // Array method implementations  
+      function __vm_map(data, transform) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            result.push(transform(arrayData[i]));
+          }
+          
+          return jsonStringify(result);
+        } catch (error) {
+          // Return error info as string so it can be transferred
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_filter(data, predicate) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            if (predicate(arrayData[i])) {
+              result.push(arrayData[i]);
+            }
+          }
+          
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_find(data, predicate) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) return undefined;
+          
+          for (var i = 0; i < arrayData.length; i++) {
+            if (predicate(arrayData[i])) {
+              return arrayData[i];
+            }
+          }
+          return undefined;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_pluck(data, key) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            var item = arrayData[i];
+            if (item && typeof item === 'object' && key in item) {
+              result.push(item[key]);
+            }
+          }
+          
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_where(data, key, value) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            var item = arrayData[i];
+            if (item && typeof item === 'object' && key in item && item[key] === value) {
+              result.push(item);
+            }
+          }
+          
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_sortBy(data, keyOrFn) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = arrayData.slice();
+          result.sort(function(a, b) {
+            var aVal, bVal;
+            if (typeof keyOrFn === 'function') {
+              aVal = keyOrFn(a);
+              bVal = keyOrFn(b);
+            } else if (typeof keyOrFn === 'string') {
+              aVal = a && typeof a === 'object' ? a[keyOrFn] : a;
+              bVal = b && typeof b === 'object' ? b[keyOrFn] : b;
+            } else {
+              return 0;
+            }
+            if (typeof aVal === 'string' && typeof bVal === 'string') {
+              return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            }
+            if (typeof aVal === 'number' && typeof bVal === 'number') {
+              return aVal - bVal;
+            }
+            return 0;
+          });
+          
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_take(data, count) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = arrayData.slice(0, count);
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_skip(data, count) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return jsonStringify([]);
+          }
+          
+          var result = arrayData.slice(count);
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_length(data) {
+        var arrayData = getArrayData(data);
+        if (arrayData.length !== undefined) return arrayData.length;
+        if (data && typeof data === 'object') return Object.keys(data).length;
+        return 0;
+      }
+      
+      function __vm_sum(data, key) {
+        var arrayData = getArrayData(data);
+        if (arrayData.length === 0) return 0;
+        var values = key 
+          ? arrayData.map(function(item) { return item && typeof item === 'object' ? item[key] : 0; })
+          : arrayData;
+        return values.reduce(function(acc, val) {
+          return acc + (typeof val === 'number' ? val : 0);
+        }, 0);
+      }
+      
+      function __vm_keys(data) {
+        if (data && typeof data === 'object') return Object.keys(data);
+        return [];
+      }
+      
+      function __vm_values(data) {
+        if (data && typeof data === 'object') return Object.values(data);
+        return [];
+      }
+    `;
+    
+    // Execute the native methods script in the VM context
+    const script = await this.isolate.compileScript(nativeMethodsScript);
+    await script.run(this.persistentContext);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Debug: Set up native VM methods');
+    }
+  }
 
+  private async transferDataOnly(contextData: Record<string, unknown>): Promise<void> {
+    // Only transfer pure data, no functions or complex objects
     for (const [key, value] of Object.entries(contextData)) {
       try {
-        // Check for VMChainableWrapper instances first
-        if (value && typeof value === 'object' && 'value' in value && (value as any).__isVMChainableWrapper) {
-          // This is a VMChainableWrapper - preserve all its methods
-          const wrapped = value as any;
-          const transferable: any = {
-            data: wrapped.data || wrapped.value,
-            __isVMChainableWrapper: true
-          };
-          
-          // Add value property that returns data directly
-          transferable.value = transferable.data;
-          
-          // Copy all methods from the wrapper
-          const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'];
-          for (const methodName of methodNames) {
-            if (typeof wrapped[methodName] === 'function') {
-              transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
-            }
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Debug: Processing ${key}, type: ${typeof value}, isVMChainableWrapper: ${!!(value && typeof value === 'object' && (value as any).__isVMChainableWrapper)}, isFunction: ${typeof value === 'function'}, hasData: ${!!(value as any)?.data}, hasValue: ${!!(value as any)?.value}`);
+        }
+        
+        if (value && typeof value === 'object' && (value as any).__isVMChainableWrapper) {
+          // Extract data from VMChainableWrapper and create enhanced proxy
+          const data = (value as any).data || (value as any).value;
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Debug: Transferring VMChainableWrapper ${key} with data:`, data);
           }
-          
-          // Also copy any dynamic properties that might have been added
-          for (const prop of Object.getOwnPropertyNames(wrapped)) {
-            if (!methodNames.includes(prop) && prop !== 'value' && prop !== 'data' && typeof wrapped[prop] === 'function') {
-              transferable[prop] = this.createFunctionProxy(wrapped[prop].bind(wrapped));
-            }
+          await this.transferVMChainableData(key, data);
+        } else if (typeof value === 'function' && key === '$') {
+          // Special handling for $ function - check if it has VMChainableWrapper properties
+          const dollarData = (value as any).data || (value as any).value;
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Debug: Processing $ function, hasData: ${dollarData !== undefined}, data:`, dollarData);
           }
-          
-          sanitized[key] = transferable;
+          if (dollarData !== undefined) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Transferring $ function data via transferVMChainableData`);
+            }
+            await this.transferVMChainableData(key, dollarData);
+          } else {
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Creating simple $ data with undefined`);
+            }
+            // Create a simple $ function that returns data directly 
+            const simpleData = {
+              data: undefined,
+              value: undefined
+            };
+            await this.transferVMChainableData(key, simpleData);
+          }
         } else if (this.isTransferable(value)) {
-          sanitized[key] = this.deepClone(value);
+          // Simple transferable values
+          const copy = new ivm.ExternalCopy(value);
+          await this.jail.set(key, copy.copyInto());
         } else if (typeof value === 'function') {
-          // For functions, create a wrapper that executes in the parent context
-          const proxiedFunction = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
-          
-          // Check if this function has properties (like the $ object)
-          const propNames = Object.getOwnPropertyNames(value);
-          const hasCustomProperties = propNames.some(prop => 
-            prop !== 'length' && prop !== 'name' && prop !== 'prototype' &&
-            prop !== 'constructor' && prop !== 'caller' && prop !== 'arguments'
-          );
-          
-          if (hasCustomProperties) {
-            // This is a function with properties (like our $ object)
-            // Copy all transferable properties to the proxied function
-            try {
-              for (const prop of propNames) {
-                if (prop !== 'length' && prop !== 'prototype' &&
-                    prop !== 'constructor' && prop !== 'caller' && prop !== 'arguments') {
-                  try {
-                    const propValue = (value as any)[prop];
-                    
-                    // Check if property is transferable or needs special handling
-                    if (propValue && typeof propValue === 'object' && 'value' in propValue && (propValue as any).__isVMChainableWrapper) {
-                      // This is a VMChainableWrapper - preserve all its methods and expand data properties
-                      const wrapped = propValue as any;
-                      const transferable: any = {
-                        data: wrapped.data || wrapped.value,
-                        __isVMChainableWrapper: true
-                      };
-                      
-                      // Add value property that returns data directly
-                      transferable.value = transferable.data;
-                      
-                      // Copy all methods from the wrapper
-                      const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'];
-                      for (const methodName of methodNames) {
-                        if (typeof wrapped[methodName] === 'function') {
-                          transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
-                        }
-                      }
-                      
-                      // Expand data properties for direct access if it's an object
-                      if (transferable.data && typeof transferable.data === 'object' && !Array.isArray(transferable.data)) {
-                        const dataObj = transferable.data as Record<string, unknown>;
-                        for (const [dataKey, dataValue] of Object.entries(dataObj)) {
-                          if (dataKey !== 'data' && dataKey !== 'value' && dataKey !== '__isVMChainableWrapper' &&
-                              !methodNames.includes(dataKey)) {
-                            if (dataValue && typeof dataValue === 'object' && !Array.isArray(dataValue)) {
-                              // Create nested VMChainableWrapper for objects
-                              transferable[dataKey] = {
-                                data: dataValue,
-                                value: dataValue,
-                                __isVMChainableWrapper: true,
-                                ...this.createNestedChainableMethods(dataValue)
-                              };
-                            } else {
-                              // Direct value for primitives and arrays
-                              transferable[dataKey] = dataValue;
-                            }
-                          }
-                        }
-                      }
-                      
-                      Object.defineProperty(proxiedFunction, prop, {
-                        value: transferable,
-                        writable: true,
-                        enumerable: true,
-                        configurable: true
-                      });
-                    } else if (typeof propValue === 'function') {
-                      // This is a function property (like array methods on $)
-                      Object.defineProperty(proxiedFunction, prop, {
-                        value: this.createFunctionProxy(propValue as (...args: unknown[]) => unknown),
-                        writable: true,
-                        enumerable: false, // Don't make methods enumerable
-                        configurable: true
-                      });
-                    } else if (this.isTransferable(propValue)) {
-                      // Simple transferable value
-                      Object.defineProperty(proxiedFunction, prop, {
-                        value: this.deepClone(propValue),
-                        writable: true,
-                        enumerable: true,
-                        configurable: true
-                      });
-                    } else if (typeof propValue === 'object' && propValue !== null) {
-                      // Complex object - try to extract properties
-                      const extracted = this.extractObjectProperties(propValue);
-                      Object.defineProperty(proxiedFunction, prop, {
-                        value: extracted,
-                        writable: true,
-                        enumerable: true,
-                        configurable: true
-                      });
-                    }
-                  } catch (propError) {
-                    console.warn(`Warning: Could not copy property ${prop}:`, propError);
-                  }
-                }
-              }
-            } catch (error) {
-              console.warn(`Warning: Could not copy function properties for ${key}:`, error);
-            }
+          // Skip regular functions - they're handled by persistent methods
+          if (this.context.unsafe || process.env.NODE_ENV === 'development') {
+            console.log(`Debug: Skipping function ${key} (handled by persistent methods)`);
           }
-          
-          sanitized[key] = proxiedFunction;
-        } else if (this.isLibraryObject(value)) {
-          // For library objects (like lodash), create function proxies for methods
-          sanitized[key] = this.createLibraryProxy(value);
         } else {
-          // For complex objects, try to serialize/deserialize
+          // Try to serialize complex objects
           try {
             const serialized = JSON.stringify(value);
-            sanitized[key] = JSON.parse(serialized);
-          } catch (serializeError) {
-            // If serialization fails, try to extract properties
-            if (typeof value === 'object' && value !== null) {
-              sanitized[key] = this.extractObjectProperties(value);
+            const parsed = JSON.parse(serialized);
+            const copy = new ivm.ExternalCopy(parsed);
+            await this.jail.set(key, copy.copyInto());
+          } catch {
+            if (this.context.unsafe || process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Skipping non-transferable ${key} (could not serialize)`);
             }
           }
         }
       } catch (error) {
-        console.warn(`Warning: Could not transfer ${key} to safe context:`, error);
-        // Skip this value if it can't be safely transferred
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Warning: Could not transfer ${key}:`, error);
+        }
       }
     }
-
-    return sanitized;
   }
+
+  private async transferVMChainableData(key: string, data: any): Promise<void> {
+    try {
+      // For arrays and complex objects, use JSON string transfer to avoid VM boundary issues
+      if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
+        const jsonData = JSON.stringify(data);
+        const jsonCopy = new ivm.ExternalCopy(jsonData);
+        await this.jail.set(`${key}_json`, jsonCopy.copyInto());
+        
+        // Parse it back to native data in VM context
+        const parseScript = `var ${key} = JSON.parse(${key}_json);`;
+        const script = await this.isolate.compileScript(parseScript);
+        await script.run(this.persistentContext);
+      } else {
+        // For simple data types, use direct transfer
+        const dataCopy = new ivm.ExternalCopy(data);
+        await this.jail.set(key, dataCopy.copyInto());
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Debug: Successfully transferred VMChainable data for ${key}`);
+      }
+    } catch (error) {
+      console.error(`Error transferring VMChainable data for ${key}:`, error);
+      throw error;
+    }
+  }
+
+  private transformExpressionForVM(expression: string): string {
+    // Transform method calls to use VM functions
+    // This is a simple regex-based transformation for common cases
+    let transformed = expression;
+    
+    // Transform .map() calls - improved to handle $ directly and with properties
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.map\(([^)]+)\)/g, '__vm_map($1, $2)');
+    
+    // Transform .filter() calls  
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.filter\(([^)]+)\)/g, '__vm_filter($1, $2)');
+    
+    // Transform .find() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.find\(([^)]+)\)/g, '__vm_find($1, $2)');
+    
+    // Transform .pluck() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.pluck\(([^)]+)\)/g, '__vm_pluck($1, $2)');
+    
+    // Transform .where() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.where\(([^)]+)\)/g, '__vm_where($1, $2)');
+    
+    // Transform .sortBy() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sortBy\(([^)]+)\)/g, '__vm_sortBy($1, $2)');
+    
+    // Transform .take() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.take\(([^)]+)\)/g, '__vm_take($1, $2)');
+    
+    // Transform .skip() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
+    
+    // Transform .sum() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
+    
+    // Transform .length() calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
+    
+    if (process.env.NODE_ENV === 'development' && transformed !== expression) {
+      console.log(`Debug: Transformed expression: ${expression} -> ${transformed}`);
+    }
+    
+    return transformed;
+  }
+
+  private async processResult(result: any): Promise<unknown> {
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: Processing VM result, type:', typeof result, 'hasCopy:', !!(result && typeof result.copy === 'function'));
+        if (result) {
+          console.log('Debug: Result value:', result);
+        }
+        console.log('Debug: Result is null/undefined:', result === null || result === undefined);
+        console.log('Debug: Result constructor:', result && result.constructor ? result.constructor.name : 'unknown');
+      }
+      
+      // The result from script.run() might not always be an ExternalCopy
+      if (result && typeof result.copy === 'function') {
+        const copied = result.copy();
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Debug: Copied result, type:', typeof copied, 'value:', copied);
+        }
+        
+        // Check if the copied result is a JSON string from VM array methods
+        if (typeof copied === 'string' && copied.startsWith('[') && copied.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(copied);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Debug: Parsed JSON result:', parsed);
+            }
+            return parsed;
+          } catch {
+            // If JSON parsing fails, return the string as-is
+            return copied;
+          }
+        }
+        
+        return copied;
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Debug: Returning result directly');
+        }
+        
+        // Check if the direct result is a JSON string from VM array methods
+        if (typeof result === 'string') {
+          // Handle both quoted and unquoted JSON strings
+          let jsonStr = result;
+          if (result.startsWith('"') && result.endsWith('"')) {
+            // Remove outer quotes and unescape
+            jsonStr = JSON.parse(result);
+          }
+          
+          if (typeof jsonStr === 'string' && (jsonStr.startsWith('[') || jsonStr.startsWith('{'))) {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('Debug: Parsed JSON result from direct result:', parsed);
+              }
+              return parsed;
+            } catch {
+              // If JSON parsing fails, return the string as-is
+              return result;
+            }
+          }
+        }
+        
+        return result;
+      }
+    } catch (error) {
+      console.error('Error processing VM result:', error);
+      console.error('Original result:', result);
+      throw error;
+    }
+  }
+
+
+
+
 
   private isTransferable(value: unknown): boolean {
     if (value === null || value === undefined) return true;
@@ -297,11 +699,17 @@ export class VMExecutor {
     const type = typeof value;
     if (['string', 'number', 'boolean'].includes(type)) return true;
     
-    if (Array.isArray(value)) {
+    if (value instanceof Array) {
       return value.every(item => this.isTransferable(item));
     }
     
     if (type === 'object') {
+      // Check if this is a VMChainableWrapper or similar object
+      const obj = value as Record<string, unknown>;
+      if (obj.__isVMChainableWrapper || 'data' in obj || 'value' in obj) {
+        return false; // These should be processed by extractObjectProperties
+      }
+      
       try {
         JSON.stringify(value);
         return true;
@@ -313,468 +721,14 @@ export class VMExecutor {
     return false;
   }
 
-  private deepClone(value: unknown): unknown {
-    if (value === null || typeof value !== 'object') {
-      return value;
-    }
-    
-    if (Array.isArray(value)) {
-      return value.map(item => this.deepClone(item));
-    }
-    
-    const cloned: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-      cloned[key] = this.deepClone(val);
-    }
-    return cloned;
-  }
 
-  private createFunctionProxy(fn: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown {
-    return (...args: unknown[]) => {
-      try {
-        // Execute the function in the parent context (outside the VM)
-        const result = fn(...args);
-        
-        // If the result is a VMChainableWrapper, convert it to a transferable format
-        if (result && typeof result === 'object' && 'value' in result) {
-          // This is likely a VMChainableWrapper or ChainableWrapper
-          const wrapped = result as any;
-          
-          // If it has methods, preserve them by creating a simple object representation
-          const transferable: any = {
-            value: wrapped.value,
-            data: wrapped.data || wrapped.value,
-            __isVMChainableWrapper: true
-          };
-          
-          // Copy key methods if they exist
-          const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values'];
-          for (const methodName of methodNames) {
-            if (typeof wrapped[methodName] === 'function') {
-              transferable[methodName] = this.createFunctionProxy(wrapped[methodName].bind(wrapped));
-            }
-          }
-          
-          // For array data, ensure ALL array methods are available by creating them directly
-          if (Array.isArray(transferable.data)) {
-            const arrayData = transferable.data as unknown[];
-            
-            // Ensure critical array methods are available even if not copied above
-            const ensureArrayMethods = {
-              filter: (predicate: (item: unknown, index?: number) => boolean) => {
-                const filtered = arrayData.filter(predicate);
-                return this.createArrayResult(filtered);
-              },
-              map: (transform: (item: unknown, index?: number) => unknown) => {
-                const mapped = arrayData.map(transform);
-                return this.createArrayResult(mapped);
-              },
-              find: (predicate: (item: unknown) => boolean) => {
-                const found = arrayData.find(predicate);
-                if (found && typeof found === 'object' && !Array.isArray(found)) {
-                  // For found objects, create a complete result with all properties accessible
-                  const obj = found as Record<string, unknown>;
-                  const result: any = {
-                    data: found,
-                    value: found,
-                    __isVMChainableWrapper: true
-                  };
-                  
-                  // Add all object properties
-                  for (const [key, value] of Object.entries(obj)) {
-                    if (Array.isArray(value)) {
-                      // For array properties, ensure methods are available
-                      result[key] = {
-                        data: value,
-                        value: value,
-                        __isVMChainableWrapper: true,
-                        filter: this.createFunctionProxy((p: any) => this.createArrayResult(value.filter(p))),
-                        map: this.createFunctionProxy((t: any) => this.createArrayResult(value.map(t))),
-                        find: this.createFunctionProxy((p: any) => this.createObjectResult(value.find(p))),
-                        pluck: this.createFunctionProxy((k: string) => {
-                          const values = value.map(item => {
-                            if (item && typeof item === 'object' && !Array.isArray(item) && k in item) {
-                              return (item as Record<string, unknown>)[k];
-                            }
-                            return undefined;
-                          }).filter(val => val !== undefined);
-                          return this.createArrayResult(values);
-                        }),
-                        length: this.createFunctionProxy(() => value.length),
-                        sum: this.createFunctionProxy((k?: string) => {
-                          const values = k 
-                            ? value.map(item => item && typeof item === 'object' ? (item as any)[k] : 0)
-                            : value;
-                          return values.reduce((acc: number, val: any) => acc + (typeof val === 'number' ? val : 0), 0);
-                        })
-                      };
-                    } else {
-                      result[key] = value;
-                    }
-                  }
-                  
-                  return result;
-                } else {
-                  return this.createObjectResult(found);
-                }
-              },
-              pluck: (key: string) => {
-                const values = arrayData.map(item => {
-                  if (item && typeof item === 'object' && !Array.isArray(item) && key in item) {
-                    return (item as Record<string, unknown>)[key];
-                  }
-                  return undefined;
-                }).filter(val => val !== undefined);
-                return this.createArrayResult(values);
-              }
-            };
-            
-            // Override with direct implementations to ensure they work
-            for (const [methodName, methodImpl] of Object.entries(ensureArrayMethods)) {
-              transferable[methodName] = this.createFunctionProxy(methodImpl);
-            }
-          }
-          
-          // Expand data properties for direct access
-          if (transferable.data && typeof transferable.data === 'object') {
-            if (!Array.isArray(transferable.data)) {
-              // Handle object properties
-              const dataObj = transferable.data as Record<string, unknown>;
-              for (const [dataKey, dataValue] of Object.entries(dataObj)) {
-                if (dataKey !== 'data' && dataKey !== 'value' && dataKey !== '__isVMChainableWrapper' &&
-                    !methodNames.includes(dataKey)) {
-                  if (dataValue && typeof dataValue === 'object' && !Array.isArray(dataValue)) {
-                    // Create nested VMChainableWrapper for objects
-                    transferable[dataKey] = {
-                      data: dataValue,
-                      value: dataValue,
-                      __isVMChainableWrapper: true,
-                      ...this.createNestedChainableMethods(dataValue)
-                    };
-                  } else {
-                    // Direct value for primitives and arrays
-                    transferable[dataKey] = dataValue;
-                  }
-                }
-              }
-            } else {
-              // Handle array data - ensure array methods are available for the array itself
-              // Array methods should already be copied above via methodNames loop
-              // but let's ensure they're properly bound to the array data
-              
-              // Add indexed access for array elements
-              const arrayData = transferable.data as unknown[];
-              for (let i = 0; i < arrayData.length; i++) {
-                const element = arrayData[i];
-                if (element && typeof element === 'object' && !Array.isArray(element)) {
-                  transferable[i.toString()] = {
-                    data: element,
-                    value: element,
-                    __isVMChainableWrapper: true,
-                    ...this.createNestedChainableMethods(element)
-                  };
-                } else {
-                  transferable[i.toString()] = element;
-                }
-              }
-              
-              // Ensure length property for arrays
-              transferable.length = () => arrayData.length;
-            }
-          }
-          
-          return transferable;
-        }
-        
-        return result;
-      } catch (error) {
-        throw new Error(`Function execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    };
-  }
 
-  private isLibraryObject(value: unknown): boolean {
-    if (typeof value !== 'object' || value === null) return false;
-    
-    // Check if this looks like a library object (has many function properties)
-    const obj = value as Record<string, unknown>;
-    const props = Object.getOwnPropertyNames(obj);
-    const functionCount = props.filter(prop => {
-      try {
-        return typeof obj[prop] === 'function';
-      } catch {
-        return false;
-      }
-    }).length;
-    
-    // If more than 5 functions, likely a library
-    return functionCount > 5;
-  }
 
-  private createNestedChainableMethods(data: unknown): Record<string, unknown> {
-    const methods: Record<string, unknown> = {};
-    
-    // Add basic chainable methods for nested objects
-    const methodNames = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'];
-    
-    for (const methodName of methodNames) {
-      methods[methodName] = this.createFunctionProxy((...args: unknown[]) => {
-        // Create a temporary VMChainableWrapper and call the method
-        try {
-          const { VMChainableWrapper } = require('./vm-chainable');
-          const wrapper = new VMChainableWrapper(data);
-          const result = (wrapper as any)[methodName](...args);
-          return result?.value ?? result;
-        } catch (error) {
-          console.warn(`Failed to call method ${methodName}:`, error);
-          return undefined;
-        }
-      });
-    }
-    
-    return methods;
-  }
 
-  private createArrayResult(data: unknown[]): any {
-    const result = {
-      data: data,
-      value: data,
-      __isVMChainableWrapper: true
-    };
-    
-    // Add array methods
-    const arrayMethods = {
-      filter: (predicate: (item: unknown, index?: number) => boolean) => {
-        const filtered = data.filter(predicate);
-        return this.createArrayResult(filtered);
-      },
-      map: (transform: (item: unknown, index?: number) => unknown) => {
-        const mapped = data.map(transform);
-        return this.createArrayResult(mapped);
-      },
-      find: (predicate: (item: unknown) => boolean) => {
-        const found = data.find(predicate);
-        return this.createObjectResult(found);
-      },
-      pluck: (key: string) => {
-        const values = data.map(item => {
-          if (item && typeof item === 'object' && !Array.isArray(item) && key in item) {
-            return (item as Record<string, unknown>)[key];
-          }
-          return undefined;
-        }).filter(val => val !== undefined);
-        return this.createArrayResult(values);
-      },
-      length: () => data.length,
-      sum: (key?: string) => {
-        const values = key 
-          ? data.map(item => item && typeof item === 'object' ? (item as any)[key] : 0)
-          : data;
-        return values.reduce((acc: number, val: any) => acc + (typeof val === 'number' ? val : 0), 0);
-      }
-    };
-    
-    Object.assign(result, arrayMethods);
-    return result;
-  }
 
-  private createObjectResult(data: unknown): any {
-    if (data === null || data === undefined) {
-      return {
-        data: data,
-        value: data,
-        __isVMChainableWrapper: true
-      };
-    }
-    
-    const result = {
-      data: data,
-      value: data,
-      __isVMChainableWrapper: true
-    };
-    
-    // If it's an object, add property access
-    if (typeof data === 'object' && !Array.isArray(data)) {
-      const obj = data as Record<string, unknown>;
-      for (const [key, value] of Object.entries(obj)) {
-        if (key !== 'data' && key !== 'value' && key !== '__isVMChainableWrapper') {
-          if (Array.isArray(value)) {
-            // For array properties, create a proper transferable array object with methods
-            const arrayResult = {
-              data: value,
-              value: value,
-              __isVMChainableWrapper: true,
-              // Direct method implementations
-              filter: this.createFunctionProxy((predicate: (item: unknown, index?: number) => boolean) => {
-                const filtered = value.filter(predicate);
-                return this.createArrayResult(filtered);
-              }),
-              map: this.createFunctionProxy((transform: (item: unknown, index?: number) => unknown) => {
-                const mapped = value.map(transform);
-                return this.createArrayResult(mapped);
-              }),
-              find: this.createFunctionProxy((predicate: (item: unknown) => boolean) => {
-                const found = value.find(predicate);
-                return this.createObjectResult(found);
-              }),
-              pluck: this.createFunctionProxy((k: string) => {
-                const values = value.map(item => {
-                  if (item && typeof item === 'object' && !Array.isArray(item) && k in item) {
-                    return (item as Record<string, unknown>)[k];
-                  }
-                  return undefined;
-                }).filter(val => val !== undefined);
-                return this.createArrayResult(values);
-              }),
-              length: this.createFunctionProxy(() => value.length),
-              sum: this.createFunctionProxy((k?: string) => {
-                const values = k 
-                  ? value.map(item => item && typeof item === 'object' ? (item as any)[k] : 0)
-                  : value;
-                return values.reduce((acc: number, val: any) => acc + (typeof val === 'number' ? val : 0), 0);
-              })
-            };
-            result[key] = arrayResult;
-          } else if (value && typeof value === 'object') {
-            result[key] = this.createObjectResult(value);
-          } else {
-            result[key] = value;
-          }
-        }
-      }
-    }
-    
-    return result;
-  }
 
-  private createLibraryProxy(library: unknown): Record<string, unknown> {
-    if (typeof library !== 'object' || library === null) {
-      return {};
-    }
 
-    const proxy: Record<string, unknown> = {};
-    const obj = library as Record<string, unknown>;
-    
-    try {
-      // Get all enumerable properties
-      for (const key of Object.getOwnPropertyNames(obj)) {
-        try {
-          const value = obj[key];
-          if (typeof value === 'function') {
-            // Create a proxy function that executes in the parent context
-            proxy[key] = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
-          } else if (this.isTransferable(value)) {
-            proxy[key] = this.deepClone(value);
-          }
-        } catch (error) {
-          // Skip properties that can't be accessed
-          if (!this.context.unsafe && console) {
-            console.warn(`Warning: Could not proxy library property ${key}:`, error);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Warning: Could not create library proxy:', error);
-    }
 
-    return proxy;
-  }
-
-  private extractObjectProperties(obj: unknown): Record<string, unknown> {
-    if (typeof obj !== 'object' || obj === null) {
-      return {};
-    }
-
-    const extracted: Record<string, unknown> = {};
-    
-    try {
-      const target = obj as Record<string, unknown>;
-      
-      // Check if this is a VMChainableWrapper-like object
-      if ('value' in target && typeof target.value !== 'function' && (target as any).__isVMChainableWrapper) {
-        // For chainable wrappers, we want to preserve their methods and properties
-        // First copy instance properties
-        for (const key of Object.getOwnPropertyNames(target)) {
-          try {
-            const value = target[key];
-            if (typeof value === 'function') {
-              // Create a bound function proxy for methods
-              extracted[key] = this.createFunctionProxy(value.bind(target));
-            } else if (value && typeof value === 'object' && (value as any).__isVMChainableWrapper) {
-              // Handle nested VMChainableWrapper
-              extracted[key] = this.extractObjectProperties(value);
-            } else if (this.isTransferable(value)) {
-              extracted[key] = this.deepClone(value);
-            }
-          } catch {
-            // Skip properties that can't be accessed
-          }
-        }
-        
-        // Then copy prototype methods - this is crucial for VMChainableWrapper
-        try {
-          const proto = Object.getPrototypeOf(target);
-          if (proto && proto !== Object.prototype) {
-            for (const key of Object.getOwnPropertyNames(proto)) {
-              if (key !== 'constructor' && typeof proto[key] === 'function' && !extracted[key]) {
-                try {
-                  extracted[key] = this.createFunctionProxy(proto[key].bind(target));
-                } catch {
-                  // Skip if can't access
-                }
-              }
-            }
-          }
-        } catch {
-          // Skip prototype processing if it fails
-        }
-        
-        // Finally, expand data properties if it's an object
-        if (extracted.data && typeof extracted.data === 'object') {
-          if (!Array.isArray(extracted.data)) {
-            // Handle object properties
-            const dataObj = extracted.data as Record<string, unknown>;
-            for (const [dataKey, dataValue] of Object.entries(dataObj)) {
-              if (dataKey !== 'data' && dataKey !== 'value' && dataKey !== '__isVMChainableWrapper' &&
-                  !['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'length', 'sum', 'keys', 'values', 'get'].includes(dataKey) &&
-                  !extracted[dataKey]) {
-                if (dataValue && typeof dataValue === 'object' && !Array.isArray(dataValue)) {
-                  // Create nested VMChainableWrapper for objects
-                  extracted[dataKey] = {
-                    data: dataValue,
-                    value: dataValue,
-                    __isVMChainableWrapper: true,
-                    ...this.createNestedChainableMethods(dataValue)
-                  };
-                } else {
-                  // Direct value for primitives and arrays
-                  extracted[dataKey] = dataValue;
-                }
-              }
-            }
-          }
-        }
-      } else {
-        // Regular object handling
-        for (const key of Object.getOwnPropertyNames(target)) {
-          try {
-            const value = target[key];
-            if (this.isTransferable(value)) {
-              extracted[key] = this.deepClone(value);
-            } else if (typeof value === 'function') {
-              extracted[key] = this.createFunctionProxy(value as (...args: unknown[]) => unknown);
-            }
-          } catch {
-            // Skip properties that can't be accessed or transferred
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Warning: Could not extract object properties:', error);
-    }
-
-    return extracted;
-  }
 
   private executeUnsafe(expression: string, contextData: Record<string, unknown>): unknown {
     // Fallback to regular Function evaluation
@@ -795,12 +749,13 @@ export class VMExecutor {
 
   static async isVMAvailable(): Promise<boolean> {
     try {
-      // Test if vm module is available and working
-      const sandbox = { test: 1 + 1 };
-      const context = vm.createContext(sandbox);
-      const script = new vm.Script('test');
-      const result = script.runInContext(context, { timeout: 1000 });
-      return result === 2;
+      // Test if isolated-vm module is available and working
+      const isolate = new ivm.Isolate({ memoryLimit: 8 });
+      const context = await isolate.createContext();
+      const script = await isolate.compileScript('2 + 2');
+      const result = await script.run(context, { timeout: 1000 });
+      await isolate.dispose();
+      return result === 4;
     } catch {
       return false;
     }

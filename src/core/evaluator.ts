@@ -24,6 +24,12 @@ export class ExpressionEvaluator {
     }
   }
 
+  async dispose(): Promise<void> {
+    if (this.vmExecutor) {
+      await this.vmExecutor.dispose();
+    }
+  }
+
   async evaluate(expression: string, data: unknown): Promise<unknown> {
     try {
       // Load external libraries if specified
@@ -48,6 +54,11 @@ export class ExpressionEvaluator {
           }
         };
         
+        // Mark $ as a VMChainableWrapper-like object for VM transfer
+        ($  as any).__isVMChainableWrapper = true;
+        ($  as any).data = data;
+        ($  as any).value = data;
+        
         // For VM compatibility, make $ behave like the data object itself
         // by copying all properties as chainable wrappers
         if (typeof data === 'object' && data !== null) {
@@ -57,6 +68,7 @@ export class ExpressionEvaluator {
             for (const [key, value] of Object.entries(obj)) {
               // Allow data properties to override function properties
               // Only skip properties that would break the function itself
+
               if (key !== 'length' && key !== 'prototype' && 
                   key !== 'constructor' && key !== 'call' && key !== 'apply' && key !== 'bind') {
                 try {
@@ -73,54 +85,12 @@ export class ExpressionEvaluator {
               }
             }
           } else {
-            // For arrays, make $ behave like the array itself
-            // by copying the array data and providing direct access
-            const arrayWrapper = new VMChainableWrapper(data);
+            // For arrays in VM mode, $ is just the array data
+            // Array methods will be handled by expression transformation to __vm_* functions
+            // No need to add individual methods since they'll be transformed in executeExpression
             
-            // Add each array element as an indexed property
-            for (let i = 0; i < (data as unknown[]).length; i++) {
-              try {
-                Object.defineProperty($, i.toString(), {
-                  value: new VMChainableWrapper((data as unknown[])[i]),
-                  enumerable: true,
-                  configurable: true,
-                  writable: false
-                });
-              } catch (error) {
-                ($  as any)[i] = new VMChainableWrapper((data as unknown[])[i]);
-              }
-            }
-            
-            // Add array methods without conflict with Function properties
-            const arrayMethods = ['filter', 'map', 'find', 'where', 'pluck', 'sortBy', 'take', 'skip', 'sum'];
-            
-            for (const method of arrayMethods) {
-              if (typeof (arrayWrapper as any)[method] === 'function') {
-                try {
-                  Object.defineProperty($, method, {
-                    value: (arrayWrapper as any)[method].bind(arrayWrapper),
-                    enumerable: false, // Don't make methods enumerable
-                    configurable: true,
-                    writable: false
-                  });
-                } catch (error) {
-                  // Skip methods that conflict with function properties
-                  console.warn(`Warning: Could not add array method ${method} to $ function`);
-                }
-              }
-            }
-            
-            // Add length as 'len' to avoid conflict
-            try {
-              Object.defineProperty($, 'len', {
-                value: arrayWrapper.length.bind(arrayWrapper),
-                enumerable: false,
-                configurable: true,
-                writable: false
-              });
-            } catch (error) {
-              ($  as any).len = arrayWrapper.length.bind(arrayWrapper);
-            }
+            // Just ensure $ has the array data directly available
+            // The VM will handle array method calls through expression transformation
           }
         }
         
@@ -196,14 +166,37 @@ export class ExpressionEvaluator {
         result = this.safeEval(expression, context);
       }
       
+      // Debug result type before unwrapping
+      if (this.options.verbose) {
+        console.error('Debug: Result type:', typeof result, 'isArray:', Array.isArray(result));
+        if (result && typeof result === 'object') {
+          console.error('Debug: Result has value:', 'value' in result);
+          console.error('Debug: Result constructor:', result.constructor?.name);
+        }
+      }
+      
       // If the result is a ChainableWrapper or VMChainableWrapper, unwrap it
-      if (result && typeof result === 'object' && 'value' in result) {
+      // Be more specific - don't unwrap arrays or other objects that happen to have 'value'
+      if (result && typeof result === 'object' && !Array.isArray(result) && 
+          'value' in result && (
+            result.constructor.name === 'ChainableWrapper' || 
+            result.constructor.name === 'VMChainableWrapper' ||
+            (result as any).__isVMChainableWrapper
+          )) {
+        if (this.options.verbose) {
+          console.error('Debug: Unwrapping result with .value');
+        }
         const wrapped = result as ChainableWrapper | VMChainableWrapper;
-        return wrapped.value;
+        const unwrapped = wrapped.value;
+        if (this.options.verbose) {
+          console.error('Debug: Unwrapped value type:', typeof unwrapped);
+        }
+        return unwrapped;
       }
       
       // Also check if it's a plain object that looks like a wrapped result
-      if (result && typeof result === 'object' && 'data' in result && (result as any).__isVMChainableWrapper) {
+      if (result && typeof result === 'object' && !Array.isArray(result) &&
+          'data' in result && (result as any).__isVMChainableWrapper) {
         return (result as any).data;
       }
       
