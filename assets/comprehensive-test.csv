@@ -1,0 +1,9 @@
+id,name,email,age,department,active,salary
+1,"Alice Johnson",alice@example.com,30,engineering,true,75000
+2,"Bob Smith",bob@example.com,25,design,false,55000
+3,"Charlie Brown",charlie@example.com,35,engineering,true,85000
+4,"Diana Prince",diana@example.com,28,marketing,true,60000
+5,"Eve Davis",eve@example.com,32,design,true,65000
+6,"Frank Wilson",frank@example.com,40,engineering,true,90000
+7,"Grace Lee",grace@example.com,26,marketing,false,50000
+8,"Henry Miller",henry@example.com,29,engineering,true,70000

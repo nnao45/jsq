@@ -44,7 +44,13 @@ export function createSmartDollar(data: unknown) {
         return () => data;
       }
       if (prop === 'toString') {
-        return () => JSON.stringify(data);
+        return () => {
+          if (data === undefined) return 'undefined';
+          if (data === null) return 'null';
+          if (typeof data === 'string') return data;
+          if (typeof data === 'number' || typeof data === 'boolean') return String(data);
+          return JSON.stringify(data);
+        };
       }
       
       // If it's a method call, delegate to function

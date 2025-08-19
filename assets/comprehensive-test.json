@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "timestamp": "2023-12-01T00:00:00Z",
+    "total_records": 8
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "age": 30,
+      "department": "engineering",
+      "active": true,
+      "salary": 75000,
+      "skills": ["JavaScript", "TypeScript", "React"],
+      "location": {
+        "city": "San Francisco",
+        "country": "USA",
+        "timezone": "PST"
+      },
+      "projects": [
+        {"name": "ProjectA", "role": "lead", "status": "active"},
+        {"name": "ProjectB", "role": "contributor", "status": "completed"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob@example.com",
+      "age": 25,
+      "department": "design",
+      "active": false,
+      "salary": 55000,
+      "skills": ["Figma", "Sketch", "Adobe XD"],
+      "location": {
+        "city": "New York",
+        "country": "USA",
+        "timezone": "EST"
+      },
+      "projects": [
+        {"name": "ProjectC", "role": "designer", "status": "active"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Charlie Brown",
+      "email": "charlie@example.com",
+      "age": 35,
+      "department": "engineering",
+      "active": true,
+      "salary": 85000,
+      "skills": ["Python", "Go", "Kubernetes"],
+      "location": {
+        "city": "Austin",
+        "country": "USA",
+        "timezone": "CST"
+      },
+      "projects": [
+        {"name": "ProjectA", "role": "contributor", "status": "active"},
+        {"name": "ProjectD", "role": "lead", "status": "planning"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Diana Prince",
+      "email": "diana@example.com",
+      "age": 28,
+      "department": "marketing",
+      "active": true,
+      "salary": 60000,
+      "skills": ["Analytics", "SEO", "Content Marketing"],
+      "location": {
+        "city": "Los Angeles",
+        "country": "USA",
+        "timezone": "PST"
+      },
+      "projects": [
+        {"name": "Campaign2023", "role": "manager", "status": "active"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Eve Davis",
+      "email": "eve@example.com",
+      "age": 32,
+      "department": "design",
+      "active": true,
+      "salary": 65000,
+      "skills": ["UI Design", "UX Research", "Prototyping"],
+      "location": {
+        "city": "Seattle",
+        "country": "USA",
+        "timezone": "PST"
+      },
+      "projects": [
+        {"name": "ProjectB", "role": "lead", "status": "completed"},
+        {"name": "ProjectE", "role": "lead", "status": "active"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Frank Wilson",
+      "email": "frank@example.com",
+      "age": 40,
+      "department": "engineering",
+      "active": true,
+      "salary": 90000,
+      "skills": ["Java", "Spring", "AWS"],
+      "location": {
+        "city": "Boston",
+        "country": "USA",
+        "timezone": "EST"
+      },
+      "projects": [
+        {"name": "ProjectF", "role": "architect", "status": "active"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Grace Lee",
+      "email": "grace@example.com",
+      "age": 26,
+      "department": "marketing",
+      "active": false,
+      "salary": 50000,
+      "skills": ["Social Media", "Content Creation", "Brand Management"],
+      "location": {
+        "city": "Chicago",
+        "country": "USA",
+        "timezone": "CST"
+      },
+      "projects": []
+    },
+    {
+      "id": 8,
+      "name": "Henry Miller",
+      "email": "henry@example.com",
+      "age": 29,
+      "department": "engineering",
+      "active": true,
+      "salary": 70000,
+      "skills": ["Node.js", "Express", "MongoDB"],
+      "location": {
+        "city": "Denver",
+        "country": "USA",
+        "timezone": "MST"
+      },
+      "projects": [
+        {"name": "ProjectG", "role": "developer", "status": "active"}
+      ]
+    }
+  ]
+}
