@@ -1,7 +1,7 @@
 {
   "name": "jsq",
   "version": "0.1.0",
-  "description": "JavaScript-Powered JSON Query Tool",
+  "description": "JavaScript-Powered JSON Query CLI Tool",
   "main": "dist/index.js",
   "bin": {
     "jsq": "bin/jsq"
