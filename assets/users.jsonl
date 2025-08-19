@@ -1,0 +1,8 @@
+{"id": 1, "name": "Alice Johnson", "age": 28, "city": "Tokyo", "department": "Engineering", "salary": 75000, "active": true}
+{"id": 2, "name": "Bob Smith", "age": 34, "city": "Osaka", "department": "Marketing", "salary": 65000, "active": true}
+{"id": 3, "name": "Charlie Brown", "age": 29, "city": "Kyoto", "department": "Engineering", "salary": 80000, "active": false}
+{"id": 4, "name": "Diana Prince", "age": 31, "city": "Tokyo", "department": "Sales", "salary": 70000, "active": true}
+{"id": 5, "name": "Eve Davis", "age": 26, "city": "Nagoya", "department": "Engineering", "salary": 72000, "active": true}
+{"id": 6, "name": "Frank Miller", "age": 45, "city": "Osaka", "department": "Management", "salary": 95000, "active": true}
+{"id": 7, "name": "Grace Lee", "age": 33, "city": "Tokyo", "department": "Marketing", "salary": 68000, "active": true}
+{"id": 8, "name": "Henry Wilson", "age": 27, "city": "Kyoto", "department": "Engineering", "salary": 73000, "active": false}

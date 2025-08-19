@@ -3,3 +3,8 @@ node_modules
 .claude
 .idea
 bin/jsq
+
+# Large test files (keep sample files, ignore generated large files)
+assets/big-test.jsonl
+assets/*-large.jsonl
+assets/test-*.jsonl.tmp

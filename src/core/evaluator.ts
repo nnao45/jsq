@@ -4,6 +4,7 @@ import { VMChainableWrapper } from './vm-chainable';
 import { LibraryManager } from './library-manager';
 import { VMExecutor } from './vm-executor';
 import { createSmartDollar } from './jquery-wrapper';
+import { ExpressionTransformer } from './expression-transformer';
 
 export class ExpressionEvaluator {
   private options: JsqOptions;
@@ -14,8 +15,8 @@ export class ExpressionEvaluator {
     this.options = options;
     this.libraryManager = new LibraryManager(options);
     
-    // VM is enabled by default, disabled only with --unsafe flag
-    if (!options.unsafe) {
+    // VM is enabled only with --safe flag, disabled by default
+    if (options.safe) {
       this.vmExecutor = new VMExecutor({
         unsafe: false,
         timeout: 10000, // 10 second timeout
@@ -32,6 +33,11 @@ export class ExpressionEvaluator {
 
   async evaluate(expression: string, data: unknown): Promise<unknown> {
     try {
+      // Transform expression to handle special cases like standalone '$' 
+      // For non-safe mode (normal mode), use minimal transformation
+      // For safe mode, expression transformation will be handled in VM executor if needed
+      let transformedExpression = !this.options.safe ? ExpressionTransformer.transform(expression) : expression;
+      
       // Load external libraries if specified
       const loadedLibraries = this.options.use 
         ? await this.libraryManager.loadLibraries(this.options.use)
@@ -40,8 +46,8 @@ export class ExpressionEvaluator {
       // Create the smart $ that acts as both data container and constructor
       let $: any;
       
-      if (this.options.unsafe) {
-        // In unsafe mode, use the full smart dollar implementation
+      if (!this.options.safe) {
+        // In non-safe mode, use the full smart dollar implementation
         $ = createSmartDollar(data);
       } else {
         // In VM mode, create a simple object that doesn't rely on Proxy
@@ -150,20 +156,20 @@ export class ExpressionEvaluator {
       let result: unknown;
 
       // Choose execution method based on safety requirements
-      if (this.vmExecutor && !this.options.unsafe) {
+      if (this.vmExecutor && this.options.safe) {
         if (this.options.verbose) {
           console.error('🔒 Running in secure VM mode');
         }
-        result = await this.vmExecutor.executeExpression(expression, context);
+        result = await this.vmExecutor.executeExpression(transformedExpression, context);
       } else {
         if (this.options.verbose) {
-          if (this.options.unsafe) {
-            console.error('⚡ Running in unsafe mode (VM disabled)');
+          if (!this.options.safe) {
+            console.error('⚡ Running in fast mode (VM disabled)');
           } else {
-            console.error('⚠️  VM not available, falling back to unsafe execution');
+            console.error('⚠️  VM not available, falling back to fast execution');
           }
         }
-        result = this.safeEval(expression, context);
+        result = this.safeEval(transformedExpression, context);
       }
       
       // Debug result type before unwrapping
@@ -210,6 +216,7 @@ export class ExpressionEvaluator {
     // Create a safe evaluation environment
     const contextKeys = Object.keys(context);
     const contextValues = Object.values(context);
+    
     
     try {
       // Use Function constructor for safer evaluation than eval()

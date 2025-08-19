@@ -1,4 +1,5 @@
 import { stdin } from 'process';
+import { Readable } from 'stream';
 
 export const readStdin = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -41,4 +42,12 @@ export const parseJson = (input: string): unknown => {
   } catch (error) {
     throw new Error(`Invalid JSON input: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+};
+
+export const getStdinStream = (): Readable => {
+  return stdin;
+};
+
+export const isStdinAvailable = (): boolean => {
+  return !stdin.isTTY;
 };
