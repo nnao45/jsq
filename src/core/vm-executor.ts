@@ -461,6 +461,298 @@ export class VMExecutor {
         return [];
       }
       
+      // High-order functions
+      function __vm_reduce(data, reducer, initialValue) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) {
+            return initialValue !== undefined ? initialValue : undefined;
+          }
+          
+          if (initialValue !== undefined) {
+            return arrayData.reduce(reducer, initialValue);
+          } else {
+            return arrayData.reduce(reducer);
+          }
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_scan(data, scanner, initialValue) {
+        try {
+          var arrayData = getArrayData(data);
+          var result = [];
+          var acc = initialValue !== undefined ? initialValue : 0;
+          
+          for (var i = 0; i < arrayData.length; i++) {
+            acc = scanner(acc, arrayData[i]);
+            result.push(acc);
+          }
+          
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      // Array operations  
+      function __vm_reverse(data) {
+        try {
+          var arrayData = getArrayData(data);
+          return jsonStringify(arrayData.slice().reverse());
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_concat(data, other) {
+        try {
+          var arrayData = getArrayData(data);
+          var otherData = getArrayData(other);
+          return jsonStringify(arrayData.concat(otherData));
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_flatten(data) {
+        try {
+          var arrayData = getArrayData(data);
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            if (arrayData[i] && typeof arrayData[i].length === 'number') {
+              // It's array-like
+              for (var j = 0; j < arrayData[i].length; j++) {
+                result.push(arrayData[i][j]);
+              }
+            } else {
+              result.push(arrayData[i]);
+            }
+          }
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_flatMap(data, transform) {
+        try {
+          var arrayData = getArrayData(data);
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            var transformed = transform(arrayData[i]);
+            if (transformed && typeof transformed.length === 'number') {
+              for (var j = 0; j < transformed.length; j++) {
+                result.push(transformed[j]);
+              }
+            } else {
+              result.push(transformed);
+            }
+          }
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_distinct(data) {
+        try {
+          var arrayData = getArrayData(data);
+          var seen = {};
+          var result = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            var key = arrayData[i];
+            if (!(key in seen)) {
+              seen[key] = true;
+              result.push(arrayData[i]);
+            }
+          }
+          return jsonStringify(result);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_uniq(data) {
+        return __vm_distinct(data);
+      }
+      
+      // Conditional/search operations
+      function __vm_any(data, predicate) {
+        try {
+          var arrayData = getArrayData(data);
+          for (var i = 0; i < arrayData.length; i++) {
+            if (predicate(arrayData[i])) {
+              return true;
+            }
+          }
+          return false;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_some(data, predicate) {
+        return __vm_any(data, predicate);
+      }
+      
+      function __vm_all(data, predicate) {
+        try {
+          var arrayData = getArrayData(data);
+          for (var i = 0; i < arrayData.length; i++) {
+            if (!predicate(arrayData[i])) {
+              return false;
+            }
+          }
+          return true;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_every(data, predicate) {
+        return __vm_all(data, predicate);
+      }
+      
+      function __vm_count(data, predicate) {
+        try {
+          var arrayData = getArrayData(data);
+          if (!predicate) {
+            return arrayData.length;
+          }
+          var count = 0;
+          for (var i = 0; i < arrayData.length; i++) {
+            if (predicate(arrayData[i])) {
+              count++;
+            }
+          }
+          return count;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_groupBy(data, keyFn) {
+        try {
+          var arrayData = getArrayData(data);
+          var groups = {};
+          for (var i = 0; i < arrayData.length; i++) {
+            var key = keyFn(arrayData[i]);
+            if (!groups[key]) {
+              groups[key] = [];
+            }
+            groups[key].push(arrayData[i]);
+          }
+          return groups;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      // Math/statistics operations
+      function __vm_min(data, keyOrFn) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) return undefined;
+          
+          var min = arrayData[0];
+          for (var i = 1; i < arrayData.length; i++) {
+            var current = arrayData[i];
+            if (keyOrFn) {
+              if (typeof keyOrFn === 'function') {
+                current = keyOrFn(current);
+                min = keyOrFn(min);
+              } else {
+                current = current[keyOrFn];
+                min = min[keyOrFn];
+              }
+            }
+            if (current < min) {
+              min = current;
+            }
+          }
+          return min;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_max(data, keyOrFn) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) return undefined;
+          
+          var max = arrayData[0];
+          for (var i = 1; i < arrayData.length; i++) {
+            var current = arrayData[i];
+            if (keyOrFn) {
+              if (typeof keyOrFn === 'function') {
+                current = keyOrFn(current);
+                max = keyOrFn(max);
+              } else {
+                current = current[keyOrFn];
+                max = max[keyOrFn];
+              }
+            }
+            if (current > max) {
+              max = current;
+            }
+          }
+          return max;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_average(data, key) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) return 0;
+          
+          var sum = 0;
+          for (var i = 0; i < arrayData.length; i++) {
+            var value = key ? arrayData[i][key] : arrayData[i];
+            if (typeof value === 'number') {
+              sum += value;
+            }
+          }
+          return sum / arrayData.length;
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      function __vm_mean(data, key) {
+        return __vm_average(data, key);
+      }
+      
+      function __vm_median(data, key) {
+        try {
+          var arrayData = getArrayData(data);
+          if (arrayData.length === 0) return undefined;
+          
+          var values = [];
+          for (var i = 0; i < arrayData.length; i++) {
+            var value = key ? arrayData[i][key] : arrayData[i];
+            if (typeof value === 'number') {
+              values.push(value);
+            }
+          }
+          
+          values.sort(function(a, b) { return a - b; });
+          var mid = Math.floor(values.length / 2);
+          
+          if (values.length % 2 === 0) {
+            return (values[mid - 1] + values[mid]) / 2;
+          } else {
+            return values[mid];
+          }
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
       // Method chaining function
       function __vm_chain(data, methodsJson) {
         try {
@@ -671,6 +963,222 @@ export class VMExecutor {
                 currentData = currentData[i];
                 break;
               }
+            }
+            break;
+            
+          // 高階関数
+          case 'reduce':
+            var parts = methodArgs.split(',');
+            var reducer = new Function('return ' + parts[0].trim())();
+            var initialValue = parts.length > 1 ? new Function('return ' + parts[1].trim())() : undefined;
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              if (initialValue !== undefined) {
+                currentData = currentData.reduce(reducer, initialValue);
+              } else {
+                currentData = currentData.reduce(reducer);
+              }
+            } else {
+              currentData = initialValue;
+            }
+            break;
+            
+          case 'scan':
+            var parts = methodArgs.split(',');
+            var scanner = new Function('return ' + parts[0].trim())();
+            var initialValue = parts.length > 1 ? new Function('return ' + parts[1].trim())() : 0;
+            currentData = getArrayData(currentData);
+            var result = [];
+            var acc = initialValue;
+            for (var i = 0; i < currentData.length; i++) {
+              acc = scanner(acc, currentData[i]);
+              result.push(acc);
+            }
+            currentData = result;
+            break;
+            
+          // 配列操作
+          case 'reverse':
+            currentData = getArrayData(currentData);
+            currentData = currentData.slice().reverse();
+            break;
+            
+          case 'concat':
+            var otherArray = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            if (Array.isArray && Array.isArray(otherArray)) {
+              currentData = currentData.concat(otherArray);
+            }
+            break;
+            
+          case 'flatten':
+            var depth = methodArgs ? parseInt(methodArgs) : 1;
+            currentData = getArrayData(currentData);
+            for (var d = 0; d < depth; d++) {
+              var flattened = [];
+              for (var i = 0; i < currentData.length; i++) {
+                if (currentData[i] && typeof currentData[i].length === 'number') {
+                  for (var j = 0; j < currentData[i].length; j++) {
+                    flattened.push(currentData[i][j]);
+                  }
+                } else {
+                  flattened.push(currentData[i]);
+                }
+              }
+              currentData = flattened;
+            }
+            break;
+            
+          case 'flatMap':
+            var mapper = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            var result = [];
+            for (var i = 0; i < currentData.length; i++) {
+              var mapped = mapper(currentData[i]);
+              if (mapped && typeof mapped.length === 'number') {
+                for (var j = 0; j < mapped.length; j++) {
+                  result.push(mapped[j]);
+                }
+              } else {
+                result.push(mapped);
+              }
+            }
+            currentData = result;
+            break;
+            
+          case 'distinct':
+          case 'uniq':
+            currentData = getArrayData(currentData);
+            var seen = {};
+            var result = [];
+            for (var i = 0; i < currentData.length; i++) {
+              var key = typeof currentData[i] === 'object' ? JSON.stringify(currentData[i]) : currentData[i];
+              if (!seen[key]) {
+                seen[key] = true;
+                result.push(currentData[i]);
+              }
+            }
+            currentData = result;
+            break;
+            
+          // 条件・検索
+          case 'any':
+          case 'some':
+            var predicate = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            var result = false;
+            for (var i = 0; i < currentData.length; i++) {
+              if (predicate(currentData[i])) {
+                result = true;
+                break;
+              }
+            }
+            currentData = result;
+            break;
+            
+          case 'all':
+          case 'every':
+            var predicate = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            var result = true;
+            for (var i = 0; i < currentData.length; i++) {
+              if (!predicate(currentData[i])) {
+                result = false;
+                break;
+              }
+            }
+            currentData = result;
+            break;
+            
+          case 'count':
+            var predicate = methodArgs ? new Function('return ' + methodArgs)() : null;
+            currentData = getArrayData(currentData);
+            if (predicate) {
+              var count = 0;
+              for (var i = 0; i < currentData.length; i++) {
+                if (predicate(currentData[i])) count++;
+              }
+              currentData = count;
+            } else {
+              currentData = currentData.length;
+            }
+            break;
+            
+          case 'groupBy':
+            var keyFunc = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            var groups = {};
+            for (var i = 0; i < currentData.length; i++) {
+              var key = keyFunc(currentData[i]);
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(currentData[i]);
+            }
+            currentData = groups;
+            break;
+            
+          // 数学・統計
+          case 'min':
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var minVal = currentData[0];
+              for (var i = 1; i < currentData.length; i++) {
+                if (currentData[i] < minVal) minVal = currentData[i];
+              }
+              currentData = minVal;
+            } else {
+              currentData = undefined;
+            }
+            break;
+            
+          case 'max':
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var maxVal = currentData[0];
+              for (var i = 1; i < currentData.length; i++) {
+                if (currentData[i] > maxVal) maxVal = currentData[i];
+              }
+              currentData = maxVal;
+            } else {
+              currentData = undefined;
+            }
+            break;
+            
+          case 'average':
+          case 'mean':
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var sum = 0;
+              var count = 0;
+              for (var i = 0; i < currentData.length; i++) {
+                if (typeof currentData[i] === 'number') {
+                  sum += currentData[i];
+                  count++;
+                }
+              }
+              currentData = count > 0 ? sum / count : 0;
+            } else {
+              currentData = 0;
+            }
+            break;
+            
+          case 'median':
+            currentData = getArrayData(currentData);
+            var numbers = [];
+            for (var i = 0; i < currentData.length; i++) {
+              if (typeof currentData[i] === 'number') {
+                numbers.push(currentData[i]);
+              }
+            }
+            if (numbers.length > 0) {
+              numbers.sort(function(a, b) { return a - b; });
+              var mid = Math.floor(numbers.length / 2);
+              if (numbers.length % 2 === 0) {
+                currentData = (numbers[mid - 1] + numbers[mid]) / 2;
+              } else {
+                currentData = numbers[mid];
+              }
+            } else {
+              currentData = 0;
             }
             break;
             
@@ -923,6 +1431,27 @@ export class VMExecutor {
       transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
       transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
       transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
+      
+      // 新しい関数型メソッド
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.reduce\(([^)]+)\)/g, '__vm_reduce($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.scan\(([^)]+)\)/g, '__vm_scan($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.reverse\(\)/g, '__vm_reverse($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.concat\(([^)]+)\)/g, '__vm_concat($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.flatten\(([^)]*)\)/g, '__vm_flatten($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.flatMap\(([^)]+)\)/g, '__vm_flatMap($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.distinct\(\)/g, '__vm_distinct($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.uniq\(\)/g, '__vm_uniq($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.any\(([^)]+)\)/g, '__vm_any($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.some\(([^)]+)\)/g, '__vm_some($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.all\(([^)]+)\)/g, '__vm_all($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.every\(([^)]+)\)/g, '__vm_every($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.count\(([^)]*)\)/g, '__vm_count($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.groupBy\(([^)]+)\)/g, '__vm_groupBy($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.min\(\)/g, '__vm_min($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.max\(\)/g, '__vm_max($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.average\(\)/g, '__vm_average($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.mean\(\)/g, '__vm_mean($1)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.median\(\)/g, '__vm_median($1)');
       
       if (process.env.NODE_ENV === 'development' && transformed !== expression) {
         console.log(`Debug: Transformed single method: ${expression} -> ${transformed}`);
