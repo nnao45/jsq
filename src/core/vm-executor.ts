@@ -64,8 +64,8 @@ export class VMExecutor {
       // Ensure the persistent VM is initialized
       await this.ensureInitialized();
       
-      // Transfer only data to the persistent context
-      await this.transferDataOnly(contextData);
+      // Transfer data and libraries to the persistent context
+      await this.transferContext(contextData);
 
       // Transform the expression to use VM methods
       const transformedExpression = this.transformExpressionForVM(expression);
@@ -171,11 +171,22 @@ export class VMExecutor {
     const objectKeys = new ivm.Reference((obj: any) => Object.keys(obj));
     const objectValues = new ivm.Reference((obj: any) => Object.values(obj));
     const objectEntries = new ivm.Reference((obj: any) => Object.entries(obj));
-    await this.jail.set('Object', new ivm.ExternalCopy({
-      keys: objectKeys,
-      values: objectValues,
-      entries: objectEntries
-    }).copyInto());
+    
+    // Set up Object methods directly in VM context
+    await this.jail.set('ObjectKeys', objectKeys);
+    await this.jail.set('ObjectValues', objectValues);
+    await this.jail.set('ObjectEntries', objectEntries);
+    
+    // Create Object object in VM context with proper methods
+    const objectSetupScript = `
+      var Object = {
+        keys: ObjectKeys,
+        values: ObjectValues,
+        entries: ObjectEntries
+      };
+    `;
+    const script = await this.isolate.compileScript(objectSetupScript);
+    await script.run(this.persistentContext);
     await this.jail.set('String', new ivm.Reference((value?: any) => String(value)));
     await this.jail.set('Number', new ivm.Reference((value?: any) => Number(value)));
     await this.jail.set('Boolean', new ivm.Reference((value?: any) => Boolean(value)));
@@ -205,6 +216,9 @@ export class VMExecutor {
     
     // Setup VMChainable method references
     await this.setupVMChainableMethods();
+    
+    // Re-ensure Object is properly set up after native methods setup
+    await this.ensureObjectSetup();
   }
 
   private async setupVMChainableMethods(): Promise<void> {
@@ -1280,8 +1294,376 @@ export class VMExecutor {
     }
   }
 
-  private async transferDataOnly(contextData: Record<string, unknown>): Promise<void> {
-    // Only transfer pure data, no functions or complex objects
+  private async ensureObjectSetup(): Promise<void> {
+    // Simple and direct approach - override with script-based setup
+    const objectSetupScript = `
+      // Native Object methods implemented directly in VM
+      function objectKeys(obj) {
+        if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+          return [];
+        }
+        var keys = [];
+        for (var key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            keys.push(key);
+          }
+        }
+        return keys;
+      }
+      
+      function objectValues(obj) {
+        if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+          return [];
+        }
+        var values = [];
+        for (var key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            values.push(obj[key]);
+          }
+        }
+        return values;
+      }
+      
+      function objectEntries(obj) {
+        if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+          return [];
+        }
+        var entries = [];
+        for (var key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            entries.push([key, obj[key]]);
+          }
+        }
+        return entries;
+      }
+      
+      // Set up Object global with methods
+      if (typeof Object === 'undefined') {
+        var Object = {};
+      }
+      Object.keys = objectKeys;
+      Object.values = objectValues;
+      Object.entries = objectEntries;
+      
+      // Native parseInt and parseFloat implementations
+      function parseInt(str, radix) {
+        if (typeof str !== 'string') {
+          str = String(str);
+        }
+        str = str.trim();
+        
+        radix = radix || 10;
+        if (radix < 2 || radix > 36) {
+          return NaN;
+        }
+        
+        var sign = 1;
+        if (str[0] === '-') {
+          sign = -1;
+          str = str.slice(1);
+        } else if (str[0] === '+') {
+          str = str.slice(1);
+        }
+        
+        var result = 0;
+        var validChars = '0123456789abcdefghijklmnopqrstuvwxyz';
+        var hasValidDigits = false;
+        
+        for (var i = 0; i < str.length; i++) {
+          var char = str[i].toLowerCase();
+          var digit = validChars.indexOf(char);
+          if (digit === -1 || digit >= radix) {
+            break;
+          }
+          hasValidDigits = true;
+          result = result * radix + digit;
+        }
+        
+        return hasValidDigits ? result * sign : NaN;
+      }
+      
+      function parseFloat(str) {
+        if (typeof str !== 'string') {
+          str = String(str);
+        }
+        str = str.trim();
+        
+        var sign = 1;
+        if (str[0] === '-') {
+          sign = -1;
+          str = str.slice(1);
+        } else if (str[0] === '+') {
+          str = str.slice(1);
+        }
+        
+        var result = 0;
+        var decimalPart = 0;
+        var hasDecimal = false;
+        var decimalPlaces = 0;
+        var hasDigits = false;
+        
+        for (var i = 0; i < str.length; i++) {
+          var char = str[i];
+          if (char >= '0' && char <= '9') {
+            hasDigits = true;
+            if (hasDecimal) {
+              decimalPart = decimalPart * 10 + (char.charCodeAt(0) - 48);
+              decimalPlaces++;
+            } else {
+              result = result * 10 + (char.charCodeAt(0) - 48);
+            }
+          } else if (char === '.' && !hasDecimal) {
+            hasDecimal = true;
+          } else {
+            break;
+          }
+        }
+        
+        if (!hasDigits) {
+          return NaN;
+        }
+        
+        if (hasDecimal && decimalPlaces > 0) {
+          var divisor = 1;
+          for (var j = 0; j < decimalPlaces; j++) {
+            divisor *= 10;
+          }
+          result += decimalPart / divisor;
+        }
+        
+        return result * sign;
+      }
+      
+      // Native isNaN and isFinite implementations
+      function isNaN(value) {
+        return value !== value;
+      }
+      
+      function isFinite(value) {
+        return typeof value === 'number' && value === value && value !== Infinity && value !== -Infinity;
+      }
+      
+      // Set global parseInt, parseFloat, isNaN, and isFinite
+      globalThis.parseInt = parseInt;
+      globalThis.parseFloat = parseFloat;
+      globalThis.isNaN = isNaN;
+      globalThis.isFinite = isFinite;
+      
+      // Ensure other basic globals are available
+      if (typeof Array === 'undefined') {
+        var Array = function() { return []; };
+      }
+      if (typeof String === 'undefined') {
+        var String = function(val) { return '' + val; };
+      }
+      if (typeof Number === 'undefined') {
+        var Number = function(val) { return +val; };
+      }
+      if (typeof Boolean === 'undefined') {
+        var Boolean = function(val) { return !!val; };
+      }
+    `;
+    const script = await this.isolate.compileScript(objectSetupScript);
+    await script.run(this.persistentContext);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Debug: Set up Object with native VM implementations');
+    }
+  }
+
+  // Security filter for dangerous functions and properties
+  private readonly DANGEROUS_PROPERTIES = new Set([
+    // Node.js globals
+    'process', 'global', 'Buffer', 'require', 'module', 'exports', '__dirname', '__filename',
+    // Dangerous functions
+    'eval', 'Function', 'setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'clearImmediate',
+    // Prototype pollution
+    '__proto__', 'constructor', 'prototype',
+    // File system and network
+    'fs', 'net', 'http', 'https', 'child_process', 'cluster', 'crypto', 'os', 'path', 'stream', 'url', 'util',
+    // VM escape attempts
+    'vm', 'repl', 'domain'
+  ]);
+
+  // Safe library properties that are allowed
+  private readonly SAFE_PROPERTY_PATTERNS = [
+    /^[a-zA-Z][a-zA-Z0-9_]*$/, // Normal property names
+    /^[0-9]+$/ // Array indices
+  ];
+
+  private isSafePropertyName(name: string): boolean {
+    if (this.DANGEROUS_PROPERTIES.has(name)) {
+      return false;
+    }
+    return this.SAFE_PROPERTY_PATTERNS.some(pattern => pattern.test(name));
+  }
+
+  private isExternalLibrary(key: string, value: unknown): boolean {
+    // Known library names that should be treated as external libraries
+    const knownLibraries = [
+      'lodash', '_', 'moment', 'dayjs', 'uuid', 'validator', 'axios', 'ramda',
+      'mathjs', 'math', 'immutable', 'bluebird', 'cheerio', 'yup', 'joi'
+    ];
+    
+    if (knownLibraries.includes(key)) {
+      return true;
+    }
+    
+    // Check if the value looks like a function library (like validator)
+    if (typeof value === 'function') {
+      const functionKeys = Object.keys(value);
+      const functionValues = Object.values(value);
+      const functionCount = functionValues.filter(v => typeof v === 'function').length;
+      
+      // If it's a function with multiple methods attached, likely a library
+      return functionCount >= 3 && functionKeys.length >= 5;
+    }
+    
+    // Check if the value looks like a library object (has multiple functions)
+    if (value && typeof value === 'object') {
+      const functionCount = Object.values(value).filter(v => typeof v === 'function').length;
+      const objectKeys = Object.keys(value);
+      
+      // If it has multiple functions and reasonable number of properties, likely a library
+      return functionCount >= 3 && objectKeys.length >= 5 && objectKeys.length < 200;
+    }
+    
+    return false;
+  }
+
+  private sanitizeLibraryForVM(library: unknown, depth: number = 0): Record<string, ivm.Reference> | null {
+    // Prevent infinite recursion
+    if (depth > 3) {
+      return null;
+    }
+
+    if (!library) {
+      return null;
+    }
+
+    // Handle function libraries (like validator)
+    if (typeof library === 'function') {
+      const sanitized: Record<string, ivm.Reference> = {};
+      
+      // Add the main function if it exists
+      try {
+        sanitized['__main__'] = new ivm.Reference((...args: unknown[]) => {
+          try {
+            return (library as Function)(...args);
+          } catch (error) {
+            throw new Error(`Library function error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        });
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Debug: Failed to sanitize main function:', error);
+        }
+      }
+
+      // Add properties/methods attached to the function
+      try {
+        const entries = Object.entries(library);
+        for (const [key, value] of entries) {
+          if (!this.isSafePropertyName(key)) {
+            continue;
+          }
+
+          if (typeof value === 'function') {
+            sanitized[key] = new ivm.Reference((...args: unknown[]) => {
+              try {
+                return (value as Function)(...args);
+              } catch (error) {
+                throw new Error(`Library function error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            });
+          } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            sanitized[key] = new ivm.Reference(value);
+          }
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Debug: Failed to process function properties:', error);
+        }
+      }
+
+      return Object.keys(sanitized).length > 0 ? sanitized : null;
+    }
+
+    // Handle object libraries (like lodash)
+    if (typeof library !== 'object') {
+      return null;
+    }
+
+    const sanitized: Record<string, ivm.Reference> = {};
+    
+    try {
+      const entries = Object.entries(library);
+      
+      for (const [key, value] of entries) {
+        // Check if property name is safe
+        if (!this.isSafePropertyName(key)) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Debug: Skipping dangerous property: ${key}`);
+          }
+          continue;
+        }
+
+        if (typeof value === 'function') {
+          // Wrap safe functions in ivm.Reference
+          try {
+            sanitized[key] = new ivm.Reference((...args: unknown[]) => {
+              try {
+                // Execute the function with proper error handling
+                const result = (value as Function)(...args);
+                
+                // Handle promises
+                if (result && typeof result.then === 'function') {
+                  return result.catch((error: Error) => {
+                    throw new Error(`Library function error: ${error.message}`);
+                  });
+                }
+                
+                return result;
+              } catch (error) {
+                throw new Error(`Library function error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            });
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Sanitized function: ${key}`);
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Failed to sanitize function ${key}:`, error);
+            }
+          }
+        } else if (typeof value === 'object' && value !== null) {
+          // Recursively sanitize nested objects
+          const nestedSanitized = this.sanitizeLibraryForVM(value, depth + 1);
+          if (nestedSanitized && Object.keys(nestedSanitized).length > 0) {
+            sanitized[key] = new ivm.Reference(nestedSanitized);
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Sanitized nested object: ${key}`);
+            }
+          }
+        } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          // Simple values can be transferred directly
+          sanitized[key] = new ivm.Reference(value);
+        }
+      }
+      
+      return Object.keys(sanitized).length > 0 ? sanitized : null;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Debug: Failed to sanitize library:`, error);
+      }
+      return null;
+    }
+  }
+
+  private async transferContext(contextData: Record<string, unknown>): Promise<void> {
+    // Transfer data and safely sanitized libraries
     for (const [key, value] of Object.entries(contextData)) {
       try {
         if (process.env.NODE_ENV === 'development') {
@@ -1317,15 +1699,35 @@ export class VMExecutor {
             };
             await this.transferVMChainableData(key, simpleData);
           }
+        } else if (typeof value === 'function' || this.isExternalLibrary(key, value)) {
+          // Try to sanitize external libraries for safe VM usage
+          const sanitizedLibrary = this.sanitizeLibraryForVM(value);
+          
+          if (sanitizedLibrary) {
+            // Create library object directly through jail.set
+            const libraryProxy: Record<string, unknown> = {};
+            
+            // For each sanitized method, create a callable proxy
+            for (const [libKey, libValue] of Object.entries(sanitizedLibrary)) {
+              libraryProxy[libKey] = libValue;
+            }
+            
+            // Set the complete library object in VM context
+            await this.jail.set(key, libraryProxy);
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Successfully transferred library ${key} with ${Object.keys(sanitizedLibrary).length} methods`);
+            }
+          } else if (typeof value === 'function') {
+            // Skip regular functions that are not libraries
+            if (this.context.unsafe || process.env.NODE_ENV === 'development') {
+              console.log(`Debug: Skipping function ${key} (not a library or unsafe)`);
+            }
+          }
         } else if (this.isTransferable(value)) {
           // Simple transferable values
           const copy = new ivm.ExternalCopy(value);
           await this.jail.set(key, copy.copyInto());
-        } else if (typeof value === 'function') {
-          // Skip regular functions - they're handled by persistent methods
-          if (this.context.unsafe || process.env.NODE_ENV === 'development') {
-            console.log(`Debug: Skipping function ${key} (handled by persistent methods)`);
-          }
         } else {
           // Try to serialize complex objects
           try {
@@ -1342,6 +1744,99 @@ export class VMExecutor {
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.warn(`Warning: Could not transfer ${key}:`, error);
+        }
+      }
+    }
+    
+    // Set up special library aliases after all libraries are transferred
+    await this.setupLibraryAliases(contextData);
+    
+    // Set up pre-loaded libraries if they exist in context
+    await this.setupPreloadedLibraries(contextData);
+  }
+  
+  private async setupLibraryAliases(contextData: Record<string, unknown>): Promise<void> {
+    const aliases: Array<{from: string, to: string}> = [];
+    
+    // lodash can be accessed as both 'lodash' and '_'
+    if (contextData.lodash && !contextData._) {
+      aliases.push({from: 'lodash', to: '_'});
+    }
+    
+    // moment library alias
+    if (contextData.moment) {
+      aliases.push({from: 'moment', to: 'moment'});
+    }
+    
+    // Create aliases in VM context
+    for (const alias of aliases) {
+      try {
+        const aliasScript = `var ${alias.to} = ${alias.from};`;
+        const script = await this.isolate.compileScript(aliasScript);
+        await script.run(this.persistentContext);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Debug: Created library alias: ${alias.to} -> ${alias.from}`);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Debug: Failed to create alias ${alias.to}:`, error);
+        }
+      }
+    }
+  }
+
+  private async setupPreloadedLibraries(contextData: Record<string, unknown>): Promise<void> {
+    // Direct library setup approach - more reliable than complex transfer
+    const librarySetups: Array<{key: string, library: unknown}> = [];
+    
+    // Find libraries in context data
+    for (const [key, value] of Object.entries(contextData)) {
+      if (this.isExternalLibrary(key, value)) {
+        librarySetups.push({key, library: value});
+      }
+    }
+    
+    // Set up each library directly
+    for (const {key, library} of librarySetups) {
+      try {
+        if (key === 'validator' && library && typeof library === 'object') {
+          // Special handling for validator library
+          const validatorRef = new ivm.Reference((library as any));
+          await this.jail.set('validator', validatorRef);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Debug: Set up validator library directly');
+          }
+        } else if (key === 'lodash' || key === '_') {
+          // Special handling for lodash
+          const lodashRef = new ivm.Reference((library as any));
+          await this.jail.set('lodash', lodashRef);
+          await this.jail.set('_', lodashRef);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Debug: Set up lodash library directly');
+          }
+        } else if (key === 'uuid' && library && typeof library === 'object') {
+          // Special handling for uuid
+          const uuidRef = new ivm.Reference((library as any));
+          await this.jail.set('uuid', uuidRef);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Debug: Set up uuid library directly');
+          }
+        } else {
+          // Generic library setup
+          const libraryRef = new ivm.Reference((library as any));
+          await this.jail.set(key, libraryRef);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Debug: Set up ${key} library directly`);
+          }
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Debug: Failed to set up library ${key}:`, error);
         }
       }
     }

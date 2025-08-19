@@ -1,0 +1,8 @@
+{"date": "2024-01-15", "product": "laptop", "quantity": 5, "price": 1200, "customer": "Acme Corp", "region": "North"}
+{"date": "2024-01-15", "product": "mouse", "quantity": 25, "price": 30, "customer": "Tech Solutions", "region": "South"}
+{"date": "2024-01-16", "product": "keyboard", "quantity": 10, "price": 80, "customer": "StartUp Inc", "region": "North"}
+{"date": "2024-01-16", "product": "laptop", "quantity": 3, "price": 1200, "customer": "Big Corp", "region": "East"}
+{"date": "2024-01-17", "product": "monitor", "quantity": 8, "price": 300, "customer": "Design Studio", "region": "West"}
+{"date": "2024-01-17", "product": "mouse", "quantity": 15, "price": 30, "customer": "Office Plus", "region": "South"}
+{"date": "2024-01-18", "product": "laptop", "quantity": 7, "price": 1200, "customer": "Enterprise Ltd", "region": "North"}
+{"date": "2024-01-18", "product": "keyboard", "quantity": 12, "price": 80, "customer": "Code Factory", "region": "East"}

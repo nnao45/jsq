@@ -2,7 +2,7 @@ export interface JsqOptions {
   debug?: boolean;
   watch?: string;
   stream?: boolean;
-  batch?: string;
+  batch?: string | number;
   use?: string | string[];
   types?: string;
   schema?: string;
@@ -10,6 +10,11 @@ export interface JsqOptions {
   format?: 'json' | 'pretty' | 'csv' | 'yaml';
   verbose?: boolean;
   unsafe?: boolean;
+  safe?: boolean;
+  jsonLines?: boolean;
+  file?: string;
+  fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'auto';
+  repl?: boolean;
 }
 
 export interface JsqConfig {

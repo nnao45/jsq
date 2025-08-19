@@ -1,177 +1,204 @@
-# jsq - jQuery風JSON処理コマンドラインツール
+# jsq - jQuery-style JSON Command Line Tool
 
-jsqは、Web開発者が既に慣れ親しんでいるjQuery/Lodashライクな記法でJSONデータを処理できる革新的なコマンドラインツールです。jqの学習コストの高さを解決し、JavaScriptの既存スキルを活用してJSONを直感的に操作できます。
+[🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 
-## 🌟 主な特徴
+jsq is an innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. It solves the high learning curve of jq by leveraging existing JavaScript skills for intuitive JSON manipulation.
 
-### 1. jQuery風チェイニングAPI
-Web開発者にとって直感的な記法でJSONを操作
+## 🌟 Key Features
+
+### 1. jQuery-style Chaining API
+Process JSON with intuitive syntax familiar to web developers
 
 ```bash
-# jq（学習が必要）
+# jq (requires learning)
 cat users.json | jq '.users[] | select(.active == true) | .name'
 
-# jsq（直感的）
+# jsq (intuitive)
 cat users.json | jsq '$.users.filter(u => u.active).pluck("name")'
 ```
 
-### 2. 🔗 npmライブラリ統合
-任意のnpmライブラリを動的にロードして利用可能
+### 2. 🔗 npm Library Integration
+Dynamically load and use any npm library
 
 ```bash
-# Lodashを使った高度なデータ処理
+# Advanced data processing with Lodash
 cat data.json | jsq --use lodash '_.orderBy($.users, ["age"], ["desc"])'
 
-# 複数ライブラリの同時利用
+# Multiple libraries simultaneously
 cat data.json | jsq --use lodash,moment '_.map($.events, e => ({...e, formatted: moment(e.date).format("YYYY-MM-DD")}))'
+
+# Direct file reading
+jsq '$.users.length' --file data.json
+jsq '$.name' --file users.jsonl --stream
+
+# Interactive REPL mode
+jsq --repl --file data.json  # Real-time data exploration
 ```
 
-### 3. 🔒 デフォルトセキュアVM実行
-デフォルトでVMサンドボックス環境で安全に実行、必要に応じて高速モードも選択可能
+### 3. ⚡ Fast Execution & Optional Security
+Fast execution by default, with optional VM isolation for security-critical use cases
 
 ```bash
-# デフォルト（セキュア）モードで実行
+# Default (fast) mode execution
 cat data.json | jsq --use lodash '_.uniq(data.tags)'
 
-# 高速実行が必要な場合は --unsafe オプション
-cat data.json | jsq --use lodash --unsafe '_.uniq(data.tags)'
+# Security-focused execution with --safe option
+cat data.json | jsq --use lodash --safe '_.uniq(data.tags)'
 ```
 
-### 4. 📈 インテリジェントキャッシュ
-一度インストールしたライブラリは自動でキャッシュされ、次回から高速に利用可能
+### 4. 📈 Intelligent Caching
+Automatically cache installed libraries for fast subsequent use
 
-### 5. 🎯 TypeScript完全対応
-型安全な処理と優れた開発体験を提供
+### 5. 🎯 Full TypeScript Support
+Provides type-safe processing and excellent developer experience
 
-## 📦 インストール
+## 📦 Installation
 
 ```bash
 npm install -g jsq
 ```
 
-## 🚀 基本的な使い方
+## 🚀 Basic Usage
 
-### データの変換
+### Data Transformation
 
 ```bash
-# 配列の各要素を変換
+# Transform each element in array
 echo '{"numbers": [1, 2, 3, 4, 5]}' | jsq '$.numbers.map(n => n * 2)'
-# 出力: [2, 4, 6, 8, 10]
+# Output: [2, 4, 6, 8, 10]
 
-# オブジェクトのフィルタリング
+# Filter objects
 echo '{"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}' | jsq '$.users.filter(u => u.age > 25)'
-# 出力: [{"name": "Alice", "age": 30}]
+# Output: [{"name": "Alice", "age": 30}]
 ```
 
-### チェイニング操作
+### Chaining Operations
 
 ```bash
-# 複数の操作を組み合わせ
+# Combine multiple operations
 echo '{"sales": [{"product": "laptop", "price": 1200}, {"product": "mouse", "price": 25}]}' | jsq '$.sales.sortBy("price").pluck("product")'
-# 出力: ["mouse", "laptop"]
+# Output: ["mouse", "laptop"]
 
-# 集計操作
+# Aggregation operations
 echo '{"orders": [{"amount": 100}, {"amount": 250}, {"amount": 75}]}' | jsq '$.orders.sum("amount")'
-# 出力: 425
+# Output: 425
 ```
 
-### 条件付きフィルタリング
+### Conditional Filtering
 
 ```bash
 echo '{"products": [{"name": "iPhone", "category": "phone", "price": 999}, {"name": "MacBook", "category": "laptop", "price": 1299}]}' | jsq '$.products.where("category", "phone").pluck("name")'
-# 出力: ["iPhone"]
+# Output: ["iPhone"]
 ```
 
-## 🔧 高度な機能
+## 🔧 Advanced Features
 
-### npmライブラリの利用
+### Using npm Libraries
 
-#### Lodashによる高度なデータ処理
+#### Advanced Data Processing with Lodash
 
 ```bash
-# グループ化
+# Grouping
 cat data.json | jsq --use lodash '_.groupBy($.users, "department")'
 
-# 深いクローン
+# Deep cloning
 cat data.json | jsq --use lodash '_.cloneDeep($.config)'
 
-# 複雑なソート
+# Complex sorting
 cat data.json | jsq --use lodash '_.orderBy($.products, ["category", "price"], ["asc", "desc"])'
 ```
 
-#### 日付処理ライブラリ
+#### Date Processing Libraries
 
 ```bash
-# Moment.jsでの日付フォーマット
+# Date formatting with Moment.js
 cat events.json | jsq --use moment '$.events.map(e => ({...e, formatted: moment(e.timestamp).format("YYYY/MM/DD HH:mm")}))'
 
-# Day.jsによる日付計算
+# Date calculations with Day.js
 cat logs.json | jsq --use dayjs '$.logs.filter(log => dayjs(log.date).isAfter(dayjs().subtract(1, "week")))'
 ```
 
-### セキュリティ機能
+### Security Features
 
-jsqはデフォルトでVMサンドボックス環境での安全な実行を提供します：
+jsq provides fast execution by default, with optional VM sandbox environment for secure execution:
 
 ```bash
-# デフォルト（セキュア）モードでの実行
+# Default (fast) mode execution
 cat data.json | jsq --use lodash '_.uniq(data.tags)'
-# 🔒 Running in secure VM mode
+# ⚡ Running in fast mode (VM disabled)
 
-# パフォーマンス重視の場合は --unsafe フラグ
-cat data.json | jsq --use lodash --unsafe '_.sortBy(data.items, "name")'
-# ⚠️  Warning: Running with --unsafe flag. External libraries will execute without VM isolation.
+# Security-focused execution with --safe flag
+cat data.json | jsq --use lodash --safe '_.sortBy(data.items, "name")'
+# 🔒 Running in secure VM mode
 ```
 
-### パフォーマンス監視
+### Streaming Processing Demo
 
 ```bash
-# 詳細なパフォーマンス情報を表示
+# Experience real-time data processing
+for i in {1..3}; do echo "{\"id\":$i,\"name\":\"User$i\"}"; sleep 1; done | node dist/index.js '$.name' --stream
+# Output:
+# "User1"
+# "User2"  (after 1 second)
+# "User3"  (after another second)
+```
+
+### Performance Monitoring
+
+```bash
+# Display detailed performance information
 cat large-data.json | jsq -v '$.records.filter(r => r.status === "active").length()'
 # Processing time: 15ms
 # Input size: 1024 bytes
 # Output size: 1 bytes
 ```
 
-## 📚 利用可能なメソッド
+## 📚 Available Methods
 
-### 配列操作
+### Array Operations
 
-| メソッド | 説明 | 例 |
-|---------|------|-----|
-| `filter(predicate)` | 条件に一致する要素をフィルタ | `$.users.filter(u => u.age > 18)` |
-| `map(transform)` | 各要素を変換 | `$.numbers.map(n => n * 2)` |
-| `find(predicate)` | 条件に一致する最初の要素を取得 | `$.users.find(u => u.name === "Alice")` |
-| `where(key, value)` | 指定のキー/値でフィルタ | `$.products.where("category", "electronics")` |
-| `pluck(key)` | 指定のキーの値を抽出 | `$.users.pluck("email")` |
-| `sortBy(key)` | 指定のキーでソート | `$.items.sortBy("price")` |
-| `take(count)` | 先頭からN個取得 | `$.results.take(5)` |
-| `skip(count)` | 先頭からN個スキップ | `$.results.skip(10)` |
+| Method | Description | Example |
+|--------|-------------|---------|
+| `filter(predicate)` | Filter elements matching condition | `$.users.filter(u => u.age > 18)` |
+| `map(transform)` | Transform each element | `$.numbers.map(n => n * 2)` |
+| `find(predicate)` | Get first element matching condition | `$.users.find(u => u.name === "Alice")` |
+| `where(key, value)` | Filter by key/value pair | `$.products.where("category", "electronics")` |
+| `pluck(key)` | Extract values for specified key | `$.users.pluck("email")` |
+| `sortBy(key)` | Sort by specified key | `$.items.sortBy("price")` |
+| `take(count)` | Take first N elements | `$.results.take(5)` |
+| `skip(count)` | Skip first N elements | `$.results.skip(10)` |
 
-### 集計操作
+### Aggregation Operations
 
-| メソッド | 説明 | 例 |
-|---------|------|-----|
-| `length()` | 要素数を取得 | `$.items.length()` |
-| `sum(key?)` | 合計値を計算 | `$.orders.sum("amount")` |
-| `keys()` | オブジェクトのキー一覧 | `$.config.keys()` |
-| `values()` | オブジェクトの値一覧 | `$.settings.values()` |
+| Method | Description | Example |
+|--------|-------------|---------|
+| `length()` | Get element count | `$.items.length()` |
+| `sum(key?)` | Calculate sum | `$.orders.sum("amount")` |
+| `keys()` | Get object keys | `$.config.keys()` |
+| `values()` | Get object values | `$.settings.values()` |
 
-## 🎛️ コマンドラインオプション
+## 🎛️ Command Line Options
 
 ```bash
 jsq [options] <expression>
 
 Options:
-  -v, --verbose           詳細な実行情報を表示
-  -d, --debug            デバッグモードを有効化
-  -u, --use <libraries>  npmライブラリを読み込み (カンマ区切り)
-  --unsafe               VM分離なしで実行（高速だがセキュリティ低）
-  --help                 ヘルプを表示
-  --version              バージョンを表示
+  -v, --verbose           Display detailed execution information
+  -d, --debug            Enable debug mode
+  -u, --use <libraries>  Load npm libraries (comma-separated)
+  -s, --stream           Enable streaming mode for large datasets
+  -b, --batch <size>     Process in batches of specified size (implies --stream)
+  --json-lines           Input/output in JSON Lines format
+  -f, --file <path>      Read from file instead of stdin
+  --file-format <format> Specify input file format (json, jsonl, csv, tsv, parquet, auto)
+  --repl                 Start interactive REPL mode
+  --safe                 Run with VM isolation (slower but more secure)
+  --unsafe               Legacy option (deprecated, use --safe recommended)
+  --help                 Display help
+  --version              Display version
 ```
 
-## 🔄 jqからの移行
+## 🔄 Migration from jq
 
 | jq | jsq |
 |----|-----|
@@ -181,81 +208,94 @@ Options:
 | `.products \| sort_by(.price)` | `$.products.sortBy("price")` |
 | `.items[] \| select(.price > 100)` | `$.items.filter(i => i.price > 100)` |
 
-## 🏗️ アーキテクチャ
+## 🏗️ Architecture
 
-jsqは以下の主要コンポーネントで構成されています：
+jsq consists of the following main components:
 
-- **チェイニングエンジン**: jQuery風のメソッドチェイニングを提供
-- **ライブラリマネージャー**: npmパッケージの動的ロードとキャッシュ管理
-- **VMエグゼキューター**: セキュアな実行環境の提供
-- **JSONパーサー**: 高性能なJSON解析とエラーハンドリング
+- **Chaining Engine**: Provides jQuery-style method chaining
+- **Library Manager**: Dynamic loading and caching of npm packages
+- **VM Executor**: Provides secure execution environment
+- **JSON Parser**: High-performance JSON parsing and error handling
 
-## 💡 実用例
+## 💡 Practical Examples
 
-### ログ解析
+### Log Analysis
 
 ```bash
-# エラーログの抽出と集計
+# Extract and aggregate error logs
 cat server.log | jsq '$.logs.filter(log => log.level === "error").groupBy("component").mapValues(logs => logs.length)'
 
-# 最新のエラーTOP5
+# Latest TOP 5 errors
 cat server.log | jsq '$.logs.filter(l => l.level === "error").sortBy("timestamp").take(5)'
 ```
 
-### データ変換
+### Data Transformation
 
 ```bash
-# APIレスポンスの正規化
+# API response normalization
 cat api-response.json | jsq '$.results.map(item => ({id: item._id, name: item.displayName, active: item.status === "active"}))'
 
-# CSVライクなデータ生成
+# CSV-like data generation
 cat users.json | jsq '$.users.map(u => [u.id, u.name, u.email].join(",")).join("\n")'
 ```
 
-### レポート生成
+### Report Generation
 
 ```bash
-# 売上サマリー
+# Sales summary
 cat sales.json | jsq --use lodash '_.chain($.sales).groupBy("month").mapValues(sales => _.sumBy(sales, "amount")).value()'
 
-# ユーザー統計
+# User statistics
 cat analytics.json | jsq '$.users.groupBy("country").mapValues(users => ({count: users.length, avgAge: users.reduce((sum, u) => sum + u.age, 0) / users.length}))'
 ```
 
-## 🔧 開発・貢献
+## 🔧 Development & Contributing
 
 ```bash
-# 開発環境のセットアップ
+# Development environment setup
 git clone https://github.com/nnao45/jsq.git
 cd jsq
 npm install
 
-# ビルド
+# Build
 npm run build
 
-# テスト実行
+# Run tests
 npm test
 
-# 開発モード
+# Development mode
 npm run dev
 ```
 
-## 🚧 今後の予定
+## ✅ Implemented Features
 
-- [ ] ストリーミング処理（大容量ファイル対応）
-- [ ] TypeScript型定義ファイルサポート
-- [ ] インタラクティブデバッガー
-- [ ] より多くのnpmライブラリサポート
-- [ ] プラグインシステム
+- [x] Streaming processing (large file support)
+- [x] JSON Lines format support
+- [x] CSV/TSV/Parquet file support
+- [x] Batch processing mode
+- [x] Direct file reading
+- [x] Interactive REPL mode
+- [x] Secure execution with VM isolation
+- [x] Dynamic npm library loading
+- [x] Functional programming methods
+- [x] Full TypeScript support
 
-## 📄 ライセンス
+## 🚧 Future Plans
+
+- [ ] Plugin system
+- [ ] Advanced type checking
+- [ ] GraphQL support
+- [ ] WebAssembly integration
+- [ ] Distributed processing support
+
+## 📄 License
 
 MIT License
 
-## 🤝 サポート・フィードバック
+## 🤝 Support & Feedback
 
-バグ報告や機能要求は[GitHubのIssues](https://github.com/nnao45/jsq/issues)でお願いします。
+Please report bugs and feature requests on [GitHub Issues](https://github.com/nnao45/jsq/issues).
 
 ---
 
-**jsq**は、JSON処理における開発者体験の革新を目指しています。jqの強力さとJavaScriptの親しみやすさを組み合わせ、既存のスキルを最大限に活用できるツールです。
+**jsq** aims to revolutionize the developer experience in JSON processing. By combining the power of jq with the familiarity of JavaScript, it's a tool that maximizes your existing skills.

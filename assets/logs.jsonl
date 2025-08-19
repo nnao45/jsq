@@ -1,0 +1,8 @@
+{"timestamp": "2024-01-15T10:30:00Z", "level": "info", "message": "Server started", "service": "api", "host": "web-01"}
+{"timestamp": "2024-01-15T10:32:15Z", "level": "warn", "message": "High memory usage detected", "service": "api", "host": "web-01", "memory": 85}
+{"timestamp": "2024-01-15T10:33:22Z", "level": "error", "message": "Database connection failed", "service": "db", "host": "db-01", "error": "timeout"}
+{"timestamp": "2024-01-15T10:34:01Z", "level": "info", "message": "User login successful", "service": "auth", "host": "auth-01", "user": "alice"}
+{"timestamp": "2024-01-15T10:35:12Z", "level": "error", "message": "Payment processing failed", "service": "payment", "host": "pay-01", "amount": 99.99}
+{"timestamp": "2024-01-15T10:36:45Z", "level": "info", "message": "Cache cleared", "service": "redis", "host": "cache-01"}
+{"timestamp": "2024-01-15T10:37:33Z", "level": "warn", "message": "Rate limit exceeded", "service": "api", "host": "web-02", "client": "192.168.1.100"}
+{"timestamp": "2024-01-15T10:38:18Z", "level": "debug", "message": "SQL query executed", "service": "db", "host": "db-01", "duration": 45}

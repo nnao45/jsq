@@ -1,16 +1,24 @@
 import { JsqOptions, ProcessingResult } from '@/types/cli';
 import { JsonParser } from './parser';
 import { ExpressionEvaluator } from './evaluator';
+import { StreamProcessor, StreamProcessingOptions } from './stream-processor';
 
 export class JsqProcessor {
   private parser: JsonParser;
   private evaluator: ExpressionEvaluator;
+  private streamProcessor: StreamProcessor;
   private options: JsqOptions;
 
   constructor(options: JsqOptions) {
     this.options = options;
     this.parser = new JsonParser(options);
     this.evaluator = new ExpressionEvaluator(options);
+    this.streamProcessor = new StreamProcessor(options);
+  }
+
+  async dispose(): Promise<void> {
+    await this.evaluator.dispose();
+    await this.streamProcessor.dispose();
   }
 
   async process(expression: string, input: string): Promise<ProcessingResult> {
@@ -45,9 +53,25 @@ export class JsqProcessor {
     }
   }
 
-  async processStream(_expression: string, _inputStream: NodeJS.ReadableStream): Promise<AsyncIterable<unknown>> {
-    // This is a placeholder for streaming implementation
-    // Will be enhanced in later phases
-    throw new Error('Streaming not yet implemented');
+  async processStream(expression: string, inputStream: NodeJS.ReadableStream, streamOptions?: StreamProcessingOptions): Promise<AsyncIterable<unknown>> {
+    return this.streamProcessor.processStreamIterable(expression, inputStream, streamOptions);
+  }
+
+  /**
+   * Create a transform stream for piping operations
+   */
+  createTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
+    return this.streamProcessor.createTransformStream(expression, streamOptions);
+  }
+
+  /**
+   * Create a batch transform stream for processing multiple items at once
+   */
+  createBatchTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
+    return this.streamProcessor.createBatchTransformStream(expression, streamOptions);
+  }
+
+  createObjectTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
+    return this.streamProcessor.createObjectTransformStream(expression, streamOptions);
   }
 }
