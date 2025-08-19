@@ -1,8 +1,8 @@
-# jsq - JavaScript-Powered JSON Query CLI Tool
+# @nnao45/jsq - JavaScript-Powered JSON Query CLI Tool
 
 [🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 
-jsq is an innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. It solves the high learning curve of jq by leveraging existing JavaScript skills for intuitive JSON manipulation.
+jsq is an innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. It combines a beautiful real-time REPL interface with powerful data processing capabilities, making JSON manipulation intuitive and visually engaging.
 
 ## 🌟 Key Features
 
@@ -55,8 +55,31 @@ Provides type-safe processing and excellent developer experience
 ## 📦 Installation
 
 ```bash
-npm install -g jsq
+npm install -g @nnao45/jsq
 ```
+
+## ✨ Beautiful Interactive REPL
+
+Experience real-time JSON processing with a stunning, colorful interface:
+
+```bash
+# Start the interactive REPL
+jsq --repl --file data.json
+```
+
+**REPL Features:**
+- 🎨 **Dynamic colorful prompt** - Each character changes color every second
+- ⚡ **Real-time evaluation** - See results as you type (300ms debounce)
+- 🔄 **Smart loading indicators** - Visual feedback for longer operations (500ms+)
+- 📊 **Live data exploration** - Toggle data view with Ctrl+R
+- 🚀 **Syntax highlighting** - Built-in expression validation
+- 💡 **Auto-suggestions** - Intelligent completion hints
+
+The REPL provides a Claude Code-style interface with:
+- Multi-colored `❯❯❯` prompt that changes colors dynamically
+- Fixed-position input at the bottom
+- Scrollable result area that auto-truncates for optimal viewing
+- Instant feedback for syntax errors and partial expressions
 
 ## 🚀 Basic Usage
 
@@ -136,7 +159,7 @@ cat data.json | jsq --use lodash --safe '_.sortBy(data.items, "name")'
 
 ```bash
 # Experience real-time data processing
-for i in {1..3}; do echo "{\"id\":$i,\"name\":\"User$i\"}"; sleep 1; done | node dist/index.js '$.name' --stream
+for i in {1..3}; do echo "{\"id\":$i,\"name\":\"User$i\"}"; sleep 1; done | jsq '$.name' --stream
 # Output:
 # "User1"
 # "User2"  (after 1 second)
@@ -249,6 +272,20 @@ cat sales.json | jsq --use lodash '_.chain($.sales).groupBy("month").mapValues(s
 cat analytics.json | jsq '$.users.groupBy("country").mapValues(users => ({count: users.length, avgAge: users.reduce((sum, u) => sum + u.age, 0) / users.length}))'
 ```
 
+## 🎮 REPL Commands & Navigation
+
+The interactive REPL supports these keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+R` | Toggle data view |
+| `Ctrl+L` | Clear expression |
+| `Ctrl+C` / `Ctrl+D` | Exit REPL |
+| `←` / `→` | Move cursor |
+| `Ctrl+A` | Move to beginning |
+| `Ctrl+E` | Move to end |
+| `Backspace` | Delete character |
+
 ## 🔧 Development & Contributing
 
 ```bash
@@ -265,20 +302,25 @@ npm test
 
 # Development mode
 npm run dev
+
+# Start REPL with test data
+jsq --repl --file test-repl-data.json
 ```
 
 ## ✅ Implemented Features
 
-- [x] Streaming processing (large file support)
-- [x] JSON Lines format support
-- [x] CSV/TSV/Parquet file support
-- [x] Batch processing mode
-- [x] Direct file reading
-- [x] Interactive REPL mode
-- [x] Secure execution with VM isolation
-- [x] Dynamic npm library loading
-- [x] Functional programming methods
-- [x] Full TypeScript support
+- [x] **Beautiful Interactive REPL** - Real-time evaluation with colorful UI
+- [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
+- [x] **Smart Loading Indicators** - Visual feedback for processing time
+- [x] **Streaming processing** - Large file support with real-time output
+- [x] **JSON Lines format support** - Handle JSONL data efficiently  
+- [x] **CSV/TSV/Parquet file support** - Multiple data format compatibility
+- [x] **Batch processing mode** - Process large datasets in chunks
+- [x] **Direct file reading** - Built-in file input support
+- [x] **Secure execution with VM isolation** - Safe code execution environment
+- [x] **Dynamic npm library loading** - Use any npm package on-demand
+- [x] **Functional programming methods** - Comprehensive chainable API
+- [x] **Full TypeScript support** - Type-safe development experience
 
 ## 🚧 Future Plans
 
@@ -298,4 +340,13 @@ Please report bugs and feature requests on [GitHub Issues](https://github.com/nn
 
 ---
 
-**jsq** aims to revolutionize the developer experience in JSON processing. By combining the power of jq with the familiarity of JavaScript, it's a tool that maximizes your existing skills.
+**@nnao45/jsq** revolutionizes JSON processing with a beautiful, interactive interface that makes data exploration enjoyable. By combining the power of jq with JavaScript familiarity and stunning visual design, it's the ultimate tool for developers who value both functionality and aesthetics.
+
+## 🎨 Visual Highlights
+
+- **Dynamic Multi-Color Prompt**: Watch the ❯❯❯ characters cycle through vibrant colors
+- **Real-Time Feedback**: Instant visual confirmation of your expressions
+- **Elegant Loading States**: Sophisticated indicators that respect your time
+- **Clean Layout**: Fixed positioning that never interrupts your workflow
+
+Experience the future of command-line JSON processing - where powerful functionality meets beautiful design.
