@@ -38,6 +38,11 @@ export class ExpressionEvaluator {
       // For safe mode, expression transformation will be handled in VM executor if needed
       let transformedExpression = !this.options.safe ? ExpressionTransformer.transform(expression) : expression;
       
+      // Debug: log transformed expression
+      if (this.options.verbose && transformedExpression !== expression) {
+        console.error('Transformed expression:', transformedExpression);
+      }
+      
       // Load external libraries if specified
       const loadedLibraries = this.options.use 
         ? await this.libraryManager.loadLibraries(this.options.use)
