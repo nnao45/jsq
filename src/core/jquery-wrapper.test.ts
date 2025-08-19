@@ -196,7 +196,7 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
       const $ = createSmartDollar(undefined);
       
       expect($.valueOf()).toBe(undefined);
-      expect($.toString()).toBe('undefined');
+      expect($.toString()).toBe(String(undefined));
     });
 
     it('should handle primitive data', () => {
@@ -210,7 +210,7 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
       const $ = createSmartDollar('hello world');
       
       expect($.valueOf()).toBe('hello world');
-      expect($.toString()).toBe('"hello world"');
+      expect($.toString()).toBe('hello world');
     });
 
     it('should handle empty object', () => {

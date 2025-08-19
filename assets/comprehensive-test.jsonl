@@ -1,0 +1,8 @@
+{"id": 1, "name": "Alice Johnson", "email": "alice@example.com", "age": 30, "department": "engineering", "active": true, "salary": 75000}
+{"id": 2, "name": "Bob Smith", "email": "bob@example.com", "age": 25, "department": "design", "active": false, "salary": 55000}
+{"id": 3, "name": "Charlie Brown", "email": "charlie@example.com", "age": 35, "department": "engineering", "active": true, "salary": 85000}
+{"id": 4, "name": "Diana Prince", "email": "diana@example.com", "age": 28, "department": "marketing", "active": true, "salary": 60000}
+{"id": 5, "name": "Eve Davis", "email": "eve@example.com", "age": 32, "department": "design", "active": true, "salary": 65000}
+{"id": 6, "name": "Frank Wilson", "email": "frank@example.com", "age": 40, "department": "engineering", "active": true, "salary": 90000}
+{"id": 7, "name": "Grace Lee", "email": "grace@example.com", "age": 26, "department": "marketing", "active": false, "salary": 50000}
+{"id": 8, "name": "Henry Miller", "email": "henry@example.com", "age": 29, "department": "engineering", "active": true, "salary": 70000}

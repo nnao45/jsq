@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Box, Text, useInput, useApp, Spacer, useStdout } from 'ink';
 import { JsqProcessor } from '../core/processor';
 import { JsqOptions } from '../types/cli';
@@ -17,6 +17,50 @@ interface EvaluationResult {
 
 const DEBOUNCE_MS = 300;
 
+// Available colors for the prompt
+const PROMPT_COLORS = [
+  'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+  'redBright', 'greenBright', 'yellowBright', 'blueBright', 
+  'magentaBright', 'cyanBright', 'whiteBright'
+] as const;
+
+type PromptColor = typeof PROMPT_COLORS[number];
+
+// Memoized prompt component to reduce re-renders
+const PromptSection = memo(({ 
+  promptColors, 
+  currentExpression, 
+  cursorPosition, 
+  isEvaluating,
+  showSlowLoading 
+}: {
+  promptColors: [PromptColor, PromptColor, PromptColor];
+  currentExpression: string;
+  cursorPosition: number;
+  isEvaluating: boolean;
+  showSlowLoading: boolean;
+}) => (
+  <Box borderStyle="single" borderColor="white" padding={1}>
+    <Box flexDirection="column" width="100%">
+      <Text color="white" bold>
+        {isEvaluating && showSlowLoading ? "⏳" : "🚀"} Expression
+      </Text>
+      <Box marginTop={1}>
+        <Text color={promptColors[0]}>❯</Text>
+        <Text color={promptColors[1]}>❯</Text>
+        <Text color={promptColors[2]}>❯ </Text>
+        <Text>
+          {currentExpression.slice(0, cursorPosition)}
+          <Text backgroundColor="white" color="black">
+            {currentExpression[cursorPosition] || ' '}
+          </Text>
+          {currentExpression.slice(cursorPosition + 1)}
+        </Text>
+      </Box>
+    </Box>
+  </Box>
+));
+
 export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -24,10 +68,39 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   const [currentExpression, setCurrentExpression] = useState('');
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult>({});
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showSlowLoading, setShowSlowLoading] = useState(false);
   const [data] = useState(initialData);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showData, setShowData] = useState(false);
+  const [promptColors, setPromptColors] = useState<[PromptColor, PromptColor, PromptColor]>(() => {
+    // Initialize with random colors for each character
+    return [
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)]
+    ];
+  });
+
+  // Helper function to change colors for each character every second
+  const changePromptColors = useCallback(() => {
+    setPromptColors(() => {
+      return [
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)]
+      ];
+    });
+  }, []);
+
+  // Set up 1-second interval for color changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      changePromptColors();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [changePromptColors]);
 
   // Debounced evaluation function
   const debouncedEvaluate = useCallback(
@@ -38,8 +111,18 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
       }
 
       setIsEvaluating(true);
+      setShowSlowLoading(false);
+      
+      // Set a timer to show slow loading indicator after 500ms
+      const slowLoadingTimer = setTimeout(() => {
+        setShowSlowLoading(true);
+      }, 500);
+      
       try {
         const result = await processor.process(expression, data);
+        
+        // Clear the timer since evaluation completed
+        clearTimeout(slowLoadingTimer);
         let resultStr: string;
         
         if (typeof result.data === 'string') {
@@ -50,6 +133,8 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         
         setEvaluationResult({ result: resultStr });
       } catch (error) {
+        // Clear the timer on error as well
+        clearTimeout(slowLoadingTimer);
         const errorStr = error instanceof Error ? error.message : 'Syntax error';
         // Use syntax checker to determine if expression is partial
         const isPartial = SyntaxChecker.isLikelyPartial(expression);
@@ -59,7 +144,9 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
           isPartial 
         });
       } finally {
+        clearTimeout(slowLoadingTimer);
         setIsEvaluating(false);
+        setShowSlowLoading(false);
       }
     }, DEBOUNCE_MS),
     [processor, data]
@@ -145,7 +232,11 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
 
   const getResultDisplay = () => {
     if (isEvaluating) {
-      return <Text color="yellow">⏳ Evaluating...</Text>;
+      if (showSlowLoading) {
+        return <Text color="yellow">⏳ Evaluating... (taking longer than usual)</Text>;
+      } else {
+        return null; // No indicator for fast processing
+      }
     }
     
     if (evaluationResult.error) {
@@ -181,7 +272,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   };
 
   const getStatusColor = () => {
-    if (isEvaluating) return 'yellow';
+    if (isEvaluating && showSlowLoading) return 'yellow';
     if (evaluationResult.error && !evaluationResult.isPartial) return 'red';
     if (evaluationResult.result !== undefined) return 'green';
     return 'blue';
@@ -220,23 +311,13 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
       </Box>
 
       {/* Expression Input - Fixed at bottom */}
-      <Box borderStyle="single" borderColor={getStatusColor()} padding={1}>
-        <Box flexDirection="column" width="100%">
-          <Text color={getStatusColor()} bold>
-            {isEvaluating ? "⏳" : "🚀"} Expression
-          </Text>
-          <Box marginTop={1}>
-            <Text color="gray">jsq&gt; </Text>
-            <Text>
-              {currentExpression.slice(0, cursorPosition)}
-              <Text backgroundColor="white" color="black">
-                {currentExpression[cursorPosition] || ' '}
-              </Text>
-              {currentExpression.slice(cursorPosition + 1)}
-            </Text>
-          </Box>
-        </Box>
-      </Box>
+      <PromptSection
+        promptColors={promptColors}
+        currentExpression={currentExpression}
+        cursorPosition={cursorPosition}
+        isEvaluating={isEvaluating}
+        showSlowLoading={showSlowLoading}
+      />
       
       {/* Data hint below frame */}
       <Box paddingLeft={1}>

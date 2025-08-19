@@ -254,11 +254,25 @@ export class VMExecutor {
         return '' + obj;
       }
       
-      // Make it available as JSON.stringify
+      // Simple JSON.parse function
+      function jsonParse(jsonString) {
+        try {
+          return (new Function('return ' + jsonString))();
+        } catch (error) {
+          throw new Error('Invalid JSON: ' + error.message);
+        }
+      }
+      
+      // Make it available as JSON.stringify and JSON.parse
       if (typeof JSON === 'undefined') {
-        var JSON = { stringify: jsonStringify };
-      } else if (!JSON.stringify) {
-        JSON.stringify = jsonStringify;
+        var JSON = { stringify: jsonStringify, parse: jsonParse };
+      } else {
+        if (!JSON.stringify) {
+          JSON.stringify = jsonStringify;
+        }
+        if (!JSON.parse) {
+          JSON.parse = jsonParse;
+        }
       }
       
       // Helper function to extract array data
@@ -1842,11 +1856,28 @@ export class VMExecutor {
     }
   }
 
+  private safeJSONStringify(data: any): string {
+    const seen = new WeakSet();
+    
+    return JSON.stringify(data, (key, value) => {
+      if (value !== null && typeof value === 'object') {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      if (typeof value === 'function') {
+        return `[Function: ${value.name || 'anonymous'}]`;
+      }
+      return value;
+    });
+  }
+
   private async transferVMChainableData(key: string, data: any): Promise<void> {
     try {
       // For arrays and complex objects, use JSON string transfer to avoid VM boundary issues
       if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
-        const jsonData = JSON.stringify(data);
+        const jsonData = this.safeJSONStringify(data);
         const jsonCopy = new ivm.ExternalCopy(jsonData);
         await this.jail.set(`${key}_json`, jsonCopy.copyInto());
         
