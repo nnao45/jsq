@@ -1,4 +1,4 @@
-# jsq - jQuery-style JSON Command Line Tool
+# jsq - JavaScript-Powered JSON Query Tool
 
 [🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 
