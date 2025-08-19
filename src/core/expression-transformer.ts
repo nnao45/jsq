@@ -10,6 +10,11 @@ export class ExpressionTransformer {
   static transform(expression: string): string {
     const trimmed = expression.trim();
     
+    // Handle pipe operations like '$.users | $'
+    if (this.hasPipeOperator(trimmed)) {
+      return this.transformPipeExpression(trimmed);
+    }
+    
     // Handle standalone '$' - convert to '$()' to get the data wrapper
     if (trimmed === '$') {
       return '$()';
@@ -29,6 +34,102 @@ export class ExpressionTransformer {
     // Handle other $ patterns that might need transformation
     // For now, pass through as-is
     return trimmed;
+  }
+  
+  /**
+   * Check if expression has pipe operators
+   */
+  static hasPipeOperator(expression: string): boolean {
+    return expression.includes('|');
+  }
+  
+  /**
+   * Transform pipe expressions like '$.users | $' to proper function calls
+   */
+  static transformPipeExpression(expression: string): string {
+    // Split by pipe operator, but be careful with strings and nested expressions
+    const parts = this.splitByPipe(expression);
+    
+    if (parts.length < 2) {
+      return expression;
+    }
+    
+    // Start with the first expression
+    let result = parts[0].trim();
+    
+    // Apply each subsequent pipe operation
+    for (let i = 1; i < parts.length; i++) {
+      const pipeExpr = parts[i].trim();
+      
+      if (pipeExpr === '$') {
+        // '| $' means "pass the result through unchanged"
+        // Convert to a function call that returns the value
+        result = `(function(temp) { return $(temp).valueOf(); })(${result})`;
+      } else if (pipeExpr.startsWith('$.')) {
+        // '| $.method()' or '| $.property' means "apply to the result"
+        const chainExpression = pipeExpr.substring(2);
+        
+        // Check if the result is already a $ expression to avoid double wrapping
+        if (result.startsWith('$.')) {
+          // Already a $ expression - just chain directly
+          result = `${result}.${chainExpression}`;
+        } else {
+          // Complex expression or method call - wrap in $()
+          result = `$(${result}).${chainExpression}`;
+        }
+      } else {
+        // General pipe operation - wrap in a function
+        // Replace $ in the pipe expression with the result
+        const transformedPipe = pipeExpr.replace(/\$/g, `$(${result})`);
+        result = transformedPipe;
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Split expression by pipe operator, respecting strings and parentheses
+   */
+  static splitByPipe(expression: string): string[] {
+    const parts: string[] = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+    
+    for (let i = 0; i < expression.length; i++) {
+      const char = expression[i];
+      const prevChar = i > 0 ? expression[i - 1] : '';
+      
+      if (!inString) {
+        if (char === '"' || char === "'") {
+          inString = true;
+          stringChar = char;
+        } else if (char === '(') {
+          depth++;
+        } else if (char === ')') {
+          depth--;
+        } else if (char === '|' && depth === 0) {
+          parts.push(current);
+          current = '';
+          continue;
+        }
+      } else {
+        if (char === stringChar && prevChar !== '\\') {
+          inString = false;
+          stringChar = '';
+        }
+      }
+      
+      current += char;
+    }
+    
+    if (current) {
+      parts.push(current);
+    }
+    
+    return parts;
   }
   
   /**
