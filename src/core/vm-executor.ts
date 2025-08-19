@@ -7,6 +7,7 @@ export class VMExecutor {
   private persistentContext: ivm.Context;
   private jail: ivm.Reference<any>;
   private isInitialized = false;
+  private currentBase?: string;
 
   constructor(context: VMExecutionContext) {
     this.context = context;
@@ -248,19 +249,6 @@ export class VMExecutor {
       
       // Helper function to extract array data
       function getArrayData(obj) {
-        // Debug what we received
-        try {
-          if (typeof console !== 'undefined' && console.log) {
-            console.log('getArrayData received:', typeof obj, obj);
-            if (obj && typeof obj === 'object') {
-              console.log('Object keys:', Object.keys(obj));
-              if (obj.data) console.log('obj.data:', obj.data, 'length:', typeof obj.data === 'object' ? obj.data.length : 'n/a');
-              if (obj.value) console.log('obj.value:', obj.value, 'length:', typeof obj.value === 'object' ? obj.value.length : 'n/a');
-            }
-          }
-        } catch (e) {
-          // Ignore console errors
-        }
         
         // Handle VMChainableWrapper-like objects
         if (obj && obj.data && typeof obj.data.length === 'number') {
@@ -472,6 +460,307 @@ export class VMExecutor {
         if (data && typeof data === 'object') return Object.values(data);
         return [];
       }
+      
+      // Method chaining function
+      function __vm_chain(data, methodsJson) {
+        try {
+          // Parse the methods JSON manually to avoid JSON parsing issues
+          var methods = [];
+          try {
+            methods = (new Function('return ' + methodsJson))();
+          } catch (parseError) {
+            return 'ERROR: JSON parse failed: ' + parseError.message;
+          }
+          
+          var currentData = data;
+          
+          for (var i = 0; i < methods.length; i++) {
+            var method = methods[i];
+            var methodName = method.name;
+            var args = method.args;
+            
+            // Execute each method in sequence
+            switch (methodName) {
+              case 'map':
+                var transform = new Function('return ' + args)();
+                currentData = getArrayData(currentData);
+                if (currentData.length === 0) {
+                  currentData = [];
+                } else {
+                  var result = [];
+                  for (var j = 0; j < currentData.length; j++) {
+                    result.push(transform(currentData[j]));
+                  }
+                  currentData = result;
+                }
+                break;
+                
+              case 'filter':
+                var predicate = new Function('return ' + args)();
+                currentData = getArrayData(currentData);
+                if (currentData.length === 0) {
+                  currentData = [];
+                } else {
+                  var result = [];
+                  for (var j = 0; j < currentData.length; j++) {
+                    if (predicate(currentData[j])) {
+                      result.push(currentData[j]);
+                    }
+                  }
+                  currentData = result;
+                }
+                break;
+                
+              case 'pluck':
+                var key = args.replace(/['"]/g, ''); // Remove quotes
+                currentData = getArrayData(currentData);
+                if (currentData.length === 0) {
+                  currentData = [];
+                } else {
+                  var result = [];
+                  for (var j = 0; j < currentData.length; j++) {
+                    var item = currentData[j];
+                    if (item && typeof item === 'object' && key in item) {
+                      result.push(item[key]);
+                    }
+                  }
+                  currentData = result;
+                }
+                break;
+                
+              case 'where':
+                var parts = args.split(',');
+                var key = parts[0].replace(/['"]/g, '').trim();
+                var value = parts[1].replace(/['"]/g, '').trim();
+                currentData = getArrayData(currentData);
+                if (currentData.length === 0) {
+                  currentData = [];
+                } else {
+                  var result = [];
+                  for (var j = 0; j < currentData.length; j++) {
+                    var item = currentData[j];
+                    if (item && typeof item === 'object' && key in item && item[key] == value) {
+                      result.push(item);
+                    }
+                  }
+                  currentData = result;
+                }
+                break;
+                
+              case 'sortBy':
+                var sortKey = args.replace(/['"]/g, '');
+                currentData = getArrayData(currentData);
+                if (currentData.length > 0) {
+                  currentData = currentData.slice().sort(function(a, b) {
+                    var aVal = a && typeof a === 'object' ? a[sortKey] : a;
+                    var bVal = b && typeof b === 'object' ? b[sortKey] : b;
+                    if (typeof aVal === 'string' && typeof bVal === 'string') {
+                      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                    }
+                    if (typeof aVal === 'number' && typeof bVal === 'number') {
+                      return aVal - bVal;
+                    }
+                    return 0;
+                  });
+                }
+                break;
+                
+              case 'take':
+                var count = parseInt(args);
+                currentData = getArrayData(currentData);
+                currentData = currentData.slice(0, count);
+                break;
+                
+              case 'skip':
+                var count = parseInt(args);
+                currentData = getArrayData(currentData);
+                currentData = currentData.slice(count);
+                break;
+                
+              default:
+                // Unknown method, skip
+                break;
+            }
+          }
+          
+          return jsonStringify(currentData);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      // Helper function to apply a single method (defined first)
+      function applyMethod(currentData, methodName, methodArgs) {
+        switch (methodName) {
+          case 'filter':
+            var predicate = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var result = [];
+              for (var i = 0; i < currentData.length; i++) {
+                if (predicate(currentData[i])) {
+                  result.push(currentData[i]);
+                }
+              }
+              currentData = result;
+            }
+            break;
+            
+          case 'map':
+            var transform = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var result = [];
+              for (var i = 0; i < currentData.length; i++) {
+                result.push(transform(currentData[i]));
+              }
+              currentData = result;
+            }
+            break;
+            
+          case 'pluck':
+            var key = methodArgs.replace(/['"]/g, ''); // Remove quotes if any
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              var result = [];
+              for (var i = 0; i < currentData.length; i++) {
+                var item = currentData[i];
+                if (item && typeof item === 'object' && key in item) {
+                  result.push(item[key]);
+                }
+              }
+              currentData = result;
+            }
+            break;
+            
+          case 'sortBy':
+            var sortKey = methodArgs.replace(/['"]/g, '');
+            currentData = getArrayData(currentData);
+            if (currentData.length > 0) {
+              currentData = currentData.slice().sort(function(a, b) {
+                var aVal = a && typeof a === 'object' ? a[sortKey] : a;
+                var bVal = b && typeof b === 'object' ? b[sortKey] : b;
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                  return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                }
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                  return aVal - bVal;
+                }
+                return 0;
+              });
+            }
+            break;
+            
+          case 'take':
+            var count = parseInt(methodArgs);
+            currentData = getArrayData(currentData);
+            currentData = currentData.slice(0, count);
+            break;
+            
+          case 'skip':
+            var count = parseInt(methodArgs);
+            currentData = getArrayData(currentData);
+            currentData = currentData.slice(count);
+            break;
+            
+          case 'find':
+            var predicate = new Function('return ' + methodArgs)();
+            currentData = getArrayData(currentData);
+            for (var i = 0; i < currentData.length; i++) {
+              if (predicate(currentData[i])) {
+                currentData = currentData[i];
+                break;
+              }
+            }
+            break;
+            
+          default:
+            // Unknown method, skip
+            break;
+        }
+        
+        return currentData;
+      }
+      
+      // Special helper for where method with two arguments
+      function applyWhere(currentData, key, value) {
+        currentData = getArrayData(currentData);
+        if (currentData.length > 0) {
+          var result = [];
+          for (var i = 0; i < currentData.length; i++) {
+            var item = currentData[i];
+            if (item && typeof item === 'object' && key in item && item[key] == value) {
+              result.push(item);
+            }
+          }
+          currentData = result;
+        }
+        return currentData;
+      }
+      
+      // Simple method chaining function with individual arguments
+      function __vm_chain_simple(data) {
+        try {
+          var currentData = data;
+          
+          // Convert arguments to array manually
+          var args = [];
+          for (var argIndex = 1; argIndex < arguments.length; argIndex++) {
+            args.push(arguments[argIndex]);
+          }
+          
+          // Process pairs of (methodName, methodArgs, ...)
+          for (var i = 0; i < args.length; ) {
+            var methodName = args[i++];
+            
+            // Special handling for methods with multiple arguments
+            if (methodName === 'where') {
+              var key = args[i++];
+              var value = args[i++];
+              currentData = applyWhere(currentData, key, value);
+            } else {
+              var methodArgs = args[i++];
+              currentData = applyMethod(currentData, methodName, methodArgs);
+            }
+          }
+          
+          return jsonStringify(currentData);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
+      
+      // Multi-method chaining function for more than 2 methods
+      function __vm_chain_multi(data) {
+        try {
+          var currentData = data;
+          
+          // Convert arguments to array manually
+          var args = [];
+          for (var argIndex = 1; argIndex < arguments.length; argIndex++) {
+            args.push(arguments[argIndex]);
+          }
+          
+          // Process pairs of (methodName, methodArgs, ...)
+          for (var i = 0; i < args.length; ) {
+            var methodName = args[i++];
+            
+            // Special handling for methods with multiple arguments
+            if (methodName === 'where') {
+              var key = args[i++];
+              var value = args[i++];
+              currentData = applyWhere(currentData, key, value);
+            } else {
+              var methodArgs = args[i++];
+              currentData = applyMethod(currentData, methodName, methodArgs);
+            }
+          }
+          
+          return jsonStringify(currentData);
+        } catch (error) {
+          return 'ERROR: ' + error.message;
+        }
+      }
     `;
     
     // Execute the native methods script in the VM context
@@ -578,45 +867,130 @@ export class VMExecutor {
   }
 
   private transformExpressionForVM(expression: string): string {
-    // Transform method calls to use VM functions
-    // This is a simple regex-based transformation for common cases
     let transformed = expression;
     
-    // Transform .map() calls - improved to handle $ directly and with properties
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.map\(([^)]+)\)/g, '__vm_map($1, $2)');
+    // Normalize the expression by removing extra whitespace and newlines
+    const normalizedExpression = expression.replace(/\s+/g, ' ').trim();
     
-    // Transform .filter() calls  
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.filter\(([^)]+)\)/g, '__vm_filter($1, $2)');
+    // Check for method chaining pattern - look for multiple method calls (including nested properties)
+    const hasChaining = /\$(?:\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*)*\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\(/g.test(normalizedExpression);
     
-    // Transform .find() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.find\(([^)]+)\)/g, '__vm_find($1, $2)');
-    
-    // Transform .pluck() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.pluck\(([^)]+)\)/g, '__vm_pluck($1, $2)');
-    
-    // Transform .where() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.where\(([^)]+)\)/g, '__vm_where($1, $2)');
-    
-    // Transform .sortBy() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sortBy\(([^)]+)\)/g, '__vm_sortBy($1, $2)');
-    
-    // Transform .take() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.take\(([^)]+)\)/g, '__vm_take($1, $2)');
-    
-    // Transform .skip() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
-    
-    // Transform .sum() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
-    
-    // Transform .length() calls
-    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
-    
-    if (process.env.NODE_ENV === 'development' && transformed !== expression) {
-      console.log(`Debug: Transformed expression: ${expression} -> ${transformed}`);
+    if (hasChaining) {
+      // Parse the method chain more generally
+      const methods = this.parseFullMethodChain(normalizedExpression);
+      if (methods.length >= 2) {
+        // Create comma-separated arguments for the function call
+        const basePart = this.currentBase || '$';
+        const args = [basePart];
+        for (const method of methods) {
+          args.push(`'${method.name}'`);
+          // For where method, we need special handling since it has multiple arguments
+          if (method.name === 'where') {
+            // Parse the two arguments from 'where("key", "value")'
+            const whereMatch = method.args.match(/^"([^"]+)",\s*"([^"]+)"$/);
+            if (whereMatch) {
+              args.push(`'${whereMatch[1]}'`); // key
+              args.push(`'${whereMatch[2]}'`); // value  
+            } else {
+              args.push(`'${method.args}'`);
+            }
+          } else {
+            // For other methods, just escape single quotes in the args
+            const cleanArgs = method.args.replace(/'/g, "\\'");
+            args.push(`'${cleanArgs}'`);
+          }
+        }
+        
+        // Use dynamic function based on number of methods
+        const functionName = methods.length === 2 ? '__vm_chain_simple' : '__vm_chain_multi';
+        transformed = `${functionName}(${args.join(', ')})`;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Debug: Detected method chain: ${normalizedExpression}`);
+          console.log(`Debug: Parsed methods:`, methods);
+          console.log(`Debug: Transformed to: ${transformed}`);
+        }
+      }
+    } else {
+      // Handle single method calls
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.map\(([^)]+)\)/g, '__vm_map($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.filter\(([^)]+)\)/g, '__vm_filter($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.find\(([^)]+)\)/g, '__vm_find($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.pluck\(([^)]+)\)/g, '__vm_pluck($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.where\(([^)]+)\)/g, '__vm_where($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sortBy\(([^)]+)\)/g, '__vm_sortBy($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.take\(([^)]+)\)/g, '__vm_take($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
+      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
+      
+      if (process.env.NODE_ENV === 'development' && transformed !== expression) {
+        console.log(`Debug: Transformed single method: ${expression} -> ${transformed}`);
+      }
     }
     
     return transformed;
+  }
+
+  private parseFullMethodChain(expression: string): Array<{name: string, args: string}> {
+    // Extract the full method chain from an expression like $.users.filter(...).pluck(...)
+    // First, find where the method calls start (allowing spaces around dots)
+    const methodStart = expression.search(/\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\(/);
+    if (methodStart === -1) return [];
+    
+    // Extract the base part (e.g., "$.users") and the method chain part
+    const basePart = expression.substring(0, methodStart).trim();
+    const chainPart = expression.substring(methodStart);
+    
+    // Store the base part for later use in transformation
+    this.currentBase = basePart;
+    
+    return this.parseMethodChain(chainPart);
+  }
+
+  private parseMethodChain(chainPart: string): Array<{name: string, args: string}> {
+    const methods: Array<{name: string, args: string}> = [];
+    
+    // More sophisticated parsing to handle nested parentheses
+    let i = 0;
+    while (i < chainPart.length) {
+      const dotIndex = chainPart.indexOf('.', i);
+      if (dotIndex === -1) break;
+      
+      const methodStart = dotIndex + 1;
+      const parenIndex = chainPart.indexOf('(', methodStart);
+      if (parenIndex === -1) break;
+      
+      const methodName = chainPart.substring(methodStart, parenIndex);
+      
+      // Find matching closing parenthesis
+      let parenCount = 1;
+      let argStart = parenIndex + 1;
+      let argEnd = argStart;
+      
+      while (argEnd < chainPart.length && parenCount > 0) {
+        if (chainPart[argEnd] === '(') parenCount++;
+        else if (chainPart[argEnd] === ')') parenCount--;
+        argEnd++;
+      }
+      
+      if (parenCount === 0) {
+        const args = chainPart.substring(argStart, argEnd - 1);
+        methods.push({
+          name: methodName,
+          args: args
+        });
+        i = argEnd;
+      } else {
+        break;
+      }
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Debug: Parsed methods from "${chainPart}":`, methods);
+    }
+    
+    return methods;
   }
 
   private async processResult(result: any): Promise<unknown> {
@@ -677,6 +1051,12 @@ export class VMExecutor {
               // If JSON parsing fails, return the string as-is
               return result;
             }
+          } else if (typeof jsonStr === 'string') {
+            // For simple string values, return the unquoted string
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Debug: Returning simple string value:', jsonStr);
+            }
+            return jsonStr;
           }
         }
         
