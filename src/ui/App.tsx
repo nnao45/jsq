@@ -28,7 +28,7 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
         let input: string;
         try {
           input = await readStdin();
-        } catch (err) {
+        } catch {
           // If no input is available, use null as default
           input = 'null';
         }

@@ -11,7 +11,7 @@ import {
   readFileByFormat,
   validateFile,
 } from '@/utils/file-input';
-import { getStdinStream, isStdinAvailable, readStdin } from '@/utils/input';
+import { getStdinStream, readStdin } from '@/utils/input';
 
 function findPackageRoot(): string {
   const fs = require('node:fs');
@@ -60,6 +60,7 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
+  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -101,6 +102,7 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
+  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -125,6 +127,7 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
+  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -287,7 +290,7 @@ async function determineInputSource(options: JsqOptions): Promise<{
   if (process.stdin.isTTY === true) {
     return { inputSource: 'none', detectedFormat: 'json' };
   }
-  
+
   // For all other cases (false or undefined), assume stdin might have input and let readStdin handle it
   return { inputSource: 'stdin', detectedFormat: 'json' };
 }
@@ -320,7 +323,11 @@ async function handleStreamingMode(
   const inputStream = await getInputStream(inputSource, options.file, detectedFormat);
   const streamOptions = createStreamOptions(options, detectedFormat);
 
-  if (options.batch && typeof options.batch === 'number') {
+  if (options.parallel) {
+    // Parallel processing - use batch processing with workers
+    const transformStream = processor.createParallelTransformStream(expression, streamOptions);
+    inputStream.pipe(transformStream).pipe(process.stdout);
+  } else if (options.batch && typeof options.batch === 'number') {
     const transformStream = processor.createBatchTransformStream(expression, streamOptions);
     inputStream.pipe(transformStream).pipe(process.stdout);
   } else {
@@ -359,8 +366,10 @@ function createStreamOptions(options: JsqOptions, detectedFormat: string) {
       options.jsonLines ||
       options.stream ||
       !!options.batch ||
+      !!options.parallel ||
       streamingFormats.includes(detectedFormat),
-    batchSize: typeof options.batch === 'number' ? options.batch : undefined,
+    batchSize: typeof options.batch === 'number' ? options.batch : (options.parallel ? 200 : undefined),
+    parallel: options.parallel,
   };
 }
 

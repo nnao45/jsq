@@ -85,7 +85,6 @@ export class ExpressionEvaluator {
     return context;
   }
 
-
   private createConsoleObject(): Record<string, unknown> {
     return this.options.verbose ? console : { log: () => {}, error: () => {}, warn: () => {} };
   }
@@ -121,9 +120,9 @@ export class ExpressionEvaluator {
 
     // Handle promises first
     if (result instanceof Promise) {
-      result = await result;
+      const awaitedResult = await result;
       // After awaiting promise, recursively process the result
-      return this.unwrapResult(result);
+      return this.unwrapResult(awaitedResult);
     }
 
     // Handle async generators
@@ -163,8 +162,10 @@ export class ExpressionEvaluator {
     return (
       result !== null &&
       typeof result === 'object' &&
-      typeof (result as any).next === 'function' &&
-      typeof (result as any)[Symbol.asyncIterator] === 'function'
+      'next' in result &&
+      typeof (result as Record<string, unknown>).next === 'function' &&
+      Symbol.asyncIterator in result &&
+      typeof (result as Record<symbol, unknown>)[Symbol.asyncIterator] === 'function'
     );
   }
 

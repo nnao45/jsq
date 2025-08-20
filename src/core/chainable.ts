@@ -558,7 +558,7 @@ export class ChainableWrapper {
   }
 
   // Advanced collection methods (Tier 1)
-  
+
   /**
    * Split array into two arrays based on predicate: [truthy, falsy]
    */
@@ -649,7 +649,7 @@ export class ChainableWrapper {
   }
 
   // Advanced collection methods (Tier 2)
-  
+
   /**
    * Count occurrences {value: count}
    */
@@ -686,8 +686,8 @@ export class ChainableWrapper {
    * Reduce grouped values
    */
   reduceBy<T>(
-    keyFn: (item: unknown) => string, 
-    reducerFn: (acc: T, item: unknown) => T, 
+    keyFn: (item: unknown) => string,
+    reducerFn: (acc: T, item: unknown) => T,
     initialValue: T
   ): ChainableWrapper {
     if (Array.isArray(this.data)) {
@@ -749,7 +749,7 @@ export class ChainableWrapper {
   }
 
   // Advanced collection methods (Tier 3)
-  
+
   /**
    * Peek at elements without changing stream
    */
@@ -837,7 +837,7 @@ export class ChainableWrapper {
   }
 
   // Advanced collection methods (Tier 4)
-  
+
   /**
    * Iterator that can peek ahead one element (returns special object with next/peek)
    */
@@ -846,17 +846,17 @@ export class ChainableWrapper {
       let index = 0;
       const peekableIterator = {
         hasNext: () => index < this.data.length,
-        next: () => index < this.data.length ? this.data[index++] : undefined,
-        peek: () => index < this.data.length ? this.data[index] : undefined,
-        remaining: () => this.data.slice(index)
+        next: () => (index < this.data.length ? this.data[index++] : undefined),
+        peek: () => (index < this.data.length ? this.data[index] : undefined),
+        remaining: () => this.data.slice(index),
       };
       return new ChainableWrapper(peekableIterator);
     }
-    return new ChainableWrapper({ 
-      hasNext: () => false, 
-      next: () => undefined, 
+    return new ChainableWrapper({
+      hasNext: () => false,
+      next: () => undefined,
       peek: () => undefined,
-      remaining: () => []
+      remaining: () => [],
     });
   }
 
@@ -883,7 +883,7 @@ export class ChainableWrapper {
   }
 
   // Functional programming methods
-  
+
   /**
    * Left fold (reduce from left to right)
    */
@@ -916,7 +916,7 @@ export class ChainableWrapper {
    * Traverse with effect (map with accumulating state)
    */
   traverse<T, S>(
-    initial: S, 
+    initial: S,
     fn: (state: S, item: unknown, index?: number) => { value: T; state: S }
   ): ChainableWrapper {
     if (Array.isArray(this.data)) {
@@ -933,9 +933,9 @@ export class ChainableWrapper {
   }
 
   // Reactive/Async Methods (RxJS-style operators)
-  
+
   // Time-based operators
-  
+
   /**
    * Delay emission by specified milliseconds
    */
@@ -1003,7 +1003,7 @@ export class ChainableWrapper {
       }),
       new Promise<ChainableWrapper>((_, reject) => {
         setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
-      })
+      }),
     ]);
   }
 
@@ -1029,7 +1029,7 @@ export class ChainableWrapper {
   async *timer(delay: number, period?: number): AsyncGenerator<ChainableWrapper> {
     // Initial delay
     await new Promise(resolve => setTimeout(resolve, delay));
-    
+
     if (!Array.isArray(this.data)) {
       yield new ChainableWrapper(this.data);
       return;
@@ -1037,10 +1037,10 @@ export class ChainableWrapper {
 
     const array = this.data as unknown[];
     let index = 0;
-    
+
     while (index < array.length) {
       yield new ChainableWrapper(array[index++]);
-      
+
       if (period && index < array.length) {
         await new Promise(resolve => setTimeout(resolve, period));
       }
@@ -1048,11 +1048,13 @@ export class ChainableWrapper {
   }
 
   // Advanced transformation operators
-  
+
   /**
    * Sequential async mapping - wait for each to complete before next
    */
-  async concatMap<T>(fn: (item: unknown, index?: number) => Promise<T> | T): Promise<ChainableWrapper> {
+  async concatMap<T>(
+    fn: (item: unknown, index?: number) => Promise<T> | T
+  ): Promise<ChainableWrapper> {
     if (!Array.isArray(this.data)) {
       const result = await Promise.resolve(fn(this.data, 0));
       return new ChainableWrapper(result);
@@ -1060,7 +1062,7 @@ export class ChainableWrapper {
 
     const array = this.data as unknown[];
     const results: T[] = [];
-    
+
     for (let i = 0; i < array.length; i++) {
       const result = await Promise.resolve(fn(array[i], i));
       if (Array.isArray(result)) {
@@ -1069,14 +1071,16 @@ export class ChainableWrapper {
         results.push(result);
       }
     }
-    
+
     return new ChainableWrapper(results);
   }
 
   /**
    * Concurrent async mapping - execute all simultaneously
    */
-  async mergeMap<T>(fn: (item: unknown, index?: number) => Promise<T> | T): Promise<ChainableWrapper> {
+  async mergeMap<T>(
+    fn: (item: unknown, index?: number) => Promise<T> | T
+  ): Promise<ChainableWrapper> {
     if (!Array.isArray(this.data)) {
       const result = await Promise.resolve(fn(this.data, 0));
       return new ChainableWrapper(result);
@@ -1085,7 +1089,7 @@ export class ChainableWrapper {
     const array = this.data as unknown[];
     const promises = array.map((item, index) => Promise.resolve(fn(item, index)));
     const results = await Promise.all(promises);
-    
+
     // Flatten results if they are arrays
     const flattened: T[] = [];
     for (const result of results) {
@@ -1095,14 +1099,16 @@ export class ChainableWrapper {
         flattened.push(result);
       }
     }
-    
+
     return new ChainableWrapper(flattened);
   }
 
   /**
    * Switch to new mapping, cancelling previous
    */
-  async switchMap<T>(fn: (item: unknown, index?: number) => Promise<T> | T): Promise<ChainableWrapper> {
+  async switchMap<T>(
+    fn: (item: unknown, index?: number) => Promise<T> | T
+  ): Promise<ChainableWrapper> {
     if (!Array.isArray(this.data)) {
       const result = await Promise.resolve(fn(this.data, 0));
       return new ChainableWrapper(result);
@@ -1112,18 +1118,20 @@ export class ChainableWrapper {
     if (array.length === 0) {
       return new ChainableWrapper([]);
     }
-    
+
     // Only process the last item (switch behavior)
     const lastItem = array[array.length - 1];
     const result = await Promise.resolve(fn(lastItem, array.length - 1));
-    
+
     return new ChainableWrapper(Array.isArray(result) ? result : [result]);
   }
 
   /**
    * Ignore new values while inner operation is active
    */
-  async exhaustMap<T>(fn: (item: unknown, index?: number) => Promise<T> | T): Promise<ChainableWrapper> {
+  async exhaustMap<T>(
+    fn: (item: unknown, index?: number) => Promise<T> | T
+  ): Promise<ChainableWrapper> {
     if (!Array.isArray(this.data)) {
       const result = await Promise.resolve(fn(this.data, 0));
       return new ChainableWrapper(result);
@@ -1133,16 +1141,16 @@ export class ChainableWrapper {
     if (array.length === 0) {
       return new ChainableWrapper([]);
     }
-    
+
     // Only process the first item (exhaust behavior)
     const firstItem = array[0];
     const result = await Promise.resolve(fn(firstItem, 0));
-    
+
     return new ChainableWrapper(Array.isArray(result) ? result : [result]);
   }
 
   // Enhanced filtering operators
-  
+
   /**
    * Only emit when value changes from previous
    */
@@ -1158,7 +1166,7 @@ export class ChainableWrapper {
 
     const result: unknown[] = [array[0]];
     let previous = keyFn ? keyFn(array[0]) : array[0];
-    
+
     for (let i = 1; i < array.length; i++) {
       const current = keyFn ? keyFn(array[i]) : array[i];
       if (current !== previous) {
@@ -1166,7 +1174,7 @@ export class ChainableWrapper {
         previous = current;
       }
     }
-    
+
     return new ChainableWrapper(result);
   }
 
@@ -1182,7 +1190,7 @@ export class ChainableWrapper {
     if (count <= 0) {
       return new ChainableWrapper(array);
     }
-    
+
     const result = array.slice(0, Math.max(0, array.length - count));
     return new ChainableWrapper(result);
   }
@@ -1199,13 +1207,13 @@ export class ChainableWrapper {
     if (count <= 0) {
       return new ChainableWrapper([]);
     }
-    
+
     const result = array.slice(Math.max(0, array.length - count));
     return new ChainableWrapper(result);
   }
 
   // Stream combination operators
-  
+
   /**
    * Combine latest values from multiple arrays
    */
@@ -1217,19 +1225,19 @@ export class ChainableWrapper {
     const thisArray = this.data as unknown[];
     const maxLength = Math.max(thisArray.length, ...others.map(arr => arr.length));
     const result: unknown[][] = [];
-    
+
     for (let i = 0; i < maxLength; i++) {
       const combined: unknown[] = [
-        i < thisArray.length ? thisArray[i] : thisArray[thisArray.length - 1] || null
+        i < thisArray.length ? thisArray[i] : thisArray[thisArray.length - 1] || null,
       ];
-      
+
       for (const other of others) {
         combined.push(i < other.length ? other[i] : other[other.length - 1] || null);
       }
-      
+
       result.push(combined);
     }
-    
+
     return new ChainableWrapper(result);
   }
 
@@ -1244,7 +1252,7 @@ export class ChainableWrapper {
     const thisArray = this.data as unknown[];
     const minLength = Math.min(thisArray.length, ...others.map(arr => arr.length));
     const result: unknown[][] = [];
-    
+
     for (let i = 0; i < minLength; i++) {
       const zipped = [thisArray[i]];
       for (const other of others) {
@@ -1252,7 +1260,7 @@ export class ChainableWrapper {
       }
       result.push(zipped);
     }
-    
+
     return new ChainableWrapper(result);
   }
 
@@ -1270,23 +1278,23 @@ export class ChainableWrapper {
 
     const thisArray = this.data as unknown[];
     const result: unknown[] = [...thisArray];
-    
+
     for (const other of others) {
       result.push(...other);
     }
-    
+
     return new ChainableWrapper(result);
   }
 
   // Error handling operators
-  
+
   /**
    * Retry operations on failure
    */
   async retry(count: number, operation?: () => Promise<unknown>): Promise<ChainableWrapper> {
     let attempts = 0;
     const maxAttempts = count + 1; // Initial attempt + retries
-    
+
     while (attempts < maxAttempts) {
       try {
         if (operation) {
@@ -1302,10 +1310,10 @@ export class ChainableWrapper {
           throw error;
         }
         // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts - 1)));
+        await new Promise(resolve => setTimeout(resolve, 1000 * 2 ** (attempts - 1)));
       }
     }
-    
+
     return new ChainableWrapper(this.data);
   }
 
@@ -1322,14 +1330,16 @@ export class ChainableWrapper {
   }
 
   // Utility operators
-  
+
   /**
    * Side effects without changing the stream (RxJS-style)
    */
   tap(fn: (item: unknown, index?: number) => void): ChainableWrapper {
     if (Array.isArray(this.data)) {
       const array = this.data as unknown[];
-      array.forEach((item, index) => fn(item, index));
+      array.forEach((item, index) => {
+        fn(item, index);
+      });
     } else {
       fn(this.data, 0);
     }
