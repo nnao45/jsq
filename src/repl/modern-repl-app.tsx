@@ -263,7 +263,11 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   }, [data]);
 
   // Truncate result to prevent overflow
-  const truncateResult = (result: string, maxLines: number = outputHeight - 4): string => {
+  const truncateResult = (result: string): string => {
+    // Calculate available lines based on actual output area height
+    const availableHeight = Math.max(outputHeight - 6, 5); // Reserve space for title and padding
+    const maxLines = showData ? Math.floor(availableHeight / 2) : availableHeight;
+    
     const lines = result.split('\n');
     if (lines.length <= maxLines) {
       return result;
@@ -308,7 +312,11 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
 
     if (evaluationResult.result !== undefined) {
       const truncatedResult = truncateResult(evaluationResult.result);
-      return <Text color="green">✓ {truncatedResult}</Text>;
+      return (
+        <Text color="green" wrap="wrap">
+          ✓ {truncatedResult}
+        </Text>
+      );
     }
 
     if (suggestions.length > 0) {
@@ -362,12 +370,14 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         )}
 
         {/* Result Section */}
-        <Box padding={1} flexGrow={1}>
-          <Box flexDirection="column" width="100%">
+        <Box padding={1} flexGrow={1} overflow="hidden">
+          <Box flexDirection="column" width="100%" height="100%">
             <Text color="green" bold>
               💎 Result
             </Text>
-            <Box marginTop={1}>{getResultDisplay()}</Box>
+            <Box marginTop={1} overflow="hidden" height={outputHeight - 2}>
+              {getResultDisplay()}
+            </Box>
           </Box>
         </Box>
       </Box>
