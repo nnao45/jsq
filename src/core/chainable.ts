@@ -1356,7 +1356,9 @@ export class ChainableWrapper {
   /**
    * Execute an async function for each element in parallel
    */
-  async forEachAsync(fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>): Promise<ChainableWrapper> {
+  async forEachAsync(
+    fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>
+  ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
       const array = this.data as unknown[];
       await Promise.all(array.map((item, index) => fn(item, index, array)));
@@ -1369,7 +1371,9 @@ export class ChainableWrapper {
   /**
    * Execute an async function for each element sequentially
    */
-  async forEachAsyncSeq(fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>): Promise<ChainableWrapper> {
+  async forEachAsyncSeq(
+    fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>
+  ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
       const array = this.data as unknown[];
       for (let index = 0; index < array.length; index++) {
@@ -1384,7 +1388,9 @@ export class ChainableWrapper {
   /**
    * Map with async function in parallel
    */
-  async mapAsync<T>(transform: (item: unknown, index?: number) => Promise<T>): Promise<ChainableWrapper> {
+  async mapAsync<T>(
+    transform: (item: unknown, index?: number) => Promise<T>
+  ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
       const results = await Promise.all(this.data.map(transform));
       return new ChainableWrapper(results);
@@ -1396,7 +1402,9 @@ export class ChainableWrapper {
   /**
    * Map with async function sequentially
    */
-  async mapAsyncSeq<T>(transform: (item: unknown, index?: number) => Promise<T>): Promise<ChainableWrapper> {
+  async mapAsyncSeq<T>(
+    transform: (item: unknown, index?: number) => Promise<T>
+  ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
       const results: T[] = [];
       for (let index = 0; index < this.data.length; index++) {

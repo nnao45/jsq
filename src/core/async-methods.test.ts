@@ -7,14 +7,13 @@ describe('Async Array Methods Tests', () => {
   describe('forEachAsync (parallel execution)', () => {
     it('should execute async functions in parallel', async () => {
       const data = '[1, 2, 3]';
-      const results: number[] = [];
-      
+
       // Use a variable to collect results
       const result = await processor.process(
         'const results = []; await $.forEachAsync(async (x) => { await new Promise(r => setTimeout(r, 10)); results.push(x * 2); }); results',
         data
       );
-      
+
       // Since it's parallel, we just check that all items were processed
       expect(Array.isArray(result.data)).toBe(true);
     });
@@ -93,7 +92,7 @@ describe('Async Array Methods Tests', () => {
       expect(result.data).toEqual([
         { id: 1, data: 'item_1' },
         { id: 2, data: 'item_2' },
-        { id: 3, data: 'item_3' }
+        { id: 3, data: 'item_3' },
       ]);
     });
 
@@ -108,7 +107,7 @@ describe('Async Array Methods Tests', () => {
       );
       expect(result.data).toEqual([
         { name: 'user1', active: true },
-        { name: 'user2', active: true }
+        { name: 'user2', active: true },
       ]);
     });
   });
@@ -129,7 +128,7 @@ describe('Async Array Methods Tests', () => {
     it('should handle mixed success and failure in mapAsync', async () => {
       const data = '[1, 2, 3]';
       try {
-        const result = await processor.process(
+        await processor.process(
           'await $.mapAsync(async (x) => { if (x === 2) throw new Error("fail"); return x * 2; })',
           data
         );
