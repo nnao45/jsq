@@ -10,7 +10,7 @@ import {
 } from './format-parsers';
 
 export interface FileInputOptions {
-  fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'auto';
+  fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'yaml' | 'yml' | 'toml' | 'auto';
 }
 
 /**
@@ -142,6 +142,9 @@ export async function readFileByFormat(
     case 'csv':
     case 'tsv':
     case 'parquet':
+    case 'yaml':
+    case 'yml':
+    case 'toml':
       // For structured formats, return parsed data
       return parseFile(filePath, format);
     default:
@@ -166,6 +169,11 @@ export async function createFormatStream(
       return createTSVStream(filePath);
     case 'parquet':
       return createParquetStream(filePath);
+    case 'yaml':
+    case 'yml':
+    case 'toml':
+      // YAML and TOML files are typically smaller and loaded entirely into memory
+      return createFileStream(filePath);
     default:
       throw new Error(`Unsupported file format for streaming: ${format}`);
   }

@@ -1,8 +1,18 @@
 import { createReadStream, promises as fs } from 'node:fs';
 import { Readable } from 'node:stream';
+import * as toml from '@iarna/toml';
 import { parse as csvParse } from 'csv-parse';
+import * as yaml from 'js-yaml';
 
-export type SupportedFormat = 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet';
+export type SupportedFormat =
+  | 'json'
+  | 'jsonl'
+  | 'csv'
+  | 'tsv'
+  | 'parquet'
+  | 'yaml'
+  | 'yml'
+  | 'toml';
 
 export interface ParseOptions {
   format: SupportedFormat;
@@ -155,6 +165,11 @@ export function detectFormatFromExtension(filePath: string): SupportedFormat | n
       return 'tsv';
     case 'parquet':
       return 'parquet';
+    case 'yaml':
+    case 'yml':
+      return 'yaml';
+    case 'toml':
+      return 'toml';
     default:
       return null;
   }
@@ -192,7 +207,44 @@ export async function parseFile(
     case 'parquet':
       return parseParquetToJSON(filePath);
 
+    case 'yaml':
+    case 'yml':
+      return parseYAMLToJSON(filePath);
+
+    case 'toml':
+      return parseTOMLToJSON(filePath);
+
     default:
       throw new Error(`Unsupported format: ${format}`);
+  }
+}
+
+/**
+ * Parse YAML files and convert to JSON objects
+ */
+export async function parseYAMLToJSON(filePath: string): Promise<unknown> {
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    const data = yaml.load(content);
+    return data;
+  } catch (error) {
+    throw new Error(
+      `YAML parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Parse TOML files and convert to JSON objects
+ */
+export async function parseTOMLToJSON(filePath: string): Promise<unknown> {
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    const data = toml.parse(content);
+    return data;
+  } catch (error) {
+    throw new Error(
+      `TOML parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
