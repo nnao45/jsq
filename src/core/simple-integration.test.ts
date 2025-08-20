@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { JsqProcessor } from './processor';
 import { ChainableWrapper } from './chainable';
+import { JsqProcessor } from './processor';
 
 describe('Simple integration tests for new methods', () => {
   const processor = new JsqProcessor({ verbose: false });
@@ -14,7 +14,10 @@ describe('Simple integration tests for new methods', () => {
 
     it('should use flatMap method', async () => {
       const data = [[1, 2], [3, 4], [5]];
-      const result = await processor.process('$.flatMap(arr => arr.map(x => x * 2))', JSON.stringify(data));
+      const result = await processor.process(
+        '$.flatMap(arr => arr.map(x => x * 2))',
+        JSON.stringify(data)
+      );
       expect(result.data).toEqual([2, 4, 6, 8, 10]);
     });
 
@@ -54,7 +57,10 @@ describe('Simple integration tests for new methods', () => {
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 30 },
       ];
-      const result = await processor.process('$.orderBy(["age", "name"], ["asc", "desc"])', JSON.stringify(data));
+      const result = await processor.process(
+        '$.orderBy(["age", "name"], ["asc", "desc"])',
+        JSON.stringify(data)
+      );
       const names = (result.data as Array<{ name: string }>).map(u => u.name);
       expect(names).toEqual(['Alice', 'Charlie', 'Bob']);
     });
@@ -107,10 +113,7 @@ describe('Simple integration tests for new methods', () => {
     });
 
     it('should work with flatMap and sortBy', async () => {
-      const data = [
-        { numbers: [3, 1, 4] },
-        { numbers: [2, 7, 5] },
-      ];
+      const data = [{ numbers: [3, 1, 4] }, { numbers: [2, 7, 5] }];
       const result = await processor.process(
         '$.flatMap(obj => obj.numbers).sortBy(x => x)',
         JSON.stringify(data)
@@ -126,10 +129,16 @@ describe('Simple integration tests for new methods', () => {
         { name: 'banana', price: 0.8 },
         { name: 'orange', price: 2.0 },
       ];
-      
-      const minResult = await processor.process('$.minBy(item => item.price)', JSON.stringify(data));
-      const maxResult = await processor.process('$.maxBy(item => item.price)', JSON.stringify(data));
-      
+
+      const minResult = await processor.process(
+        '$.minBy(item => item.price)',
+        JSON.stringify(data)
+      );
+      const maxResult = await processor.process(
+        '$.maxBy(item => item.price)',
+        JSON.stringify(data)
+      );
+
       expect((minResult.data as { name: string }).name).toBe('banana');
       expect((maxResult.data as { name: string }).name).toBe('orange');
     });
