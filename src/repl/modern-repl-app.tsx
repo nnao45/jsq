@@ -2,7 +2,7 @@ import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { JsqProcessor } from '../core/processor';
 import type { JsqOptions } from '../types/cli';
-import { SyntaxChecker } from './syntax-checker';
+import { getSuggestions, isLikelyPartial } from './syntax-checker';
 
 interface REPLAppProps {
   initialData?: string;
@@ -150,7 +150,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         clearTimeout(slowLoadingTimer);
         const errorStr = error instanceof Error ? error.message : 'Syntax error';
         // Use syntax checker to determine if expression is partial
-        const isPartial = SyntaxChecker.isLikelyPartial(expression);
+        const isPartial = isLikelyPartial(expression);
 
         setEvaluationResult({
           error: errorStr,
@@ -169,7 +169,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   useEffect(() => {
     debouncedEvaluate(currentExpression);
     // Update suggestions
-    const newSuggestions = SyntaxChecker.getSuggestions(currentExpression);
+    const newSuggestions = getSuggestions(currentExpression);
     setSuggestions(newSuggestions);
     // Ensure cursor position is within bounds
     setCursorPosition(prev => Math.min(prev, currentExpression.length));
