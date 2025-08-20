@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { ChainableWrapper } from './chainable';
-import { createSmartDollar } from './jquery-wrapper';
 import { ExpressionEvaluator } from './evaluator';
+import { createSmartDollar } from './jquery-wrapper';
 
 describe('Newly Added Array Methods', () => {
   describe('chunk method', () => {
@@ -181,7 +181,7 @@ describe('Newly Added Array Methods', () => {
       const wrapper = new ChainableWrapper([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
       const result = wrapper.sampleSize(3);
       const samples = result.value as number[];
-      
+
       expect(samples).toHaveLength(3);
       // All samples should be from original array
       samples.forEach(sample => {
@@ -195,7 +195,7 @@ describe('Newly Added Array Methods', () => {
       const wrapper = new ChainableWrapper([1, 2, 3]);
       const result = wrapper.sampleSize(10);
       const samples = result.value as number[];
-      
+
       expect(samples).toHaveLength(3);
       expect(new Set(samples)).toEqual(new Set([1, 2, 3]));
     });
@@ -333,11 +333,11 @@ describe('Built-in _ utilities vs $ methods parity', () => {
 
   it('should have same chunk behavior', async () => {
     const data = [1, 2, 3, 4, 5];
-    
+
     // Test with _
     const underscoreResult = await evaluator.evaluate('_.chunk(data, 2)', data);
     expect(underscoreResult).toEqual([[1, 2], [3, 4], [5]]);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.chunk(2);
@@ -346,11 +346,11 @@ describe('Built-in _ utilities vs $ methods parity', () => {
 
   it('should have same uniqBy behavior', async () => {
     const data = [1.1, 1.2, 2.3, 2.4, 3.5];
-    
+
     // Test with _
     const underscoreResult = await evaluator.evaluate('_.uniqBy(data, Math.floor)', data);
     expect(underscoreResult).toEqual([1.1, 2.3, 3.5]);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.uniqBy(Math.floor);
@@ -363,7 +363,7 @@ describe('Built-in _ utilities vs $ methods parity', () => {
       { name: 'Alice', age: 25 },
       { name: 'Bob', age: 30 },
     ];
-    
+
     // Test with _
     const underscoreResult = await evaluator.evaluate(
       '_.orderBy(data, ["age", "name"], ["asc", "desc"])',
@@ -371,7 +371,7 @@ describe('Built-in _ utilities vs $ methods parity', () => {
     );
     const underscoreNames = (underscoreResult as Array<{ name: string }>).map(u => u.name);
     expect(underscoreNames).toEqual(['Alice', 'Charlie', 'Bob']);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.orderBy(['age', 'name'], ['asc', 'desc']);
@@ -385,16 +385,13 @@ describe('Built-in _ utilities vs $ methods parity', () => {
       { name: 'Bob', dept: 'Sales' },
       { name: 'Carol', dept: 'Eng' },
     ];
-    
+
     // Test with _
-    const underscoreResult = await evaluator.evaluate(
-      '_.groupBy(data, item => item.dept)',
-      data
-    );
+    const underscoreResult = await evaluator.evaluate('_.groupBy(data, item => item.dept)', data);
     expect(underscoreResult).toHaveProperty('Eng');
     expect(underscoreResult).toHaveProperty('Sales');
     expect((underscoreResult as Record<string, unknown[]>).Eng).toHaveLength(2);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.groupBy((item: { dept: string }) => item.dept);
@@ -405,11 +402,11 @@ describe('Built-in _ utilities vs $ methods parity', () => {
 
   it('should have same flatten behavior', async () => {
     const data = [1, [2, 3], [[4]], 5];
-    
+
     // Test with _
     const underscoreResult = await evaluator.evaluate('_.flatten(data)', data);
     expect(underscoreResult).toEqual([1, 2, 3, [4], 5]);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.flatten();
@@ -418,11 +415,11 @@ describe('Built-in _ utilities vs $ methods parity', () => {
 
   it('should have same compact behavior', async () => {
     const data = [0, 1, false, 2, '', 3, null, undefined, 4];
-    
+
     // Test with _
     const underscoreResult = await evaluator.evaluate('_.compact(data)', data);
     expect(underscoreResult).toEqual([1, 2, 3, 4]);
-    
+
     // Test with $ (via ChainableWrapper)
     const wrapper = new ChainableWrapper(data);
     const dollarResult = wrapper.compact();
