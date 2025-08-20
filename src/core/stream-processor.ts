@@ -1,5 +1,5 @@
-import { type Readable, Transform } from 'node:stream';
 import { cpus } from 'node:os';
+import { type Readable, Transform } from 'node:stream';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
 import { ExpressionTransformer } from './expression-transformer';
@@ -37,19 +37,18 @@ export class StreamProcessor {
     if (parallelOption === false || parallelOption === undefined) {
       return 0; // No parallel processing
     }
-    
+
     if (parallelOption === true) {
       return Math.max(1, cpus().length - 1);
     }
-    
-    const numericValue = typeof parallelOption === 'string' 
-      ? parseInt(parallelOption, 10) 
-      : parallelOption;
-    
-    if (isNaN(numericValue) || numericValue < 1) {
+
+    const numericValue =
+      typeof parallelOption === 'string' ? parseInt(parallelOption, 10) : parallelOption;
+
+    if (Number.isNaN(numericValue) || numericValue < 1) {
       return Math.max(1, cpus().length - 1);
     }
-    
+
     return Math.min(numericValue, cpus().length * 2); // Cap at 2x CPU count
   }
 
@@ -57,10 +56,10 @@ export class StreamProcessor {
     if (this.workerPool) {
       return; // Already initialized
     }
-    
+
     this.workerPool = new WorkerPool(workerCount);
     await this.workerPool.initialize();
-    
+
     if (this.options.verbose) {
       console.error(`Initialized worker pool with ${workerCount} workers`);
     }
@@ -377,14 +376,14 @@ export class StreamProcessor {
   ): Transform {
     const { batchSize = 100, jsonLines = true, delimiter = '\n', parallel } = streamOptions;
     const workerCount = this.getWorkerCount(parallel);
-    
+
     if (workerCount === 0) {
       // Fall back to regular batch processing if no parallel workers
       return this.createBatchTransformStream(expression, streamOptions);
     }
 
     let buffer = '';
-    let lineBatch: string[] = [];
+    const lineBatch: string[] = [];
     const totalProcessed = { value: 0 };
     let isWorkerPoolInitialized = false;
 
@@ -401,46 +400,23 @@ export class StreamProcessor {
             isWorkerPoolInitialized = true;
           }
 
-          buffer += chunk.toString();
-          const lines = buffer.split(delimiter);
+          // Process chunk into lines
+          const newLines = this.processChunkToLines(chunk.toString(), buffer, delimiter);
+          buffer = newLines.remainingBuffer;
 
-          // Keep the last incomplete line in buffer
-          buffer = lines.pop() || '';
+          // Add valid lines to batch
+          this.addLinesToBatch(newLines.lines, lineBatch);
 
-          // Add lines to batch
-          for (const line of lines) {
-            if (line.trim()) {
-              lineBatch.push(line.trim());
-            }
-          }
-
-          // Process batch when it reaches the specified size
-          if (lineBatch.length >= batchSize && this.workerPool) {
-            const batchToProcess = lineBatch.splice(0, batchSize);
-            
-            if (jsonLines) {
-              const results = await this.processBatchParallel(
-                transformedExpression, 
-                batchToProcess, 
-                this.workerPool
-              );
-              
-              totalProcessed.value += batchToProcess.length;
-
-              if (this.options.verbose) {
-                const stats = this.workerPool.getStats();
-                console.error(
-                  `Processed parallel batch of ${batchToProcess.length} items ` +
-                  `(total: ${totalProcessed.value}, workers: ${stats.busyWorkers}/${stats.totalWorkers}, queue: ${stats.queueLength})`
-                );
-              }
-
-              // Output results
-              const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
-              callback(null, batchOutput);
-            } else {
-              callback();
-            }
+          // Process batch if ready
+          if (this.shouldProcessBatch(lineBatch.length, batchSize)) {
+            await this.processBatchIfReady(
+              lineBatch,
+              batchSize,
+              transformedExpression,
+              totalProcessed,
+              jsonLines,
+              callback
+            );
           } else {
             callback();
           }
@@ -451,37 +427,17 @@ export class StreamProcessor {
 
       flush: async callback => {
         try {
-          // Process any remaining lines in buffer and batch
-          if (buffer.trim()) {
-            lineBatch.push(buffer.trim());
-          }
+          // Add remaining buffer to batch
+          this.addRemainingBufferToBatch(buffer, lineBatch);
 
-          if (lineBatch.length > 0 && this.workerPool) {
-            if (jsonLines) {
-              const results = await this.processBatchParallel(
-                transformedExpression, 
-                lineBatch, 
-                this.workerPool
-              );
-              
-              totalProcessed.value += lineBatch.length;
-
-              if (this.options.verbose) {
-                const stats = this.workerPool.getStats();
-                console.error(
-                  `Processed final parallel batch of ${lineBatch.length} items ` +
-                  `(total: ${totalProcessed.value}, workers: ${stats.totalWorkers})`
-                );
-              }
-
-              const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
-              callback(null, batchOutput);
-            } else {
-              callback();
-            }
-          } else {
-            callback();
-          }
+          // Process final batch
+          await this.processFinalBatch(
+            lineBatch,
+            transformedExpression,
+            totalProcessed,
+            jsonLines,
+            callback
+          );
         } catch (error) {
           callback(error instanceof Error ? error : new Error('Parallel flush error'));
         }
@@ -619,32 +575,53 @@ export class StreamProcessor {
   }
 
   private async processBatchParallel(
-    expression: string, 
-    batch: string[], 
+    expression: string,
+    batch: string[],
     workerPool: WorkerPool
   ): Promise<unknown[]> {
     try {
       const result = await workerPool.processTask(batch, expression, this.options);
       return result.results;
     } catch (error) {
-      if (this.options.verbose) {
-        console.error('Error in parallel processing:', error instanceof Error ? error.message : error);
+      this.logParallelProcessingError(error);
+      return await this.fallbackSequentialProcessing(expression, batch);
+    }
+  }
+
+  private logParallelProcessingError(error: unknown): void {
+    if (this.options.verbose) {
+      console.error(
+        'Error in parallel processing:',
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  private async fallbackSequentialProcessing(
+    expression: string,
+    batch: string[]
+  ): Promise<unknown[]> {
+    const results: unknown[] = [];
+
+    for (const line of batch) {
+      try {
+        const data = this.parser.parse(line.trim());
+        const result = await this.evaluator.evaluate(expression, data);
+        results.push(result);
+      } catch (itemError) {
+        this.logFallbackItemError(itemError);
       }
-      
-      // Fallback to sequential processing
-      const results: unknown[] = [];
-      for (const line of batch) {
-        try {
-          const data = this.parser.parse(line.trim());
-          const result = await this.evaluator.evaluate(expression, data);
-          results.push(result);
-        } catch (itemError) {
-          if (this.options.verbose) {
-            console.error('Error processing fallback item:', itemError instanceof Error ? itemError.message : itemError);
-          }
-        }
-      }
-      return results;
+    }
+
+    return results;
+  }
+
+  private logFallbackItemError(error: unknown): void {
+    if (this.options.verbose) {
+      console.error(
+        'Error processing fallback item:',
+        error instanceof Error ? error.message : error
+      );
     }
   }
 
@@ -676,6 +653,102 @@ export class StreamProcessor {
           }
         }
       }
+    }
+  }
+
+  // Helper methods for stream processing complexity reduction
+  private processChunkToLines(
+    chunkStr: string,
+    buffer: string,
+    delimiter: string
+  ): {
+    lines: string[];
+    remainingBuffer: string;
+  } {
+    const newBuffer = buffer + chunkStr;
+    const lines = newBuffer.split(delimiter);
+    const remainingBuffer = lines.pop() || '';
+    return { lines, remainingBuffer };
+  }
+
+  private addLinesToBatch(lines: string[], lineBatch: string[]): void {
+    for (const line of lines) {
+      if (line.trim()) {
+        lineBatch.push(line.trim());
+      }
+    }
+  }
+
+  private shouldProcessBatch(batchLength: number, batchSize: number): boolean {
+    return batchLength >= batchSize && this.workerPool !== null;
+  }
+
+  private async processBatchIfReady(
+    lineBatch: string[],
+    batchSize: number,
+    transformedExpression: string,
+    totalProcessed: { value: number },
+    jsonLines: boolean,
+    callback: (error?: Error | null, result?: unknown) => void
+  ): Promise<void> {
+    const batchToProcess = lineBatch.splice(0, batchSize);
+
+    if (jsonLines && this.workerPool) {
+      const results = await this.processBatchParallel(
+        transformedExpression,
+        batchToProcess,
+        this.workerPool
+      );
+
+      totalProcessed.value += batchToProcess.length;
+      this.logBatchProcessed(batchToProcess.length, totalProcessed.value, false);
+
+      const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
+      callback(null, batchOutput);
+    } else {
+      callback();
+    }
+  }
+
+  private addRemainingBufferToBatch(buffer: string, lineBatch: string[]): void {
+    if (buffer.trim()) {
+      lineBatch.push(buffer.trim());
+    }
+  }
+
+  private async processFinalBatch(
+    lineBatch: string[],
+    transformedExpression: string,
+    totalProcessed: { value: number },
+    jsonLines: boolean,
+    callback: (error?: Error | null, result?: unknown) => void
+  ): Promise<void> {
+    if (lineBatch.length > 0 && this.workerPool && jsonLines) {
+      const results = await this.processBatchParallel(
+        transformedExpression,
+        lineBatch,
+        this.workerPool
+      );
+
+      totalProcessed.value += lineBatch.length;
+      this.logBatchProcessed(lineBatch.length, totalProcessed.value, true);
+
+      const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
+      callback(null, batchOutput);
+    } else {
+      callback();
+    }
+  }
+
+  private logBatchProcessed(batchSize: number, total: number, isFinal: boolean): void {
+    if (this.options.verbose && this.workerPool) {
+      const stats = this.workerPool.getStats();
+      const prefix = isFinal ? 'final' : '';
+      console.error(
+        `Processed ${prefix} parallel batch of ${batchSize} items ` +
+          `(total: ${total}, workers: ${stats.busyWorkers || stats.totalWorkers}/${stats.totalWorkers}` +
+          (isFinal ? ')' : `, queue: ${stats.queueLength})`)
+      );
     }
   }
 }

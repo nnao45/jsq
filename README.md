@@ -90,7 +90,25 @@ time cat million-records.jsonl | jq '.process()'               # ~40 seconds
 ### 6. 📈 Intelligent Caching
 Automatically cache installed libraries for fast subsequent use
 
-### 7. 🎯 Full TypeScript Support
+### 7. 🌐 Built-in Fetch & Async/Await Support ✨ NEW
+Native fetch API and async/await support for seamless HTTP requests and asynchronous operations
+
+```bash
+# Fetch API data and process it
+jsq 'const response = await fetch("https://jsonplaceholder.typicode.com/posts/1"); const data = await response.json(); data.title'
+# Output: "sunt aut facere repellat provident occaecati excepturi optio reprehenderit"
+
+# Fetch multiple endpoints concurrently
+jsq 'const urls = ["https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2"]; const responses = await Promise.all(urls.map(url => fetch(url))); const data = await Promise.all(responses.map(r => r.json())); data.map(post => post.title)'
+
+# Combine with data processing
+echo '["posts/1", "posts/2", "posts/3"]' | jsq '$.map(async endpoint => { const response = await fetch(`https://jsonplaceholder.typicode.com/${endpoint}`); const data = await response.json(); return {id: data.id, title: data.title}; })'
+
+# Error handling with async operations
+jsq 'try { const response = await fetch("https://invalid-url"); const data = await response.json(); return data; } catch (error) { return {error: error.message}; }'
+```
+
+### 8. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
 
 ## 📦 Installation
@@ -808,6 +826,7 @@ deno lint
 - [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
 - [x] **Smart Loading Indicators** - Visual feedback for processing time
 - [x] **Pipeline Variable Declarations** ✨ NEW - Declare and use variables in expressions (`const x = value | x.method()`)
+- [x] **Built-in Fetch & Async/Await Support** ✨ NEW - Native fetch API and async/await for HTTP requests and asynchronous operations
 - [x] **Multi-CPU Parallel Processing** ✨ NEW - Leverage all CPU cores for blazingly fast processing (10-20x faster than jq)
 - [x] **Streaming processing** - Large file support with real-time output
 - [x] **JSON Lines format support** - Handle JSONL data efficiently  

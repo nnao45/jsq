@@ -1332,6 +1332,28 @@ export class ChainableWrapper {
   // Utility operators
 
   /**
+   * Execute a function for each element (standard forEach)
+   */
+  forEach(fn: (item: unknown, index?: number, array?: unknown[]) => void): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const array = this.data as unknown[];
+      array.forEach((item, index) => {
+        fn(item, index, array);
+      });
+    } else {
+      fn(this.data, 0, [this.data]);
+    }
+    return new ChainableWrapper(this.data);
+  }
+
+  /**
+   * Execute a function for each element (alias for forEach)
+   */
+  each(fn: (item: unknown, index?: number, array?: unknown[]) => void): ChainableWrapper {
+    return this.forEach(fn);
+  }
+
+  /**
    * Side effects without changing the stream (RxJS-style)
    */
   tap(fn: (item: unknown, index?: number) => void): ChainableWrapper {

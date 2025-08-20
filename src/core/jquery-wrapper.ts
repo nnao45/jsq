@@ -130,6 +130,10 @@ const CHAINABLE_METHODS = [
   // Utility operators
   'tap', // Note: this is the RxJS-style tap, different from spy
   'startWith',
+
+  // Standard iteration methods
+  'forEach',
+  'each',
 ];
 
 // Native array methods available for potential future array method delegation
@@ -161,34 +165,15 @@ export function createSmartDollar(data: unknown) {
       },
     });
 
+    // For exact '$' expressions, the evaluator should return the raw data directly
+    // This is handled by checking if the expression is exactly '$' in the expression transformer
     return $;
   }
 
-  // For arrays, create a callable wrapper that also acts as an array
+  // For arrays, return actual array with added methods
   if (Array.isArray(data)) {
-    // Create a function that returns ChainableWrapper when called
-    const $ = function(...args: unknown[]) {
-      if (args.length === 0) {
-        return new ChainableWrapper(data);
-      }
-      return new ChainableWrapper(args[0]);
-    } as any;
-
-    // Copy array elements to the function object
-    for (let i = 0; i < data.length; i++) {
-      $[i] = data[i];
-    }
-    
-    // Set length property
-    Object.defineProperty($, 'length', {
-      value: data.length,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    });
-
-    // Add array prototype methods
-    Object.setPrototypeOf($, Array.prototype);
+    // Create an actual array - this will pass Array.isArray()
+    const $ = [...data] as unknown[] & Record<string, unknown>;
 
     // Add .data property to access raw data (for tests)
     Object.defineProperty($, 'data', {
@@ -244,7 +229,7 @@ export function createSmartDollar(data: unknown) {
       configurable: true,
     });
 
-    return $; // This is a function that also acts like an array
+    return $; // This is a real array, so Array.isArray($) === true
   }
 
   // Create the $ function for objects
