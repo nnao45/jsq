@@ -23,7 +23,21 @@ cat data.json | jsq '$.items.compact().uniqBy(i => i.id).orderBy(["priority", "d
 cat sales.json | jsq '$.sales.groupBy(s => s.category).entries().map(([cat, sales]) => ({category: cat, avg: _.mean(sales.map(s => s.amount))}))'
 ```
 
-### 2. 🔗 npm Library Integration
+### 2. ✨ Pipeline Variable Declarations
+Declare and use variables within expressions using intuitive pipeline syntax
+
+```bash
+# Simple variable declaration and usage
+jsq "const message = 'hello world' | message.toUpperCase()" # "HELLO WORLD"
+
+# Complex data transformations
+cat users.json | jsq "const names = $.users.map(u => u.name) | names.join(', ')"
+
+# Works with both const and let
+jsq "let numbers = [1,2,3,4,5] | numbers.filter(x => x > 3)" # [4, 5]
+```
+
+### 3. 🔗 npm Library Integration
 Dynamically load and use any npm library
 
 ```bash
@@ -41,7 +55,7 @@ jsq '$.name' --file users.jsonl --stream
 jsq --repl --file data.json  # Real-time data exploration
 ```
 
-### 3. ⚡ Fast Execution & Optional Security
+### 4. ⚡ Fast Execution & Optional Security
 Fast execution by default, with optional VM isolation for security-critical use cases
 
 ```bash
@@ -52,10 +66,10 @@ cat data.json | jsq --use lodash '_.uniq(data.tags)'
 cat data.json | jsq --use lodash --safe '_.uniq(data.tags)'
 ```
 
-### 4. 📈 Intelligent Caching
+### 5. 📈 Intelligent Caching
 Automatically cache installed libraries for fast subsequent use
 
-### 5. 🎯 Full TypeScript Support
+### 6. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
 
 ## 📦 Installation
@@ -95,7 +109,7 @@ deno run --allow-all --unstable-sloppy-imports https://github.com/nnao45/jsq/raw
 ```
 
 ### Cross-Runtime Compatibility
-jsq now supports running with multiple JavaScript runtimes:
+jsq supports running with multiple JavaScript runtimes through subcommands:
 - **Node.js**: `jsq` (default)
 - **Bun**: `jsq bun` (faster startup, better performance)
 - **Deno**: `jsq deno` (secure by default, TypeScript native)
@@ -158,6 +172,36 @@ echo '{"orders": [{"amount": 100}, {"amount": 250}, {"amount": 75}]}' | jsq '$.o
 ```bash
 echo '{"products": [{"name": "iPhone", "category": "phone", "price": 999}, {"name": "MacBook", "category": "laptop", "price": 1299}]}' | jsq '$.products.where("category", "phone").pluck("name")'
 # Output: ["iPhone"]
+```
+
+### Pipeline Variable Declarations ✨ NEW
+
+Create variables and use them in the same expression with intuitive pipeline syntax:
+
+```bash
+# Basic variable pipeline with const
+echo '{}' | jsq "const message = 'hello world' | message.toUpperCase()"
+# Output: "HELLO WORLD"
+
+# Using let for mutable variables
+echo '{}' | jsq "let numbers = [1,2,3,4,5] | numbers.filter(x => x > 3)"
+# Output: [4, 5]
+
+# Complex data processing with jsq data
+echo '{"users": [{"name": "Alice"}, {"name": "Bob"}]}' | jsq "const names = $.users.map(u => u.name) | names.join(', ')"
+# Output: "Alice, Bob"
+
+# Object manipulation
+echo '{}' | jsq "const data = {a: 1, b: 2, c: 3} | Object.keys(data).length"
+# Output: 3
+
+# Method chaining with variables
+echo '{}' | jsq "let text = 'The Quick Brown Fox' | text.toLowerCase().split(' ').join('-')"
+# Output: "the-quick-brown-fox"
+
+# Works seamlessly with all runtimes
+echo '{}' | jsq bun "const result = [1,2,3,4,5] | result.reduce((a,b) => a+b, 0)"  # Bun
+echo '{}' | jsq deno "let items = ['a','b','c'] | items.length"                     # Deno
 ```
 
 ## 🔧 Advanced Features
@@ -350,9 +394,9 @@ jsq '_.times(3, i => i * 2)'  # [0, 2, 4]
 ## 🎛️ Command Line Options
 
 ```bash
-jsq [options] <expression>          # Node.js
-jsq-bun [options] <expression>      # Bun  
-jsq-deno [options] <expression>     # Deno
+jsq [options] <expression>          # Node.js (default)
+jsq bun [options] <expression>      # Bun runtime
+jsq deno [options] <expression>     # Deno runtime
 
 Options:
   -v, --verbose           Display detailed execution information
@@ -374,14 +418,14 @@ Options:
 
 #### Quick Start Examples
 ```bash
-# Node.js
+# Node.js (default)
 echo '{"data": [1,2,3]}' | jsq '$.data.map(x => x * 2)'
 
 # Bun (faster execution)
-echo '{"data": [1,2,3]}' | jsq-bun '$.data.map(x => x * 2)'
+echo '{"data": [1,2,3]}' | jsq bun '$.data.map(x => x * 2)'
 
 # Deno (secure by default)
-echo '{"data": [1,2,3]}' | deno run --allow-all https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.data.map(x => x * 2)'
+echo '{"data": [1,2,3]}' | jsq deno '$.data.map(x => x * 2)'
 ```
 
 ## 🔄 Migration from jq
@@ -659,6 +703,7 @@ deno lint
 - [x] **Beautiful Interactive REPL** - Real-time evaluation with colorful UI
 - [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
 - [x] **Smart Loading Indicators** - Visual feedback for processing time
+- [x] **Pipeline Variable Declarations** ✨ NEW - Declare and use variables in expressions (`const x = value | x.method()`)
 - [x] **Streaming processing** - Large file support with real-time output
 - [x] **JSON Lines format support** - Handle JSONL data efficiently  
 - [x] **CSV/TSV/Parquet file support** - Multiple data format compatibility
@@ -669,11 +714,11 @@ deno lint
 - [x] **Full TypeScript support** - Type-safe development experience
 
 ### 🚀 Multi-Runtime Support
-- [x] **Node.js Compatible** - Full support for Node.js 16+ with npm ecosystem
-- [x] **Bun Ready** - Native Bun support with faster execution and built-in bundler
-- [x] **Deno Compatible** - Works with Deno's secure-by-default runtime
+- [x] **Node.js Compatible** - Full support for Node.js 16+ with npm ecosystem (`jsq`)
+- [x] **Bun Ready** - Native Bun support with faster execution via subcommand (`jsq bun`)
+- [x] **Deno Compatible** - Works with Deno's secure-by-default runtime via subcommand (`jsq deno`)
 - [x] **Cross-Runtime Library Loading** - Automatic runtime detection and package management
-- [x] **Universal Binary Distribution** - Single codebase, multiple runtime targets
+- [x] **Unified Subcommand Interface** - Single binary with runtime-specific execution
 
 ### Comprehensive Lodash-like Method Library
 - [x] **60+ Built-in Utility Methods** - Extensive method collection without external dependencies
