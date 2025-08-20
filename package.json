@@ -32,7 +32,8 @@
     "start:bun": "bun dist/index-bun.js",
     "start:deno": "deno run --allow-all dist/index-deno.js",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run format && npm run lint:fix && npm run check && npm run build && npm run test"
+    "prepublishOnly": "npm run format && npm run lint:fix && npm run check && npm run build && npm run test",
+    "relase:patch": "npm run prepublishOnly && sh ./bump-version.sh && npm publish --access public"
   },
   "keywords": [
     "json",
