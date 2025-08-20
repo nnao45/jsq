@@ -244,47 +244,6 @@ describe('Performance Tests', () => {
     });
   });
 
-  describe('Comparison: Safe vs Unsafe Mode', () => {
-    it.skip('should compare performance between safe and unsafe modes', async () => {
-      const testData = Array.from({ length: 1000 }, (_, i) => ({
-        id: i,
-        value: Math.random() * 100,
-        category: i % 10,
-      }));
-
-      const expression =
-        '$.filter(item => item.value > 50).value.map(item => item.value * 2).reduce((sum, val) => sum + val, 0)';
-
-      // Test unsafe mode (default)
-      const unsafeEvaluator = new ExpressionEvaluator({ ...options, unsafe: false });
-      const unsafeStart = Date.now();
-      const unsafeResult = await unsafeEvaluator.evaluate(expression, testData);
-      const unsafeTime = Date.now() - unsafeStart;
-
-      // Test safe mode
-      const safeEvaluator = new ExpressionEvaluator({ ...options, safe: true });
-      const safeStart = Date.now();
-      const safeResult = await safeEvaluator.evaluate(expression, testData);
-      const safeTime = Date.now() - safeStart;
-
-      // Both should produce the same result
-      expect(typeof unsafeResult).toBe('number');
-      expect(typeof safeResult).toBe('number');
-
-      // Both should complete in reasonable time
-      expect(unsafeTime).toBeLessThan(1000);
-      expect(safeTime).toBeLessThan(2000); // VM mode might be slightly slower
-
-      // Log performance comparison for information
-      console.log(`Performance comparison:
-        Unsafe mode: ${unsafeTime}ms
-        Safe mode: ${safeTime}ms
-        Ratio: ${(safeTime / unsafeTime).toFixed(2)}x`);
-
-      await unsafeEvaluator.dispose();
-      await safeEvaluator.dispose();
-    });
-  });
 
   afterEach(async () => {
     await evaluator.dispose();

@@ -107,56 +107,6 @@ describe('ExpressionEvaluator', () => {
     });
   });
 
-  describe('VM vs Unsafe mode', () => {
-    it.skip('should execute in VM mode when safe flag is set', async () => {
-      const verboseOptions = { ...mockOptions, safe: true, verbose: true };
-      const verboseEvaluator = new ExpressionEvaluator(verboseOptions);
-
-      // Mock console.error to capture output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      const data = { value: 42 };
-      await verboseEvaluator.evaluate('$.value', data);
-
-      expect(consoleSpy).toHaveBeenCalledWith('🔒 Running in secure VM mode');
-      consoleSpy.mockRestore();
-    });
-
-    it('should execute in unsafe mode when flag is set', async () => {
-      const unsafeOptions = { ...mockOptions, unsafe: true, verbose: true };
-      const unsafeEvaluator = new ExpressionEvaluator(unsafeOptions);
-
-      // Mock console.error to capture output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      const data = { value: 42 };
-      await unsafeEvaluator.evaluate('$.value', data);
-
-      expect(consoleSpy).toHaveBeenCalledWith('⚡ Running in unsafe mode (VM disabled)');
-      consoleSpy.mockRestore();
-    });
-
-    it('should produce same results in both modes for safe expressions', async () => {
-      const safeEvaluator = new ExpressionEvaluator({ ...mockOptions, unsafe: false });
-      const unsafeEvaluator = new ExpressionEvaluator({ ...mockOptions, unsafe: true });
-
-      const data = {
-        numbers: [1, 2, 3, 4, 5],
-        users: [
-          { name: 'Alice', score: 95 },
-          { name: 'Bob', score: 87 },
-        ],
-      };
-
-      const expression = '$.users.filter(u => u.score > 90).pluck("name")';
-
-      const safeResult = await safeEvaluator.evaluate(expression, data);
-      const unsafeResult = await unsafeEvaluator.evaluate(expression, data);
-
-      expect(safeResult).toEqual(unsafeResult);
-      expect(safeResult).toEqual(['Alice']);
-    });
-  });
 
   describe('Error handling', () => {
     it('should handle syntax errors gracefully', async () => {

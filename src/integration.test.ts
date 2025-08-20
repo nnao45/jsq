@@ -114,7 +114,7 @@ describe('Integration Tests', () => {
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toBe(15);
-      expect(result.stderr).toContain('⚡ Running in unsafe mode');
+      expect(result.stderr).toContain('⚡ Running in optimized mode');
     }, 10000);
 
     it('should work with debug flag', async () => {
@@ -341,7 +341,7 @@ describe('Integration Tests', () => {
       const result = await runJsq(expression, input, ['--unsafe', '-v']);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain('⚡ Running in unsafe mode');
+      expect(result.stderr).toContain('⚡ Running in optimized mode');
     }, 10000);
   });
 

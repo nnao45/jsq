@@ -30,8 +30,8 @@ program
     'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
     'auto'
   )
-  .option('--unsafe', 'Legacy option (deprecated, use --safe for VM isolation)')
-  .option('--safe', 'Run with VM isolation (slower but more secure)')
+  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--safe', 'Legacy option (deprecated, shows warning)')
   .option('--repl', 'Start interactive REPL mode')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     try {
