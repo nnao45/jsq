@@ -267,7 +267,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
     // Calculate available lines based on actual output area height
     const availableHeight = Math.max(outputHeight - 6, 5); // Reserve space for title and padding
     const maxLines = showData ? Math.floor(availableHeight / 2) : availableHeight;
-    
+
     const lines = result.split('\n');
     if (lines.length <= maxLines) {
       return result;
