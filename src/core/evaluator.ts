@@ -4,6 +4,27 @@ import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
 import { LibraryManager } from './library-manager';
 
+// Import fetch for Node.js environments
+let fetchFunction: typeof fetch;
+try {
+  // Try to use built-in fetch (Node.js 18+)
+  fetchFunction = globalThis.fetch;
+  if (!fetchFunction) {
+    throw new Error('No built-in fetch');
+  }
+} catch {
+  try {
+    // Fallback to node-fetch for older Node.js versions
+    const nodeFetch = require('node-fetch');
+    fetchFunction = nodeFetch.default || nodeFetch;
+  } catch {
+    // If neither is available, provide a stub function
+    fetchFunction = (() => {
+      throw new Error('fetch is not available. Please use Node.js 18+ or install node-fetch');
+    }) as typeof fetch;
+  }
+}
+
 export class ExpressionEvaluator {
   private options: JsqOptions;
   private libraryManager: LibraryManager;
@@ -30,6 +51,12 @@ export class ExpressionEvaluator {
     try {
       const transformedExpression = this.transformExpression(expression);
       const loadedLibraries = await this.loadExternalLibraries();
+
+      // Special case: if expression is exactly '$' and data is null/undefined, return the raw data
+      if (transformedExpression.trim() === '$' && (data === null || data === undefined)) {
+        return data;
+      }
+
       const $ = createSmartDollar(data);
       const context = await this.createEvaluationContext($, loadedLibraries, data);
       const result = await this.executeExpression(transformedExpression, context);
@@ -75,6 +102,7 @@ export class ExpressionEvaluator {
       Map,
       Reflect,
       Symbol,
+      fetch: fetchFunction,
       createSmartDollar,
       _: await this.loadUtilities(),
       ...loadedLibraries,
@@ -86,7 +114,25 @@ export class ExpressionEvaluator {
   }
 
   private createConsoleObject(): Record<string, unknown> {
-    return this.options.verbose ? console : { log: () => {}, error: () => {}, warn: () => {} };
+    // Always provide console.log for user expressions
+    // console.error is stderr output, so always allow it
+    return {
+      log: console.log,
+      error: console.error,
+      warn: console.warn,
+      info: console.info,
+      debug: this.options.verbose ? console.debug : () => {},
+      trace: this.options.verbose ? console.trace : () => {},
+      table: console.table,
+      time: console.time,
+      timeEnd: console.timeEnd,
+      group: console.group,
+      groupEnd: console.groupEnd,
+      clear: console.clear,
+      count: console.count,
+      assert: console.assert,
+      dir: console.dir,
+    };
   }
 
   private setupLibraryAliases(
@@ -112,7 +158,7 @@ export class ExpressionEvaluator {
       console.error('⚡ Running in optimized mode');
     }
 
-    return this.safeEval(transformedExpression, context);
+    return await this.safeEval(transformedExpression, context);
   }
 
   private async unwrapResult(result: unknown): Promise<unknown> {
@@ -191,14 +237,15 @@ export class ExpressionEvaluator {
     return unwrapped;
   }
 
-  private safeEval(expression: string, context: Record<string, unknown>): unknown {
+  private async safeEval(expression: string, context: Record<string, unknown>): Promise<unknown> {
     // Create a safe evaluation environment
     const contextKeys = Object.keys(context);
     const contextValues = Object.values(context);
 
     try {
-      // Use Function constructor for safer evaluation than eval()
-      const func = new Function(
+      // Use AsyncFunction constructor to support await keyword
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const func = new AsyncFunction(
         ...contextKeys,
         `
         "use strict";
@@ -206,7 +253,7 @@ export class ExpressionEvaluator {
       `
       );
 
-      return func(...contextValues);
+      return await func(...contextValues);
     } catch (error) {
       throw new Error(
         `Invalid expression: ${error instanceof Error ? error.message : 'Syntax error'}`

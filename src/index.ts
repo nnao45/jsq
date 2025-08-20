@@ -16,7 +16,10 @@ program
   .option('-w, --watch <file>', 'Watch file for changes and re-execute')
   .option('-s, --stream', 'Enable streaming mode for large files')
   .option('-b, --batch <size>', 'Batch size for streaming (default: 1000)', '1000')
-  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
+  .option(
+    '-p, --parallel [workers]',
+    'Enable parallel processing (optionally specify number of workers)'
+  )
   .option('-u, --use <libraries...>', 'Load npm libraries')
   .option('-t, --types <file>', 'TypeScript definition file')
   .option('--schema <file>', 'Schema file for validation')

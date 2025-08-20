@@ -60,7 +60,10 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
+  .option(
+    '-p, --parallel [workers]',
+    'Enable parallel processing (optionally specify number of workers)'
+  )
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -102,7 +105,10 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
+  .option(
+    '-p, --parallel [workers]',
+    'Enable parallel processing (optionally specify number of workers)'
+  )
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -127,7 +133,10 @@ program
   .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option('-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)')
+  .option(
+    '-p, --parallel [workers]',
+    'Enable parallel processing (optionally specify number of workers)'
+  )
   .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
@@ -368,7 +377,8 @@ function createStreamOptions(options: JsqOptions, detectedFormat: string) {
       !!options.batch ||
       !!options.parallel ||
       streamingFormats.includes(detectedFormat),
-    batchSize: typeof options.batch === 'number' ? options.batch : (options.parallel ? 200 : undefined),
+    batchSize:
+      typeof options.batch === 'number' ? options.batch : options.parallel ? 200 : undefined,
     parallel: options.parallel,
   };
 }

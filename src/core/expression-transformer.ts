@@ -5,6 +5,11 @@
 export function transformExpression(expression: string): string {
   const trimmed = expression.trim();
 
+  // Handle semicolon operations (sequential execution)
+  if (hasSemicolonOperator(trimmed)) {
+    return transformSemicolonExpression(trimmed);
+  }
+
   // Handle variable declaration with pipeline (const a = 'xx' | a.toString())
   if (hasVariablePipelineDeclaration(trimmed)) {
     return transformVariablePipelineDeclaration(trimmed);
@@ -25,9 +30,10 @@ export function transformExpression(expression: string): string {
     return transformAsyncGeneratorExpression(trimmed);
   }
 
-  // Handle standalone '$' - convert to '$()' to get the data wrapper
+  // Handle standalone '$' - for null/undefined data, return the data directly
+  // For other data types, return $ as is and let the evaluator handle it
   if (trimmed === '$') {
-    return '$()';
+    return '$';
   }
 
   return expression;
@@ -340,9 +346,11 @@ function hasVariablePipelineDeclaration(expression: string): boolean {
   const trimmed = expression.trim();
 
   // Match patterns like "const varName = value | ..." or "let varName = value | ..."
-  const variableDeclarationPattern =
+  // Also handle multiple consecutive declarations: "const a = ... | const b = ... | ..."
+  const singleDeclarationPattern =
     /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/;
-  return variableDeclarationPattern.test(trimmed);
+  
+  return singleDeclarationPattern.test(trimmed);
 }
 
 /**
@@ -352,8 +360,60 @@ function hasVariablePipelineDeclaration(expression: string): boolean {
 function transformVariablePipelineDeclaration(expression: string): string {
   const trimmed = expression.trim();
 
+  // Check if there are multiple consecutive variable declarations
+  if (hasMultipleVariableDeclarations(trimmed)) {
+    return transformMultipleVariableDeclarations(trimmed);
+  }
+
+  // Handle single variable declaration
+  return transformSingleVariableDeclaration(trimmed);
+}
+
+function hasMultipleVariableDeclarations(expression: string): boolean {
+  // Look for pattern: "const/let var = ... | const/let var = ..."
+  const multiplePattern = /\|\s*(const|let)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=/;
+  return multiplePattern.test(expression);
+}
+
+function transformMultipleVariableDeclarations(expression: string): string {
+  // More robust approach: parse the expression manually
+  const declarations: string[] = [];
+  let remaining = expression.trim();
+  let finalExpression = '';
+  
+  // Parse each variable declaration
+  while (true) {
+    const declMatch = remaining.match(/^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.*)$/);
+    if (!declMatch) {
+      // No more variable declarations, the rest is the final expression
+      finalExpression = remaining.trim();
+      break;
+    }
+    
+    const [, declType, varName, value, rest] = declMatch;
+    declarations.push(`${declType} ${varName} = ${value.trim()};`);
+    remaining = rest.trim();
+  }
+  
+  // Check if any part contains await
+  const hasAwait = /\bawait\b/.test(expression);
+  
+  if (hasAwait) {
+    return `(async () => {
+      ${declarations.join('\n      ')}
+      return ${finalExpression};
+    })()`;
+  } else {
+    return `(() => {
+      ${declarations.join('\n      ')}
+      return ${finalExpression};
+    })()`;
+  }
+}
+
+function transformSingleVariableDeclaration(expression: string): string {
   // Extract parts: declaration type, variable name, initial value, pipeline expression
-  const match = trimmed.match(
+  const match = expression.match(
     /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/
   );
 
@@ -363,15 +423,124 @@ function transformVariablePipelineDeclaration(expression: string): string {
 
   const [, _declType, varName, initialValue, pipelineExpr] = match;
 
-  // Create an IIFE (Immediately Invoked Function Expression) to scope the variable
-  // Also unwrap ChainableWrapper values using valueOf() or .value if available
-  return `(() => { 
-    let ${varName} = ${initialValue.trim()}; 
-    if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
-      ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
+  // Check if the expression contains await keywords
+  const hasAwait = /\bawait\b/.test(initialValue) || /\bawait\b/.test(pipelineExpr);
+
+  // Create an async IIFE if await is detected, otherwise regular IIFE
+  if (hasAwait) {
+    return `(async () => { 
+      let ${varName} = ${initialValue.trim()}; 
+      if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
+        ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
+      }
+      return ${pipelineExpr.trim()}; 
+    })()`;
+  } else {
+    // Create a regular IIFE (Immediately Invoked Function Expression) to scope the variable
+    // Also unwrap ChainableWrapper values using valueOf() or .value if available
+    return `(() => { 
+      let ${varName} = ${initialValue.trim()}; 
+      if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
+        ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
+      }
+      return ${pipelineExpr.trim()}; 
+    })()`;
+  }
+}
+
+/**
+ * Check if expression contains semicolon operator for sequential execution
+ * Examples: "$.name; $.age", "console.log($.name); $.processedData"
+ */
+function hasSemicolonOperator(expression: string): boolean {
+  const state = createInitialParseState();
+  
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+    const prevChar = expression[i - 1] || '';
+    
+    updateStringState(state, char, prevChar);
+    
+    if (state.inString) continue;
+    
+    updateBracketDepth(state, char);
+    
+    // Check for semicolon at top level (not inside parentheses, braces, or brackets)
+    if (char === ';' && state.parenDepth === 0 && state.braceDepth === 0 && state.bracketDepth === 0) {
+      return true;
     }
-    return ${pipelineExpr.trim()}; 
-  })()`;
+  }
+  
+  return false;
+}
+
+/**
+ * Transform semicolon expressions into sequential execution
+ * "exp1; exp2; exp3" becomes "(() => { exp1; return exp3; })()"
+ * The last expression is returned, but $ is not modified between expressions
+ */
+function transformSemicolonExpression(expression: string): string {
+  const parts = splitBySemicolon(expression);
+  
+  if (parts.length <= 1) {
+    return expression;
+  }
+  
+  // Check if any part contains await
+  const hasAwait = /\bawait\b/.test(expression);
+  
+  // All parts except the last are executed for side effects
+  const sideEffectParts = parts.slice(0, -1);
+  const returnPart = parts[parts.length - 1];
+  
+  if (hasAwait) {
+    return `(async () => {
+      ${sideEffectParts.map(part => `${part.trim()};`).join('\n      ')}
+      return ${returnPart.trim()};
+    })()`;
+  } else {
+    return `(() => {
+      ${sideEffectParts.map(part => `${part.trim()};`).join('\n      ')}
+      return ${returnPart.trim()};
+    })()`;
+  }
+}
+
+/**
+ * Split expression by semicolon operator, respecting strings and brackets
+ */
+function splitBySemicolon(expression: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  const state = createInitialParseState();
+  
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+    const prevChar = expression[i - 1] || '';
+    
+    updateStringState(state, char, prevChar);
+    current += char;
+    
+    if (state.inString) continue;
+    
+    updateBracketDepth(state, char);
+    
+    // Split at semicolon if at top level
+    if (char === ';' && state.parenDepth === 0 && state.braceDepth === 0 && state.bracketDepth === 0) {
+      current = current.slice(0, -1); // Remove the semicolon
+      if (current.trim()) {
+        parts.push(current.trim());
+      }
+      current = '';
+    }
+  }
+  
+  // Add the final part
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+  
+  return parts;
 }
 
 // Keep backwards compatibility
@@ -382,4 +551,7 @@ export const ExpressionTransformer = {
   splitByPipe,
   hasVariablePipelineDeclaration,
   transformVariablePipelineDeclaration,
+  hasSemicolonOperator,
+  transformSemicolonExpression,
+  splitBySemicolon,
 };

@@ -104,7 +104,8 @@ describe('No Input Execution Tests', () => {
 
   describe('String and template operations without input', () => {
     it('should execute template string operations', async () => {
-      const result = await processor.process('`Hello ${\"World\"}`', 'null');
+      const template = '`Hello ${"World"}`';
+      const result = await processor.process(template, 'null');
       expect(result.data).toBe('Hello World');
     });
 

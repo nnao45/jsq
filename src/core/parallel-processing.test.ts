@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { Readable, Transform } from 'node:stream';
-import { JsqProcessor } from './processor';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
+import { JsqProcessor } from './processor';
 import type { StreamProcessingOptions } from './stream-processor';
 
 // Mock console.error to avoid noise in tests
@@ -15,31 +15,33 @@ jest.mock('./worker-pool', () => {
         initialize: jest.fn().mockResolvedValue(undefined),
         processTask: jest.fn().mockImplementation(async (batch: string[], expression: string) => {
           // Simulate parallel processing by processing each line
-          const results = batch.map(line => {
-            try {
-              const data = JSON.parse(line);
-              // Simulate different expressions
-              if (expression.includes('* 2')) {
-                return data.value * 2;
-              } else if (expression.includes('* 3')) {
-                return data.value * 3;
-              } else {
-                return data.value;
+          const results = batch
+            .map(line => {
+              try {
+                const data = JSON.parse(line);
+                // Simulate different expressions
+                if (expression.includes('* 2')) {
+                  return data.value * 2;
+                } else if (expression.includes('* 3')) {
+                  return data.value * 3;
+                } else {
+                  return data.value;
+                }
+              } catch {
+                return null;
               }
-            } catch {
-              return null;
-            }
-          }).filter(result => result !== null);
+            })
+            .filter(result => result !== null);
           return { id: 1, results };
         }),
         getStats: jest.fn().mockReturnValue({
           totalWorkers: 4,
           busyWorkers: 2,
-          queueLength: 0
+          queueLength: 0,
         }),
-        shutdown: jest.fn().mockResolvedValue(undefined)
+        shutdown: jest.fn().mockResolvedValue(undefined),
       };
-    })
+    }),
   };
 });
 
@@ -53,7 +55,7 @@ describe('Parallel Processing', () => {
       debug: false,
     };
     processor = new JsqProcessor(options);
-    
+
     // Mock console.error to reduce test noise
     console.error = jest.fn();
   });
@@ -68,7 +70,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: true,
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value * 2', streamOptions);
@@ -79,7 +81,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 4, // Use 4 workers
         batchSize: 3,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const inputData = [
@@ -88,14 +90,14 @@ describe('Parallel Processing', () => {
         '{"value": 3}',
         '{"value": 4}',
         '{"value": 5}',
-        '{"value": 6}'
+        '{"value": 6}',
       ].join('\n');
 
       const transformStream = processor.createParallelTransformStream('$.value * 2', streamOptions);
       const readable = Readable.from([inputData]);
 
       const results: string[] = [];
-      
+
       await new Promise<void>((resolve, reject) => {
         readable
           .pipe(transformStream)
@@ -107,10 +109,13 @@ describe('Parallel Processing', () => {
       });
 
       const output = results.join('');
-      const lines = output.trim().split('\n').filter(line => line);
-      
+      const lines = output
+        .trim()
+        .split('\n')
+        .filter(line => line);
+
       expect(lines).toHaveLength(6);
-      
+
       const parsedResults = lines.map(line => JSON.parse(line));
       const sortedResults = parsedResults.sort((a, b) => a - b);
       expect(sortedResults).toEqual([2, 4, 6, 8, 10, 12]);
@@ -120,21 +125,20 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
-      const inputData = [
-        '{"value": 1}',
-        '{"value": 2}',
-        '{"value": 3}'
-      ].join('\n');
+      const inputData = ['{"value": 1}', '{"value": 2}', '{"value": 3}'].join('\n');
 
       // Use a more complex expression that works sequentially
-      const transformStream = processor.createParallelTransformStream('$.value ? $.value * 2 : 0', streamOptions);
+      const transformStream = processor.createParallelTransformStream(
+        '$.value ? $.value * 2 : 0',
+        streamOptions
+      );
       const readable = Readable.from([inputData]);
 
       const results: string[] = [];
-      
+
       await new Promise<void>((resolve, reject) => {
         readable
           .pipe(transformStream)
@@ -146,8 +150,11 @@ describe('Parallel Processing', () => {
       });
 
       const output = results.join('');
-      const lines = output.trim().split('\n').filter(line => line);
-      
+      const lines = output
+        .trim()
+        .split('\n')
+        .filter(line => line);
+
       expect(lines.length).toBeGreaterThan(0);
       const parsedResults = lines.map(line => JSON.parse(line));
       expect(parsedResults).toContain(2);
@@ -159,14 +166,14 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value', streamOptions);
       const readable = Readable.from(['']);
 
       const results: string[] = [];
-      
+
       await new Promise<void>((resolve, reject) => {
         readable
           .pipe(transformStream)
@@ -184,7 +191,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: false,
         batchSize: 10,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value', streamOptions);
@@ -195,20 +202,20 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 5,
-        jsonLines: true
+        jsonLines: true,
       };
 
       // Generate larger dataset
-      const inputData = Array.from({ length: 20 }, (_, i) => 
-        JSON.stringify({ value: i + 1 })
-      ).join('\n');
+      const inputData = Array.from({ length: 20 }, (_, i) => JSON.stringify({ value: i + 1 })).join(
+        '\n'
+      );
 
       const transformStream = processor.createParallelTransformStream('$.value * 3', streamOptions);
       const readable = Readable.from([inputData]);
 
       const results: string[] = [];
       const startTime = Date.now();
-      
+
       await new Promise<void>((resolve, reject) => {
         readable
           .pipe(transformStream)
@@ -220,17 +227,20 @@ describe('Parallel Processing', () => {
       });
 
       const processingTime = Date.now() - startTime;
-      
+
       const output = results.join('');
-      const lines = output.trim().split('\n').filter(line => line);
-      
+      const lines = output
+        .trim()
+        .split('\n')
+        .filter(line => line);
+
       expect(lines).toHaveLength(20);
-      
+
       const parsedResults = lines.map(line => JSON.parse(line));
       const sortedResults = parsedResults.sort((a, b) => a - b);
       const expectedResults = Array.from({ length: 20 }, (_, i) => (i + 1) * 3);
       expect(sortedResults).toEqual(expectedResults);
-      
+
       // Should complete in reasonable time with parallelization
       expect(processingTime).toBeLessThan(10000); // 10 seconds max
     }, 20000);
@@ -241,7 +251,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: true,
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);
@@ -252,7 +262,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 3,
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);
@@ -263,7 +273,7 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: '4',
         batchSize: 2,
-        jsonLines: true
+        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);

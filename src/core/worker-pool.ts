@@ -2,9 +2,9 @@
  * Worker pool for parallel JSON processing
  * Manages multiple worker threads to process JSON data in parallel
  */
-import { Worker } from 'node:worker_threads';
 import { cpus } from 'node:os';
 import { join } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import type { JsqOptions } from '@/types/cli';
 
 interface WorkerTask {
@@ -30,6 +30,7 @@ interface WorkerInfo {
   worker: Worker;
   busy: boolean;
   id: number;
+  currentTask?: QueuedTask;
 }
 
 export class WorkerPool {
@@ -42,7 +43,7 @@ export class WorkerPool {
 
   constructor(maxWorkers?: number) {
     this.maxWorkers = maxWorkers || Math.max(1, cpus().length - 1);
-    
+
     // Determine worker script path - use __dirname in CommonJS environment
     this.workerScript = join(__dirname, 'parallel-worker.js');
   }
@@ -59,7 +60,7 @@ export class WorkerPool {
       const workerInfo: WorkerInfo = {
         worker,
         busy: false,
-        id: i
+        id: i,
       };
 
       // Setup worker event handlers
@@ -68,16 +69,16 @@ export class WorkerPool {
           // Worker is ready
           return;
         }
-        
+
         this.handleWorkerResult(workerInfo, result as WorkerResult);
       });
 
-      worker.on('error', (error) => {
+      worker.on('error', error => {
         console.error(`Worker ${i} error:`, error);
         this.handleWorkerError(workerInfo, error);
       });
 
-      worker.on('exit', (code) => {
+      worker.on('exit', code => {
         if (code !== 0 && !this.isShuttingDown) {
           console.error(`Worker ${i} exited with code ${code}`);
         }
@@ -86,15 +87,17 @@ export class WorkerPool {
       this.workers.push(workerInfo);
 
       // Create initialization promise
-      initPromises.push(new Promise((resolve) => {
-        const onReady = (message: any) => {
-          if (message.type === 'ready') {
-            worker.off('message', onReady);
-            resolve();
-          }
-        };
-        worker.on('message', onReady);
-      }));
+      initPromises.push(
+        new Promise(resolve => {
+          const onReady = (message: { type?: string; pid?: number }) => {
+            if (message.type === 'ready') {
+              worker.off('message', onReady);
+              resolve();
+            }
+          };
+          worker.on('message', onReady);
+        })
+      );
     }
 
     // Wait for all workers to be ready
@@ -113,14 +116,14 @@ export class WorkerPool {
       id: taskId,
       data,
       expression,
-      options
+      options,
     };
 
     return new Promise((resolve, reject) => {
       this.taskQueue.push({
         task,
         resolve,
-        reject
+        reject,
       });
 
       this.processQueue();
@@ -147,15 +150,15 @@ export class WorkerPool {
     availableWorker.busy = true;
 
     // Store the resolver for this task
-    (availableWorker as any).currentTask = queuedTask;
+    availableWorker.currentTask = queuedTask;
 
     // Send task to worker
     availableWorker.worker.postMessage(queuedTask.task);
   }
 
   private handleWorkerResult(workerInfo: WorkerInfo, result: WorkerResult): void {
-    const queuedTask = (workerInfo as any).currentTask as QueuedTask | undefined;
-    
+    const queuedTask = workerInfo.currentTask;
+
     if (!queuedTask) {
       console.error('Received result from worker without corresponding task');
       return;
@@ -163,7 +166,7 @@ export class WorkerPool {
 
     // Mark worker as available
     workerInfo.busy = false;
-    (workerInfo as any).currentTask = undefined;
+    workerInfo.currentTask = undefined;
 
     // Resolve or reject the task
     if (result.error) {
@@ -177,13 +180,13 @@ export class WorkerPool {
   }
 
   private handleWorkerError(workerInfo: WorkerInfo, error: Error): void {
-    const queuedTask = (workerInfo as any).currentTask as QueuedTask | undefined;
-    
+    const queuedTask = workerInfo.currentTask;
+
     // Mark worker as available
     workerInfo.busy = false;
-    
+
     if (queuedTask) {
-      (workerInfo as any).currentTask = undefined;
+      workerInfo.currentTask = undefined;
       queuedTask.reject(error);
     }
 
@@ -199,7 +202,7 @@ export class WorkerPool {
     this.isShuttingDown = true;
 
     // Wait for all workers to finish current tasks
-    const shutdownPromises = this.workers.map(async (workerInfo) => {
+    const shutdownPromises = this.workers.map(async workerInfo => {
       try {
         await workerInfo.worker.terminate();
       } catch (error) {
@@ -209,7 +212,7 @@ export class WorkerPool {
 
     await Promise.all(shutdownPromises);
     this.workers = [];
-    
+
     // Reject any remaining queued tasks
     for (const queuedTask of this.taskQueue) {
       queuedTask.reject(new Error('Worker pool shutting down'));
@@ -221,7 +224,7 @@ export class WorkerPool {
     return {
       totalWorkers: this.workers.length,
       busyWorkers: this.workers.filter(w => w.busy).length,
-      queueLength: this.taskQueue.length
+      queueLength: this.taskQueue.length,
     };
   }
 }
