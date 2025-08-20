@@ -170,7 +170,9 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('Object.getOwnPropertyNames', async () => {
-      const result = await evaluator.evaluate('Object.getOwnPropertyNames($).includes("a")', { a: 1 });
+      const result = await evaluator.evaluate('Object.getOwnPropertyNames($).includes("a")', {
+        a: 1,
+      });
       expect(result).toBe(true);
     });
 
@@ -229,7 +231,9 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('JSON.stringify with indent', async () => {
-      const result = await evaluator.evaluate('JSON.stringify($, null, 2).includes("  ")', { a: 1 });
+      const result = await evaluator.evaluate('JSON.stringify($, null, 2).includes("  ")', {
+        a: 1,
+      });
       expect(result).toBe(true);
     });
   });
@@ -263,7 +267,10 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('Rest operator', async () => {
-      const result = await evaluator.evaluate('(([first,...rest]) => rest.length)($)', [1, 2, 3, 4, 5]);
+      const result = await evaluator.evaluate(
+        '(([first,...rest]) => rest.length)($)',
+        [1, 2, 3, 4, 5]
+      );
       expect(result).toBe(4);
     });
 
@@ -290,19 +297,28 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('new Map from entries', async () => {
-      const result = await evaluator.evaluate('new Map($).size', [['a', 1], ['b', 2]]);
+      const result = await evaluator.evaluate('new Map($).size', [
+        ['a', 1],
+        ['b', 2],
+      ]);
       expect(result).toBe(2);
     });
 
     it('Map.get method', async () => {
-      const result = await evaluator.evaluate('new Map($).get("a")', [['a', 1], ['b', 2]]);
+      const result = await evaluator.evaluate('new Map($).get("a")', [
+        ['a', 1],
+        ['b', 2],
+      ]);
       expect(result).toBe(1);
     });
   });
 
   describe('String Operations', () => {
     it('String.includes with array', async () => {
-      const result = await evaluator.evaluate('$.some(s => s.includes("ana"))', ['apple', 'banana']);
+      const result = await evaluator.evaluate('$.some(s => s.includes("ana"))', [
+        'apple',
+        'banana',
+      ]);
       expect(result).toBe(true);
     });
 
@@ -351,7 +367,10 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('Date manipulation', async () => {
-      const result = await evaluator.evaluate('$.map(d => new Date(d).getFullYear())', [1609459200000]);
+      const result = await evaluator.evaluate(
+        '$.map(d => new Date(d).getFullYear())',
+        [1609459200000]
+      );
       expect(result).toEqual([2021]);
     });
   });
@@ -373,7 +392,10 @@ describe('Native JavaScript Compatibility Tests', () => {
     });
 
     it('Property descriptors', async () => {
-      const result = await evaluator.evaluate('Object.getOwnPropertyDescriptor($, "a").enumerable', { a: 1 });
+      const result = await evaluator.evaluate(
+        'Object.getOwnPropertyDescriptor($, "a").enumerable',
+        { a: 1 }
+      );
       expect(result).toBe(true);
     });
   });

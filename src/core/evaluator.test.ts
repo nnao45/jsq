@@ -107,7 +107,6 @@ describe('ExpressionEvaluator', () => {
     });
   });
 
-
   describe('Error handling', () => {
     it('should handle syntax errors gracefully', async () => {
       const data = { value: 42 };
