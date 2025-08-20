@@ -50,7 +50,7 @@ const program = new Command();
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.14');
+  .version('0.1.15');
 
 // Main command (default Node.js behavior)
 program
