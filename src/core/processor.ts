@@ -27,7 +27,10 @@ export class JsqProcessor {
     try {
       // Check if expression starts with array literal and has no input data
       let data: unknown;
-      if (this.isArrayLiteralExpression(expression) && (!input || input.trim() === '' || input === 'null')) {
+      if (
+        this.isArrayLiteralExpression(expression) &&
+        (!input || input.trim() === '' || input === 'null')
+      ) {
         // For expressions like "[1,2,3].method()", treat the array as the data
         data = null; // Will be handled by the expression evaluator
       } else {
@@ -91,5 +94,12 @@ export class JsqProcessor {
 
   createObjectTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
     return this.streamProcessor.createObjectTransformStream(expression, streamOptions);
+  }
+
+  /**
+   * Create a parallel transform stream for high-performance processing
+   */
+  createParallelTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
+    return this.streamProcessor.createParallelTransformStream(expression, streamOptions);
   }
 }

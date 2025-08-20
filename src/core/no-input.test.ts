@@ -104,7 +104,7 @@ describe('No Input Execution Tests', () => {
 
   describe('String and template operations without input', () => {
     it('should execute template string operations', async () => {
-      const result = await processor.process('`Hello ${"World"}`', 'null');
+      const result = await processor.process('`Hello ${\"World\"}`', 'null');
       expect(result.data).toBe('Hello World');
     });
 
@@ -140,7 +140,10 @@ describe('No Input Execution Tests', () => {
     });
 
     it('should handle mixed pipeline operations', async () => {
-      const result = await processor.process('$ | _.times(4, i => i + 1) | $.filter(x => x % 2 === 0)', 'null');
+      const result = await processor.process(
+        '$ | _.times(4, i => i + 1) | $.filter(x => x % 2 === 0)',
+        'null'
+      );
       expect(result.data).toEqual([2, 4]);
     });
 
@@ -152,7 +155,10 @@ describe('No Input Execution Tests', () => {
     it('should use $ in conditional expressions', async () => {
       // Note: $ is a function object when data is null, so it's truthy
       // Use explicit null check for proper conditional behavior
-      const result = await processor.process('($ === null || $.valueOf() === null) ? "default" : $', 'null');
+      const result = await processor.process(
+        '($ === null || $.valueOf() === null) ? "default" : $',
+        'null'
+      );
       expect(result.data).toBe('default');
     });
   });

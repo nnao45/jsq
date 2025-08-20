@@ -277,7 +277,10 @@ describe('Pipe Operator Support', () => {
 
     it('should handle mixed pipes with utility functions and data methods', async () => {
       const data = { multiplier: 2 };
-      const result = await evaluator.evaluate('$ | _.range(3) | $.map(x => x * $.multiplier)', data);
+      const result = await evaluator.evaluate(
+        '$ | _.range(3) | $.map(x => x * $.multiplier)',
+        data
+      );
       expect(result).toEqual([0, 2, 4]);
     });
 

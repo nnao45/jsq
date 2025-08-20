@@ -64,7 +64,7 @@ const CHAINABLE_METHODS = [
   'isString',
   'isNumber',
   'toArray',
-  
+
   // Advanced collection methods (Tier 1)
   'partition',
   'windowed',
@@ -72,7 +72,7 @@ const CHAINABLE_METHODS = [
   'span',
   'takeUntil',
   'dropUntil',
-  
+
   // Advanced collection methods (Tier 2)
   'frequencies',
   'groupWith',
@@ -80,7 +80,7 @@ const CHAINABLE_METHODS = [
   'scanLeft',
   'distinctBy',
   'intersectBy',
-  
+
   // Advanced collection methods (Tier 3)
   'spy',
   'filterMap',
@@ -88,16 +88,16 @@ const CHAINABLE_METHODS = [
   'quantify',
   'pairwise',
   'intersperse',
-  
+
   // Advanced collection methods (Tier 4)
   'peekable',
   'batched',
-  
+
   // Functional programming methods
   'foldLeft',
   'foldRight',
   'traverse',
-  
+
   // Reactive/Async methods (RxJS-style operators)
   // Time-based operators
   'delay',
@@ -106,27 +106,27 @@ const CHAINABLE_METHODS = [
   'timeout',
   'interval',
   'timer',
-  
+
   // Advanced transformation operators
   'concatMap',
   'mergeMap',
   'switchMap',
   'exhaustMap',
-  
+
   // Enhanced filtering operators
   'distinctUntilChanged',
   'skipLast',
   'takeLast',
-  
+
   // Stream combination operators
   'combineLatest',
   'zip',
   'merge',
-  
+
   // Error handling operators
   'retry',
   'catchError',
-  
+
   // Utility operators
   'tap', // Note: this is the RxJS-style tap, different from spy
   'startWith',
@@ -147,9 +147,9 @@ export function createSmartDollar(data: unknown) {
     Object.defineProperty($, 'valueOf', { value: () => data });
     Object.defineProperty($, 'toString', { value: () => String(data) });
     Object.defineProperty($, 'toJSON', { value: () => data });
-    
+
     // Add Symbol.toPrimitive for proper type coercion in conditionals
-    Object.defineProperty($, Symbol.toPrimitive, { 
+    Object.defineProperty($, Symbol.toPrimitive, {
       value: (hint: string) => {
         if (hint === 'default' || hint === 'string') {
           return data;
@@ -158,16 +158,37 @@ export function createSmartDollar(data: unknown) {
           return typeof data === 'number' ? data : Number(data);
         }
         return data;
-      }
+      },
     });
-    
+
     return $;
   }
 
-  // For arrays, return actual array with added methods
+  // For arrays, create a callable wrapper that also acts as an array
   if (Array.isArray(data)) {
-    // Create an actual array - this will pass Array.isArray()
-    const $ = [...data] as unknown[] & Record<string, unknown>;
+    // Create a function that returns ChainableWrapper when called
+    const $ = function(...args: unknown[]) {
+      if (args.length === 0) {
+        return new ChainableWrapper(data);
+      }
+      return new ChainableWrapper(args[0]);
+    } as any;
+
+    // Copy array elements to the function object
+    for (let i = 0; i < data.length; i++) {
+      $[i] = data[i];
+    }
+    
+    // Set length property
+    Object.defineProperty($, 'length', {
+      value: data.length,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+
+    // Add array prototype methods
+    Object.setPrototypeOf($, Array.prototype);
 
     // Add .data property to access raw data (for tests)
     Object.defineProperty($, 'data', {
@@ -223,7 +244,7 @@ export function createSmartDollar(data: unknown) {
       configurable: true,
     });
 
-    return $; // This is a real array, so Array.isArray($) === true
+    return $; // This is a function that also acts like an array
   }
 
   // Create the $ function for objects

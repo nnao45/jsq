@@ -3,6 +3,7 @@ export interface JsqOptions {
   watch?: string;
   stream?: boolean;
   batch?: string | number;
+  parallel?: boolean | string | number;
   use?: string | string[];
   types?: string;
   schema?: string;

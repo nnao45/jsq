@@ -7,7 +7,10 @@ describe('Advanced Collection Methods', () => {
       it('should split array into truthy and falsy arrays', () => {
         const data = [1, 2, 3, 4, 5, 6];
         const result = new ChainableWrapper(data).partition(x => (x as number) % 2 === 0);
-        expect(result.value).toEqual([[2, 4, 6], [1, 3, 5]]);
+        expect(result.value).toEqual([
+          [2, 4, 6],
+          [1, 3, 5],
+        ]);
       });
 
       it('should handle empty array', () => {
@@ -25,13 +28,20 @@ describe('Advanced Collection Methods', () => {
       it('should create sliding windows', () => {
         const data = [1, 2, 3, 4, 5];
         const result = new ChainableWrapper(data).windowed(3);
-        expect(result.value).toEqual([[1, 2, 3], [2, 3, 4], [3, 4, 5]]);
+        expect(result.value).toEqual([
+          [1, 2, 3],
+          [2, 3, 4],
+          [3, 4, 5],
+        ]);
       });
 
       it('should handle step parameter', () => {
         const data = [1, 2, 3, 4, 5, 6];
         const result = new ChainableWrapper(data).windowed(3, 2);
-        expect(result.value).toEqual([[1, 2, 3], [3, 4, 5]]);
+        expect(result.value).toEqual([
+          [1, 2, 3],
+          [3, 4, 5],
+        ]);
       });
 
       it('should handle window size larger than array', () => {
@@ -60,7 +70,10 @@ describe('Advanced Collection Methods', () => {
       it('should split array at first false predicate', () => {
         const data = [2, 4, 6, 1, 8, 10];
         const result = new ChainableWrapper(data).span(x => (x as number) % 2 === 0);
-        expect(result.value).toEqual([[2, 4, 6], [1, 8, 10]]);
+        expect(result.value).toEqual([
+          [2, 4, 6],
+          [1, 8, 10],
+        ]);
       });
 
       it('should handle all elements matching', () => {
@@ -139,33 +152,41 @@ describe('Advanced Collection Methods', () => {
 
     describe('groupWith', () => {
       it('should group and transform simultaneously', () => {
-        const data = [
+        interface TypedItem {
+          type: string;
+          name: string;
+        }
+        const data: TypedItem[] = [
           { type: 'fruit', name: 'apple' },
           { type: 'fruit', name: 'banana' },
-          { type: 'vegetable', name: 'carrot' }
+          { type: 'vegetable', name: 'carrot' },
         ];
         const result = new ChainableWrapper(data).groupWith(
-          item => (item as any).type,
-          item => (item as any).name
+          item => (item as TypedItem).type,
+          item => (item as TypedItem).name
         );
         expect(result.value).toEqual({
           fruit: ['apple', 'banana'],
-          vegetable: ['carrot']
+          vegetable: ['carrot'],
         });
       });
     });
 
     describe('reduceBy', () => {
       it('should reduce grouped values', () => {
-        const data = [
+        interface CategoryItem {
+          category: string;
+          value: number;
+        }
+        const data: CategoryItem[] = [
           { category: 'A', value: 10 },
           { category: 'B', value: 5 },
           { category: 'A', value: 15 },
-          { category: 'B', value: 8 }
+          { category: 'B', value: 8 },
         ];
         const result = new ChainableWrapper(data).reduceBy(
-          item => (item as any).category,
-          (acc: number, item: any) => acc + item.value,
+          item => (item as CategoryItem).category,
+          (acc: number, item: CategoryItem) => acc + item.value,
           0
         );
         expect(result.value).toEqual({ A: 25, B: 13 });
@@ -193,24 +214,34 @@ describe('Advanced Collection Methods', () => {
 
     describe('distinctBy', () => {
       it('should remove duplicates by key', () => {
-        const data = [
+        interface IdItem {
+          id: number;
+          name: string;
+        }
+        const data: IdItem[] = [
           { id: 1, name: 'John' },
           { id: 2, name: 'Jane' },
-          { id: 1, name: 'John Doe' }
+          { id: 1, name: 'John Doe' },
         ];
-        const result = new ChainableWrapper(data).distinctBy(item => (item as any).id);
+        const result = new ChainableWrapper(data).distinctBy(item => (item as IdItem).id);
         expect(result.value).toEqual([
           { id: 1, name: 'John' },
-          { id: 2, name: 'Jane' }
+          { id: 2, name: 'Jane' },
         ]);
       });
     });
 
     describe('intersectBy', () => {
       it('should find intersection with key function', () => {
-        const data1 = [{ id: 1 }, { id: 2 }, { id: 3 }];
-        const data2 = [{ id: 2 }, { id: 3 }, { id: 4 }];
-        const result = new ChainableWrapper(data1).intersectBy(data2, item => (item as any).id);
+        interface IdOnlyItem {
+          id: number;
+        }
+        const data1: IdOnlyItem[] = [{ id: 1 }, { id: 2 }, { id: 3 }];
+        const data2: IdOnlyItem[] = [{ id: 2 }, { id: 3 }, { id: 4 }];
+        const result = new ChainableWrapper(data1).intersectBy(
+          data2,
+          item => (item as IdOnlyItem).id
+        );
         expect(result.value).toEqual([{ id: 2 }, { id: 3 }]);
       });
     });
@@ -222,7 +253,7 @@ describe('Advanced Collection Methods', () => {
         const spied: unknown[] = [];
         const data = [1, 2, 3];
         const result = new ChainableWrapper(data).spy(item => spied.push(item));
-        
+
         expect(result.value).toEqual([1, 2, 3]);
         expect(spied).toEqual([1, 2, 3]);
       });
@@ -280,7 +311,11 @@ describe('Advanced Collection Methods', () => {
       it('should create pairs of consecutive elements', () => {
         const data = [1, 2, 3, 4];
         const result = new ChainableWrapper(data).pairwise();
-        expect(result.value).toEqual([[1, 2], [2, 3], [3, 4]]);
+        expect(result.value).toEqual([
+          [1, 2],
+          [2, 3],
+          [3, 4],
+        ]);
       });
 
       it('should handle array with less than 2 elements', () => {
@@ -311,10 +346,15 @@ describe('Advanced Collection Methods', () => {
   describe('Tier 4 Methods', () => {
     describe('peekable', () => {
       it('should create peekable iterator', () => {
+        interface PeekableIterator {
+          hasNext(): boolean;
+          peek(): unknown;
+          next(): unknown;
+        }
         const data = [1, 2, 3];
         const result = new ChainableWrapper(data).peekable();
-        const iterator = result.value as any;
-        
+        const iterator = result.value as PeekableIterator;
+
         expect(iterator.hasNext()).toBe(true);
         expect(iterator.peek()).toBe(1);
         expect(iterator.next()).toBe(1);
@@ -326,9 +366,12 @@ describe('Advanced Collection Methods', () => {
       });
 
       it('should handle empty array', () => {
+        interface PeekableIterator {
+          hasNext(): boolean;
+        }
         const result = new ChainableWrapper([]).peekable();
-        const iterator = result.value as any;
-        
+        const iterator = result.value as PeekableIterator;
+
         expect(iterator.hasNext()).toBe(false);
         expect(iterator.peek()).toBeUndefined();
         expect(iterator.next()).toBeUndefined();
@@ -345,7 +388,10 @@ describe('Advanced Collection Methods', () => {
       it('should create batches with padding', () => {
         const data = [1, 2, 3, 4, 5];
         const result = new ChainableWrapper(data).batched(3, 0);
-        expect(result.value).toEqual([[1, 2, 3], [4, 5, 0]]);
+        expect(result.value).toEqual([
+          [1, 2, 3],
+          [4, 5, 0],
+        ]);
       });
 
       it('should handle zero or negative size', () => {
@@ -390,10 +436,10 @@ describe('Advanced Collection Methods', () => {
 
       it('should demonstrate right-to-left processing with different operation', () => {
         const data = [1, 2, 3];
-        const result = new ChainableWrapper(data).foldRight(
-          [],
-          (item: unknown, acc: unknown[]) => [item, ...acc]
-        );
+        const result = new ChainableWrapper(data).foldRight([], (item: unknown, acc: unknown[]) => [
+          item,
+          ...acc,
+        ]);
         // Processes from right: [1, [2, [3, []]]] = [1, 2, 3]
         expect(result.value).toEqual([1, 2, 3]);
       });
@@ -411,30 +457,24 @@ describe('Advanced Collection Methods', () => {
     describe('traverse', () => {
       it('should traverse with accumulating state', () => {
         const data = [1, 2, 3];
-        const result = new ChainableWrapper(data).traverse(
-          0,
-          (state: number, item: unknown) => ({
-            value: state + (item as number),
-            state: state + (item as number)
-          })
-        );
+        const result = new ChainableWrapper(data).traverse(0, (state: number, item: unknown) => ({
+          value: state + (item as number),
+          state: state + (item as number),
+        }));
         expect(result.value).toEqual({
           values: [1, 3, 6],
-          finalState: 6
+          finalState: 6,
         });
       });
 
       it('should handle empty array', () => {
-        const result = new ChainableWrapper([]).traverse(
-          0,
-          (state: number, item: unknown) => ({
-            value: state + (item as number),
-            state: state + (item as number)
-          })
-        );
+        const result = new ChainableWrapper([]).traverse(0, (state: number, item: unknown) => ({
+          value: state + (item as number),
+          state: state + (item as number),
+        }));
         expect(result.value).toEqual({
           values: [],
-          finalState: 0
+          finalState: 0,
         });
       });
     });
@@ -446,7 +486,7 @@ describe('Advanced Collection Methods', () => {
       const result = new ChainableWrapper(data)
         .partition(x => (x as number) % 2 === 0)
         .map((part: unknown) => (part as number[]).length);
-      
+
       expect(result.value).toEqual([3, 3]);
     });
 
@@ -455,7 +495,7 @@ describe('Advanced Collection Methods', () => {
       const result = new ChainableWrapper(data)
         .windowed(2)
         .map((pair: unknown) => (pair as number[]).reduce((a, b) => a + b, 0));
-      
+
       expect(result.value).toEqual([3, 5, 7, 9]);
     });
   });

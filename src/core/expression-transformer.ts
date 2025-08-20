@@ -39,9 +39,9 @@ export function transformExpression(expression: string): string {
 export function hasAsyncGeneratorMethods(expression: string): boolean {
   // Check for methods that return async generators
   const asyncGeneratorMethods = ['interval', 'timer'];
-  return asyncGeneratorMethods.some(method => 
-    expression.includes(`.${method}(`) || 
-    expression.match(new RegExp(`\\$\\.${method}\\(`))
+  return asyncGeneratorMethods.some(
+    method =>
+      expression.includes(`.${method}(`) || expression.match(new RegExp(`\\$\\.${method}\\(`))
   );
 }
 
@@ -50,7 +50,85 @@ export function hasAsyncGeneratorMethods(expression: string): boolean {
  */
 export function isArrayLiteralWithMethods(expression: string): boolean {
   const trimmed = expression.trim();
-  return trimmed.startsWith('[') && trimmed.includes('].') && !trimmed.startsWith('$.') && !trimmed.startsWith('_.');
+  return (
+    trimmed.startsWith('[') &&
+    trimmed.includes('].') &&
+    !trimmed.startsWith('$.') &&
+    !trimmed.startsWith('_.')
+  );
+}
+
+/**
+ * Find the end index of an array literal considering nested structures and strings
+ */
+function findArrayEndIndex(expression: string): number {
+  let bracketCount = 0;
+  let inString = false;
+  let stringChar = '';
+
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+    const prevChar = expression[i - 1];
+
+    if (shouldUpdateStringState(char, prevChar, inString, stringChar)) {
+      const stringState = getStringState(char, prevChar, inString, stringChar);
+      inString = stringState.inString;
+      stringChar = stringState.stringChar;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '[') {
+      bracketCount++;
+    } else if (char === ']') {
+      bracketCount--;
+      if (bracketCount === 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1; // Malformed array
+}
+
+/**
+ * Check if string state should be updated
+ */
+function shouldUpdateStringState(
+  char: string,
+  prevChar: string,
+  inString: boolean,
+  stringChar: string
+): boolean {
+  return (!inString && isQuoteChar(char)) || (inString && char === stringChar && prevChar !== '\\');
+}
+
+/**
+ * Get updated string state
+ */
+function getStringState(
+  char: string,
+  prevChar: string,
+  inString: boolean,
+  stringChar: string
+): { inString: boolean; stringChar: string } {
+  if (!inString && isQuoteChar(char)) {
+    return { inString: true, stringChar: char };
+  }
+
+  if (inString && char === stringChar && prevChar !== '\\') {
+    return { inString: false, stringChar: '' };
+  }
+
+  return { inString, stringChar };
+}
+
+/**
+ * Check if character is a quote character
+ */
+function isQuoteChar(char: string): boolean {
+  return char === '"' || char === "'" || char === '`';
 }
 
 /**
@@ -58,51 +136,15 @@ export function isArrayLiteralWithMethods(expression: string): boolean {
  */
 export function transformArrayLiteralExpression(expression: string): string {
   const trimmed = expression.trim();
-  
-  // Find the end of the array literal
-  let bracketCount = 0;
-  let arrayEndIndex = -1;
-  let inString = false;
-  let stringChar = '';
-  
-  for (let i = 0; i < trimmed.length; i++) {
-    const char = trimmed[i];
-    const prevChar = trimmed[i - 1];
-    
-    // Handle string states
-    if (!inString && (char === '"' || char === "'" || char === '`')) {
-      inString = true;
-      stringChar = char;
-      continue;
-    }
-    
-    if (inString && char === stringChar && prevChar !== '\\') {
-      inString = false;
-      stringChar = '';
-      continue;
-    }
-    
-    if (inString) continue;
-    
-    // Handle brackets
-    if (char === '[') {
-      bracketCount++;
-    } else if (char === ']') {
-      bracketCount--;
-      if (bracketCount === 0) {
-        arrayEndIndex = i;
-        break;
-      }
-    }
-  }
-  
+  const arrayEndIndex = findArrayEndIndex(trimmed);
+
   if (arrayEndIndex === -1) {
     return expression; // Malformed array
   }
-  
+
   const arrayPart = trimmed.substring(0, arrayEndIndex + 1);
   const methodPart = trimmed.substring(arrayEndIndex + 1);
-  
+
   // Transform to createSmartDollar(array).methods
   return `createSmartDollar(${arrayPart})${methodPart}`;
 }
@@ -214,7 +256,13 @@ export function transformPipeExpression(expression: string): string {
     if (part.startsWith('$')) {
       // Replace '$' with the result from previous operation
       result = part.replace(/^\$/, `(${result})`);
-    } else if (part.startsWith('_.') || part.startsWith('lodash.') || part.match(/^(Math|Date|Object|Array|String|Number|Boolean|console)\.[a-zA-Z_$][a-zA-Z0-9_$]*\(/)) {
+    } else if (
+      part.startsWith('_.') ||
+      part.startsWith('lodash.') ||
+      part.match(
+        /^(Math|Date|Object|Array|String|Number|Boolean|console)\.[a-zA-Z_$][a-zA-Z0-9_$]*\(/
+      )
+    ) {
       // If it's a utility function call (_.method, lodash.method) or global object method (Math.max, Date.now), use it directly
       result = part;
     } else {
