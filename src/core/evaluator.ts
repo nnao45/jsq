@@ -218,6 +218,7 @@ export class ExpressionEvaluator {
       ): T[] => {
         const createComparator =
           (keys: string[] | ((item: T) => unknown)[], orders: ('asc' | 'desc')[]) =>
+          // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex sorting logic required for multi-key orderBy
           (a: T, b: T): number => {
             for (let i = 0; i < keys.length; i++) {
               const key = keys[i];

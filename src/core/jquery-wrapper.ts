@@ -47,33 +47,8 @@ const CHAINABLE_METHODS = [
   'toArray',
 ];
 
-// Native array methods that should be available on array $
-// NOTE: Unused for now, may be needed for future array method extensions
-// biome-ignore lint/correctness/noUnusedVariables: Reserved for future use
-const _NATIVE_ARRAY_METHODS = [
-  'forEach',
-  'some',
-  'every',
-  'indexOf',
-  'lastIndexOf',
-  'includes',
-  'join',
-  'reverse',
-  'sort',
-  'push',
-  'pop',
-  'shift',
-  'unshift',
-  'splice',
-  'concat',
-  'fill',
-  'find',
-  'findIndex',
-  'flat',
-  'flatMap',
-  'reduce',
-  'reduceRight',
-];
+// Native array methods available for potential future array method delegation
+// Currently unused but kept for reference and future development
 
 export function createSmartDollar(data: unknown) {
   // If data is null or undefined, return a minimal wrapper
@@ -174,6 +149,7 @@ export function createSmartDollar(data: unknown) {
 
     // Create a proxy to handle chainable property access
     return new Proxy($, {
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex proxy logic required for jQuery-like API
       get(target, prop, receiver) {
         // Handle special built-in methods FIRST before checking data properties
         if (prop === 'hasOwnProperty') {
