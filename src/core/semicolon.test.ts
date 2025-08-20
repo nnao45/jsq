@@ -48,13 +48,19 @@ describe('Semicolon Sequential Execution Tests', () => {
   describe('Semicolon with variable declarations', () => {
     it('should handle variable declarations before final expression', async () => {
       const data = '{"name": "Alice", "age": 25}';
-      const result = await processor.process('const name = $.name; name + " is " + $.age + " years old"', data);
+      const result = await processor.process(
+        'const name = $.name; name + " is " + $.age + " years old"',
+        data
+      );
       expect(result.data).toBe('Alice is 25 years old');
     });
 
     it('should handle multiple variable declarations with semicolons', async () => {
       const data = '{"first": "John", "last": "Doe", "age": 30}';
-      const result = await processor.process('const first = $.first; const last = $.last; first + " " + last', data);
+      const result = await processor.process(
+        'const first = $.first; const last = $.last; first + " " + last',
+        data
+      );
       expect(result.data).toBe('John Doe');
     });
   });
@@ -68,7 +74,10 @@ describe('Semicolon Sequential Execution Tests', () => {
 
     it('should handle complex string expressions with semicolons', async () => {
       const data = '{"text": "Sample"}';
-      const result = await processor.process('"Text: " + $.text + "; Length: " + $.text.value.length', data);
+      const result = await processor.process(
+        '"Text: " + $.text + "; Length: " + $.text.value.length',
+        data
+      );
       expect(result.data).toBe('Text: Sample; Length: 6');
     });
   });
@@ -97,7 +106,10 @@ describe('Semicolon Sequential Execution Tests', () => {
     it('should handle errors in intermediate expressions gracefully', async () => {
       const data = '{"value": 42}';
       // Even if first expression has an issue, the second should work
-      const result = await processor.process('try { nonExistentFunction(); } catch(e) { /* ignore */ }; $.value', data);
+      const result = await processor.process(
+        'try { nonExistentFunction(); } catch(e) { /* ignore */ }; $.value',
+        data
+      );
       expect(result.data).toBe(42);
     });
   });
@@ -111,7 +123,10 @@ describe('Semicolon Sequential Execution Tests', () => {
 
     it('should handle complex lodash chains with semicolons', async () => {
       const data = '{"numbers": [1, 2, 3, 4, 5, 6]}';
-      const result = await processor.process('_.sum($.numbers); _.filter($.numbers.value, n => n % 2 === 0).length', data);
+      const result = await processor.process(
+        '_.sum($.numbers); _.filter($.numbers.value, n => n % 2 === 0).length',
+        data
+      );
       expect(result.data).toBe(3); // count of even numbers
     });
   });

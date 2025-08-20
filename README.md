@@ -1,4 +1,4 @@
-# @nnao45/jsq - JavaScript-Powered JSON Query CLI Tool
+# JavaScript-Powered JSON Query CLI Tool
 
 [🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 

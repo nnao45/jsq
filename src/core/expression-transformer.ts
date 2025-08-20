@@ -349,7 +349,7 @@ function hasVariablePipelineDeclaration(expression: string): boolean {
   // Also handle multiple consecutive declarations: "const a = ... | const b = ... | ..."
   const singleDeclarationPattern =
     /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/;
-  
+
   return singleDeclarationPattern.test(trimmed);
 }
 
@@ -380,24 +380,26 @@ function transformMultipleVariableDeclarations(expression: string): string {
   const declarations: string[] = [];
   let remaining = expression.trim();
   let finalExpression = '';
-  
+
   // Parse each variable declaration
   while (true) {
-    const declMatch = remaining.match(/^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.*)$/);
+    const declMatch = remaining.match(
+      /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.*)$/
+    );
     if (!declMatch) {
       // No more variable declarations, the rest is the final expression
       finalExpression = remaining.trim();
       break;
     }
-    
+
     const [, declType, varName, value, rest] = declMatch;
     declarations.push(`${declType} ${varName} = ${value.trim()};`);
     remaining = rest.trim();
   }
-  
+
   // Check if any part contains await
   const hasAwait = /\bawait\b/.test(expression);
-  
+
   if (hasAwait) {
     return `(async () => {
       ${declarations.join('\n      ')}
@@ -454,23 +456,28 @@ function transformSingleVariableDeclaration(expression: string): string {
  */
 function hasSemicolonOperator(expression: string): boolean {
   const state = createInitialParseState();
-  
+
   for (let i = 0; i < expression.length; i++) {
     const char = expression[i];
     const prevChar = expression[i - 1] || '';
-    
+
     updateStringState(state, char, prevChar);
-    
+
     if (state.inString) continue;
-    
+
     updateBracketDepth(state, char);
-    
+
     // Check for semicolon at top level (not inside parentheses, braces, or brackets)
-    if (char === ';' && state.parenDepth === 0 && state.braceDepth === 0 && state.bracketDepth === 0) {
+    if (
+      char === ';' &&
+      state.parenDepth === 0 &&
+      state.braceDepth === 0 &&
+      state.bracketDepth === 0
+    ) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -481,18 +488,18 @@ function hasSemicolonOperator(expression: string): boolean {
  */
 function transformSemicolonExpression(expression: string): string {
   const parts = splitBySemicolon(expression);
-  
+
   if (parts.length <= 1) {
     return expression;
   }
-  
+
   // Check if any part contains await
   const hasAwait = /\bawait\b/.test(expression);
-  
+
   // All parts except the last are executed for side effects
   const sideEffectParts = parts.slice(0, -1);
   const returnPart = parts[parts.length - 1];
-  
+
   if (hasAwait) {
     return `(async () => {
       ${sideEffectParts.map(part => `${part.trim()};`).join('\n      ')}
@@ -513,20 +520,25 @@ function splitBySemicolon(expression: string): string[] {
   const parts: string[] = [];
   let current = '';
   const state = createInitialParseState();
-  
+
   for (let i = 0; i < expression.length; i++) {
     const char = expression[i];
     const prevChar = expression[i - 1] || '';
-    
+
     updateStringState(state, char, prevChar);
     current += char;
-    
+
     if (state.inString) continue;
-    
+
     updateBracketDepth(state, char);
-    
+
     // Split at semicolon if at top level
-    if (char === ';' && state.parenDepth === 0 && state.braceDepth === 0 && state.bracketDepth === 0) {
+    if (
+      char === ';' &&
+      state.parenDepth === 0 &&
+      state.braceDepth === 0 &&
+      state.bracketDepth === 0
+    ) {
       current = current.slice(0, -1); // Remove the semicolon
       if (current.trim()) {
         parts.push(current.trim());
@@ -534,12 +546,12 @@ function splitBySemicolon(expression: string): string[] {
       current = '';
     }
   }
-  
+
   // Add the final part
   if (current.trim()) {
     parts.push(current.trim());
   }
-  
+
   return parts;
 }
 
