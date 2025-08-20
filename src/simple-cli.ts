@@ -50,7 +50,7 @@ const program = new Command();
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.13');
+  .version('0.1.14');
 
 // Main command (default Node.js behavior)
 program
@@ -64,7 +64,7 @@ program
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
     '--file-format <format>',
-    'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
+    'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
@@ -105,7 +105,7 @@ program
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
     '--file-format <format>',
-    'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
+    'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
@@ -129,7 +129,7 @@ program
   .option('-f, --file <path>', 'Read input from file instead of stdin')
   .option(
     '--file-format <format>',
-    'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
+    'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
@@ -391,7 +391,7 @@ async function handleNonStreamingMode(
   const input = await getInputData(inputSource, options.file, detectedFormat);
 
   if (isStructuredFormat(detectedFormat)) {
-    await processStructuredData(expression, input, processor, options);
+    await processStructuredData(expression, input, processor, options, detectedFormat);
   } else {
     await processRegularData(expression, input, processor, options);
   }
@@ -410,16 +410,18 @@ async function getInputData(
 }
 
 function isStructuredFormat(format: string): boolean {
-  return ['csv', 'tsv', 'parquet'].includes(format);
+  return ['csv', 'tsv', 'parquet', 'yaml', 'yml', 'toml'].includes(format);
 }
 
 async function processStructuredData(
   expression: string,
   input: unknown,
   processor: JsqProcessor,
-  options: JsqOptions
+  options: JsqOptions,
+  format?: string
 ): Promise<void> {
-  const parsedData = { data: input };
+  // For YAML and TOML, use data directly since they're already properly structured
+  const parsedData = ['yaml', 'yml', 'toml'].includes(format || '') ? input : { data: input };
   const result = await processor.process(expression, JSON.stringify(parsedData));
   console.log(JSON.stringify(result.data, null, 2));
 

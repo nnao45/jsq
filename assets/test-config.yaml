@@ -1,0 +1,29 @@
+application:
+  name: "jsq"
+  version: "0.1.13"
+  description: "JavaScript-Powered JSON Query CLI Tool"
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "app_db"
+  credentials:
+    username: "app_user"
+    password: "secret123"
+
+features:
+  - name: "json_processing"
+    enabled: true
+    priority: 1
+  - name: "yaml_support"
+    enabled: true
+    priority: 2
+  - name: "toml_support"
+    enabled: true
+    priority: 3
+
+settings:
+  debug: false
+  verbose: true
+  timeout: 30
+  retry_count: 3
