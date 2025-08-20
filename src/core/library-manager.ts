@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { detectRuntime, getRuntimeGlobals, getExecutableName } from '@/utils/runtime';
 import NodeCache from 'node-cache';
 import type { JsqOptions, LibraryCache, LibraryInfo } from '@/types/cli';
 
@@ -148,31 +149,35 @@ export class LibraryManager {
   }
 
   private async runNpmInstall(spec: string, cwd: string): Promise<void> {
+    const runtime = detectRuntime();
+    const packageManager = this.getPackageManager();
+    const args = this.getInstallArgs(spec, runtime);
+    
     return new Promise((resolve, reject) => {
-      const npm = spawn('npm', ['install', '--no-save', '--prefer-offline', spec], {
+      const childProcess = spawn(packageManager, args, {
         cwd,
         stdio: this.options.verbose ? 'inherit' : 'pipe',
       });
 
-      npm.on('close', code => {
+      childProcess.on('close', code => {
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`npm install failed with code ${code}`));
+          reject(new Error(`${packageManager} install failed with code ${code}`));
         }
       });
 
-      npm.on('error', error => {
-        reject(new Error(`npm install error: ${error.message}`));
+      childProcess.on('error', error => {
+        reject(new Error(`${packageManager} install error: ${error.message}`));
       });
 
-      // Set timeout for npm install
+      // Set timeout for package install
       const timeout = setTimeout(() => {
-        npm.kill();
-        reject(new Error('npm install timed out'));
+        childProcess.kill();
+        reject(new Error(`${packageManager} install timed out`));
       }, 60000); // 60 second timeout
 
-      npm.on('close', () => {
+      childProcess.on('close', () => {
         clearTimeout(timeout);
       });
     });
@@ -227,5 +232,33 @@ export class LibraryManager {
       }
     }
     return null;
+  }
+
+  private getPackageManager(): string {
+    const runtime = detectRuntime();
+    
+    switch (runtime) {
+      case 'bun':
+        return 'bun';
+      case 'deno':
+        return 'deno'; // Deno can use npm: imports, but for package installation we might need different approach
+      case 'node':
+      default:
+        return 'npm';
+    }
+  }
+
+  private getInstallArgs(spec: string, runtime: string): string[] {
+    switch (runtime) {
+      case 'bun':
+        return ['add', '--no-save', spec];
+      case 'deno':
+        // For Deno, we might need to handle npm: imports differently
+        // For now, fallback to npm
+        return ['install', '--no-save', '--prefer-offline', spec];
+      case 'node':
+      default:
+        return ['install', '--no-save', '--prefer-offline', spec];
+    }
   }
 }

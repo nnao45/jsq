@@ -1,0 +1,17 @@
+# Bun configuration for jsq
+
+[install]
+# Configure package installation
+cache = false
+registry = "https://registry.npmjs.org/"
+
+[install.scopes]
+# Scoped package configuration if needed
+
+[run]
+# Runtime configuration
+
+[test]
+# Test configuration for Bun
+root = "./src"
+preload = []

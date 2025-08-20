@@ -514,4 +514,27 @@ export class ChainableWrapper {
   toString(): string {
     return JSON.stringify(this.data, null, 2);
   }
+
+  toJSON(): unknown {
+    return this.data;
+  }
+
+  [Symbol.toPrimitive](hint: string): unknown {
+    if (hint === 'default' || hint === 'string') {
+      return this.data;
+    }
+    if (hint === 'number') {
+      return typeof this.data === 'number' ? this.data : Number(this.data);
+    }
+    return this.data;
+  }
+
+  // Make ChainableWrapper iterable when wrapping arrays for spread operator support
+  [Symbol.iterator](): Iterator<unknown> {
+    if (Array.isArray(this.data)) {
+      return this.data[Symbol.iterator]();
+    }
+    // For non-arrays, return empty iterator
+    return [][Symbol.iterator]();
+  }
 }

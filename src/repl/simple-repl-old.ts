@@ -36,8 +36,7 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
 
   console.log('🚀 jsq REPL - jQuery-style JSON processor');
   console.log('⚡ Optimized mode enabled');
-  console.log('Type your expression or "exit" to quit, ".help" for help');
-  console.log('📈 Use ↑/↓ arrows to navigate command history\n');
+  console.log('Type your expression or "exit" to quit, ".help" for help\n');
 
   // Show data preview
   const preview = data.length > 200 ? `${data.slice(0, 200)}...` : data;
@@ -46,6 +45,9 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
   rl.prompt();
 
   rl.on('line', async (input: string) => {
+    // Clear the current line before processing
+    process.stdout.write('\r\x1b[K');
+    
     // Reset history navigation
     session.historyIndex = -1;
     session.currentInput = '';
@@ -69,11 +71,6 @@ Available commands:
   .clear    - Clear screen and history
   .data     - Show current data
   .history  - Show command history
-
-Navigation:
-  ↑ / ↓     - Navigate command history
-  Enter     - Execute command and clear prompt
-  Ctrl+C    - Exit REPL
 
 JavaScript/jsq expressions:
   $                    - Access root data
@@ -124,9 +121,6 @@ function handleReplCommands(trimmed: string, rl: ReadlineInterface, session: REP
   if (trimmed === '.clear') {
     console.clear();
     session.history = [];
-    console.log('🚀 jsq REPL - jQuery-style JSON processor');
-    console.log('⚡ Optimized mode enabled');
-    console.log('History cleared. Type ".help" for help\n');
     rl.prompt();
     return true;
   }
@@ -138,16 +132,9 @@ function handleReplCommands(trimmed: string, rl: ReadlineInterface, session: REP
   }
 
   if (trimmed === '.history') {
-    if (session.history.length === 0) {
-      console.log('No command history available.');
-    } else {
-      console.log('\nCommand History:');
-      session.history.slice(-10).forEach((item, index) => {
-        const historyIndex = session.history.length - 10 + index + 1;
-        const status = item.error ? '✗' : '✓';
-        console.log(`${historyIndex.toString().padStart(3)}: ${status} ${item.expression}`);
-      });
-    }
+    session.history.forEach((item, index) => {
+      console.log(`${index + 1}: ${item.expression} => ${item.result || item.error}`);
+    });
     rl.prompt();
     return true;
   }
@@ -171,9 +158,7 @@ async function processExpression(
       output = JSON.stringify(result.data, null, 2);
     }
 
-    // Clear the "Processing..." message and show result
-    process.stdout.write('\r\x1b[K');
-    console.log(`✓ ${output}`);
+    console.log(`\r✓ ${output}`);
 
     // Add to history only if it's not a duplicate of the last command
     if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
@@ -181,16 +166,10 @@ async function processExpression(
         expression: trimmed,
         result: output,
       });
-      
-      // Update readline's internal history
-      const rlAny = rl as any;
-      rlAny.history.unshift(trimmed);
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    // Clear the "Processing..." message and show error
-    process.stdout.write('\r\x1b[K');
-    console.log(`✗ Error: ${errorMsg}`);
+    console.log(`\r✗ Error: ${errorMsg}`);
 
     // Add to history only if it's not a duplicate of the last command
     if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
@@ -199,99 +178,8 @@ async function processExpression(
         result: '',
         error: errorMsg,
       });
-      
-      // Update readline's internal history
-      const rlAny = rl as any;
-      rlAny.history.unshift(trimmed);
     }
   }
 
   rl.prompt();
-}
-
-// History persistence functions
-async function loadHistory(): Promise<Array<{ expression: string; result: string; error?: string }>> {
-  try {
-    const historyPath = path.join(os.homedir(), '.jsq_history');
-    const historyData = await fs.readFile(historyPath, 'utf-8');
-    const parsed = JSON.parse(historyData);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function saveHistory(history: Array<{ expression: string; result: string; error?: string }>): Promise<void> {
-  try {
-    const historyPath = path.join(os.homedir(), '.jsq_history');
-    // Keep only the last 1000 history entries
-    const trimmedHistory = history.slice(-1000);
-    await fs.writeFile(historyPath, JSON.stringify(trimmedHistory, null, 2));
-  } catch {
-    // Ignore errors in saving history - don't interrupt user experience
-  }
-}
-
-// Keyboard handler setup  
-function setupKeyboardHandlers(rl: ReadlineInterface, session: REPLSession): void {
-  // Load command history into readline's internal history
-  const rlAny = rl as any;
-  
-  // Clear readline's default history and load ours
-  rlAny.history = [];
-  session.history.forEach(entry => {
-    rlAny.history.push(entry.expression);
-  });
-  
-  // Enable keypress events
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-  
-  let isProcessingEnter = false;
-  
-  // Handle process.stdin keypress events for additional functionality
-  process.stdin.on('keypress', (str, key) => {
-    if (!key) return;
-    
-    // Handle Enter/Return key
-    if ((key.name === 'return' || key.name === 'enter') && !key.ctrl && !key.meta) {
-      if (!isProcessingEnter) {
-        isProcessingEnter = true;
-        const currentLine = rlAny.line || '';
-        
-        // Clear the input line visually without sending newline
-        process.stdout.write('\r\x1b[K');
-        
-        // Process the command
-        handleReplInput(currentLine, rl, session).finally(() => {
-          isProcessingEnter = false;
-        });
-        
-        // Clear the readline buffer
-        rlAny.line = '';
-        rlAny.cursor = 0;
-      }
-      return; // Don't let readline handle this enter key
-    }
-    
-    // Handle Ctrl+L to clear screen (like bash)
-    if (key.ctrl && key.name === 'l') {
-      console.clear();
-      console.log('🚀 jsq REPL - jQuery-style JSON processor');
-      console.log('⚡ Optimized mode enabled\n');
-      rl.prompt();
-      return;
-    }
-    
-    // Reset history navigation state on regular input
-    if (key.name !== 'up' && key.name !== 'down' && key.name !== 'return' && key.name !== 'enter') {
-      session.historyIndex = -1;
-    }
-    
-    // Let readline handle other keys normally
-    if (key.name !== 'return' && key.name !== 'enter') {
-      rlAny._ttyWrite(str, key);
-    }
-  });
 }

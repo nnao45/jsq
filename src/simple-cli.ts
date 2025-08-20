@@ -10,13 +10,18 @@ import {
   validateFile,
 } from '@/utils/file-input';
 import { getStdinStream, isStdinAvailable, readStdin } from '@/utils/input';
+import { spawn } from 'node:child_process';
+import { dirname, join } from 'node:path';
 
 const program = new Command();
 
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.0')
+  .version('0.1.0');
+
+// Main command (default Node.js behavior)
+program
   .argument('[expression]', 'JavaScript expression to evaluate')
   .option('-d, --debug', 'Enable debug mode')
   .option('-v, --verbose', 'Verbose output')
@@ -53,6 +58,104 @@ program
       handleError(error, options);
     }
   });
+
+// Bun subcommand
+program
+  .command('bun')
+  .description('Run jsq with Bun runtime')
+  .argument('[expression]', 'JavaScript expression to evaluate')
+  .option('-d, --debug', 'Enable debug mode')
+  .option('-v, --verbose', 'Verbose output')
+  .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
+  .option('-s, --stream', 'Enable streaming mode for large datasets')
+  .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
+  .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
+  .option('-f, --file <path>', 'Read input from file instead of stdin')
+  .option(
+    '--file-format <format>',
+    'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
+    'auto'
+  )
+  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--safe', 'Legacy option (deprecated, shows warning)')
+  .option('--repl', 'Start interactive REPL mode')
+  .action(async (expression: string | undefined, options: JsqOptions) => {
+    await runWithRuntime('bun', expression, options);
+  });
+
+// Deno subcommand
+program
+  .command('deno')
+  .description('Run jsq with Deno runtime')
+  .argument('[expression]', 'JavaScript expression to evaluate')
+  .option('-d, --debug', 'Enable debug mode')
+  .option('-v, --verbose', 'Verbose output')
+  .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
+  .option('-s, --stream', 'Enable streaming mode for large datasets')
+  .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
+  .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
+  .option('-f, --file <path>', 'Read input from file instead of stdin')
+  .option(
+    '--file-format <format>',
+    'Specify input file format (json, jsonl, csv, tsv, parquet, auto)',
+    'auto'
+  )
+  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--safe', 'Legacy option (deprecated, shows warning)')
+  .option('--repl', 'Start interactive REPL mode')
+  .action(async (expression: string | undefined, options: JsqOptions) => {
+    await runWithRuntime('deno', expression, options);
+  });
+
+async function runWithRuntime(runtime: 'bun' | 'deno', expression: string | undefined, options: JsqOptions): Promise<void> {
+  try {
+    const args: string[] = [];
+    
+    if (runtime === 'bun') {
+      args.push('bun', join(process.cwd(), 'dist/index.js'));
+    } else if (runtime === 'deno') {
+      args.push('deno', 'run', '--allow-all', '--unstable-sloppy-imports', join(process.cwd(), 'src/simple-cli.ts'));
+    }
+
+    // Add expression if provided
+    if (expression) {
+      args.push(expression);
+    }
+
+    // Convert options back to CLI flags
+    if (options.debug) args.push('--debug');
+    if (options.verbose) args.push('--verbose');
+    if (options.stream) args.push('--stream');
+    if (options.jsonLines) args.push('--json-lines');
+    if (options.unsafe) args.push('--unsafe');
+    if (options.safe) args.push('--safe');
+    if (options.repl) args.push('--repl');
+    if (options.use) {
+      const useLibs = Array.isArray(options.use) ? options.use.join(',') : options.use;
+      args.push('--use', useLibs);
+    }
+    if (options.batch) args.push('--batch', String(options.batch));
+    if (options.file) args.push('--file', options.file);
+    if (options.fileFormat && options.fileFormat !== 'auto') args.push('--file-format', options.fileFormat);
+
+    const child = spawn(args[0], args.slice(1), {
+      stdio: 'inherit',
+      env: process.env,
+    });
+
+    child.on('exit', (code) => {
+      process.exit(code || 0);
+    });
+
+    child.on('error', (error) => {
+      console.error(`Failed to start ${runtime}:`, error.message);
+      process.exit(1);
+    });
+  } catch (error) {
+    console.error(`Error running with ${runtime}:`, error);
+    process.exit(1);
+  }
+}
 
 async function handleReplMode(options: JsqOptions): Promise<void> {
   const { spawn } = await import('node:child_process');

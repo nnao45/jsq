@@ -60,9 +60,45 @@ Provides type-safe processing and excellent developer experience
 
 ## 📦 Installation
 
+### Node.js (npm) - Primary Installation
 ```bash
 npm install -g @nnao45/jsq
+
+# Use default Node.js runtime
+jsq '$.users.pluck("name")' --file data.json
+
+# Or use Bun runtime via subcommand
+jsq bun '$.users.pluck("name")' --file data.json
+
+# Or use Deno runtime via subcommand  
+jsq deno '$.users.pluck("name")' --file data.json
 ```
+
+### Runtime-Specific Usage
+
+#### Bun
+```bash
+# After npm install, use jsq bun subcommand
+jsq bun '$.users.pluck("name")' --file data.json
+
+# Or run directly with Bun (without installation)
+bun run https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.users.pluck("name")' --file data.json
+```
+
+#### Deno
+```bash
+# After npm install, use jsq deno subcommand
+jsq deno '$.users.pluck("name")' --file data.json
+
+# Or run directly with Deno (without installation)
+deno run --allow-all --unstable-sloppy-imports https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.users.pluck("name")' --file data.json
+```
+
+### Cross-Runtime Compatibility
+jsq now supports running with multiple JavaScript runtimes:
+- **Node.js**: `jsq` (default)
+- **Bun**: `jsq bun` (faster startup, better performance)
+- **Deno**: `jsq deno` (secure by default, TypeScript native)
 
 ## ✨ Beautiful Interactive REPL
 
@@ -99,6 +135,10 @@ echo '{"numbers": [1, 2, 3, 4, 5]}' | jsq '$.numbers.map(n => n * 2)'
 # Filter objects
 echo '{"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}' | jsq '$.users.filter(u => u.age > 25)'
 # Output: [{"name": "Alice", "age": 30}]
+
+# Same operations with different runtimes
+echo '{"data": [1, 2, 3]}' | jsq bun '$.data.map(x => x * 3)'        # Using Bun
+echo '{"data": [1, 2, 3]}' | jsq deno '$.data.filter(x => x > 1)'    # Using Deno
 ```
 
 ### Chaining Operations
@@ -310,7 +350,9 @@ jsq '_.times(3, i => i * 2)'  # [0, 2, 4]
 ## 🎛️ Command Line Options
 
 ```bash
-jsq [options] <expression>
+jsq [options] <expression>          # Node.js
+jsq-bun [options] <expression>      # Bun  
+jsq-deno [options] <expression>     # Deno
 
 Options:
   -v, --verbose           Display detailed execution information
@@ -326,6 +368,20 @@ Options:
   --unsafe               Legacy option (deprecated, use --safe recommended)
   --help                 Display help
   --version              Display version
+```
+
+### Runtime-Specific Usage
+
+#### Quick Start Examples
+```bash
+# Node.js
+echo '{"data": [1,2,3]}' | jsq '$.data.map(x => x * 2)'
+
+# Bun (faster execution)
+echo '{"data": [1,2,3]}' | jsq-bun '$.data.map(x => x * 2)'
+
+# Deno (secure by default)
+echo '{"data": [1,2,3]}' | deno run --allow-all https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.data.map(x => x * 2)'
 ```
 
 ## 🔄 Migration from jq
@@ -539,6 +595,7 @@ The interactive REPL supports these keyboard shortcuts:
 
 ## 🔧 Development & Contributing
 
+### Node.js Development
 ```bash
 # Development environment setup
 git clone https://github.com/nnao45/jsq.git
@@ -558,6 +615,44 @@ npm run dev
 jsq --repl --file test-repl-data.json
 ```
 
+### Bun Development
+```bash
+# Setup for Bun
+bun install
+
+# Build with Bun
+bun run build:bun
+
+# Run tests with Bun
+bun run test:bun
+
+# Development mode with Bun
+bun run dev:bun
+
+# Start with Bun
+bun run start:bun
+```
+
+### Deno Development
+```bash
+# No installation needed, works directly
+
+# Check TypeScript
+deno check src/**/*.ts
+
+# Run tests
+deno test --allow-all
+
+# Development mode
+deno run --allow-all --watch src/simple-cli.ts
+
+# Format code
+deno fmt
+
+# Lint code
+deno lint
+```
+
 ## ✅ Implemented Features
 
 ### Core Features
@@ -572,6 +667,13 @@ jsq --repl --file test-repl-data.json
 - [x] **Secure execution with VM isolation** - Safe code execution environment
 - [x] **Dynamic npm library loading** - Use any npm package on-demand
 - [x] **Full TypeScript support** - Type-safe development experience
+
+### 🚀 Multi-Runtime Support
+- [x] **Node.js Compatible** - Full support for Node.js 16+ with npm ecosystem
+- [x] **Bun Ready** - Native Bun support with faster execution and built-in bundler
+- [x] **Deno Compatible** - Works with Deno's secure-by-default runtime
+- [x] **Cross-Runtime Library Loading** - Automatic runtime detection and package management
+- [x] **Universal Binary Distribution** - Single codebase, multiple runtime targets
 
 ### Comprehensive Lodash-like Method Library
 - [x] **60+ Built-in Utility Methods** - Extensive method collection without external dependencies
@@ -604,6 +706,23 @@ Please report bugs and feature requests on [GitHub Issues](https://github.com/nn
 ---
 
 **@nnao45/jsq** revolutionizes JSON processing with a beautiful, interactive interface that makes data exploration enjoyable. By combining the power of jq with JavaScript familiarity and stunning visual design, it's the ultimate tool for developers who value both functionality and aesthetics.
+
+## 🌐 Cross-Runtime Compatibility
+
+jsq is designed to work seamlessly across all major JavaScript runtimes:
+
+| Runtime | Status | Installation | Performance | Notes |
+|---------|--------|--------------|-------------|-------|
+| **Node.js** | ✅ Full Support | `npm install -g @nnao45/jsq` | Standard | Complete ecosystem access |
+| **Bun** | ✅ Native Support | `bun add -g @nnao45/jsq` | **Fast** | Built-in bundler, faster execution |
+| **Deno** | ✅ Compatible | Direct URL import | Standard | Secure by default, no npm install needed |
+
+### Runtime Detection
+jsq automatically detects your runtime environment and optimizes accordingly:
+- **Package Management**: Uses npm, bun add, or deno imports as appropriate
+- **Module Resolution**: Handles different import/require patterns
+- **Performance**: Leverages runtime-specific optimizations
+- **Security**: Respects each runtime's security model
 
 ## 🎨 Visual Highlights
 

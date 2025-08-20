@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "main": "dist/index.js",
   "bin": {
@@ -9,8 +9,16 @@
   "scripts": {
     "build": "esbuild src/simple-cli.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=cjs --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external",
     "build:watch": "npm run build -- --watch",
+    "build:bun": "bun build src/simple-cli.ts --outfile=dist/index-bun.js --target=bun",
+    "build:deno": "deno bundle src/simple-cli.ts dist/index-deno.js",
+    "build:all": "npm run build && npm run build:bun",
     "dev": "tsx src/index.ts",
+    "dev:bun": "bun run src/simple-cli.ts",
+    "dev:deno": "deno run --allow-all src/simple-cli.ts",
     "test": "jest",
+    "test:bun": "bun test",
+    "test:deno": "deno test --allow-all",
+    "test:all": "npm run test && npm run test:bun",
     "test:watch": "jest --watch",
     "lint": "biome lint src/",
     "lint:fix": "biome lint --write src/",
@@ -19,20 +27,28 @@
     "check": "biome check src/",
     "check:fix": "biome check --write src/",
     "type-check": "tsc --noEmit",
+    "type-check:deno": "deno check src/**/*.ts",
     "start": "node dist/index.js",
+    "start:bun": "bun dist/index-bun.js",
+    "start:deno": "deno run --allow-all dist/index-deno.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run format && npm run lint:fix && npm run check && npm run build && npm run test"
   },
   "keywords": [
     "json",
-    "jq",
+    "jq", 
     "cli",
     "javascript",
     "typescript",
     "jquery",
     "query",
     "transform",
-    "stream"
+    "stream",
+    "bun",
+    "deno",
+    "node",
+    "cross-runtime",
+    "multi-runtime"
   ],
   "author": "nnao45",
   "license": "MIT",
@@ -89,7 +105,8 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=16.0.0",
+    "bun": ">=1.0.0"
   },
   "repository": {
     "type": "git",
