@@ -4,25 +4,45 @@
 
 export type RuntimeType = 'node' | 'bun' | 'deno' | 'unknown';
 
+// Type definitions for runtime globals
+interface DenoGlobal {
+  version?: { deno?: string };
+  process?: unknown;
+  env?: { toObject?: () => Record<string, string> };
+  cwd?: () => string;
+  exit?: (code: number) => void;
+}
+
+interface BunGlobal {
+  version?: string;
+}
+
+interface RuntimeGlobalThis extends GlobalThis {
+  Deno?: DenoGlobal;
+  Bun?: BunGlobal;
+}
+
 /**
  * Detect the current JavaScript runtime
  */
 export function detectRuntime(): RuntimeType {
+  const runtimeGlobal = globalThis as RuntimeGlobalThis;
+
   // Check for Deno
-  if (typeof globalThis !== 'undefined' && 'Deno' in globalThis) {
+  if (typeof globalThis !== 'undefined' && runtimeGlobal.Deno) {
     return 'deno';
   }
-  
+
   // Check for Bun
-  if (typeof globalThis !== 'undefined' && 'Bun' in globalThis) {
+  if (typeof globalThis !== 'undefined' && runtimeGlobal.Bun) {
     return 'bun';
   }
-  
+
   // Check for Node.js
   if (typeof process !== 'undefined' && process.versions && process.versions.node) {
     return 'node';
   }
-  
+
   return 'unknown';
 }
 
@@ -36,24 +56,25 @@ export function getRuntimeInfo(): {
   supportsDynamicImport: boolean;
 } {
   const type = detectRuntime();
-  
+  const runtimeGlobal = globalThis as RuntimeGlobalThis;
+
   switch (type) {
     case 'deno':
       return {
         type,
-        version: (globalThis as any).Deno?.version?.deno || 'unknown',
+        version: runtimeGlobal.Deno?.version?.deno || 'unknown',
         supportsNpm: true, // Deno supports npm: imports
         supportsDynamicImport: true,
       };
-      
+
     case 'bun':
       return {
         type,
-        version: (globalThis as any).Bun?.version || 'unknown',
+        version: runtimeGlobal.Bun?.version || 'unknown',
         supportsNpm: true, // Bun has excellent npm compatibility
         supportsDynamicImport: true,
       };
-      
+
     case 'node':
       return {
         type,
@@ -61,7 +82,7 @@ export function getRuntimeInfo(): {
         supportsNpm: true,
         supportsDynamicImport: true,
       };
-      
+
     default:
       return {
         type,
@@ -92,16 +113,17 @@ export function isDeno(): boolean {
  */
 export function getRuntimeGlobals() {
   const runtime = detectRuntime();
-  
+  const runtimeGlobal = globalThis as RuntimeGlobalThis;
+
   switch (runtime) {
     case 'deno':
       return {
-        process: (globalThis as any).Deno?.process || globalThis.process,
-        env: (globalThis as any).Deno?.env?.toObject() || {},
-        cwd: () => (globalThis as any).Deno?.cwd?.() || '/',
-        exit: (code: number) => (globalThis as any).Deno?.exit?.(code),
+        process: runtimeGlobal.Deno?.process || globalThis.process,
+        env: runtimeGlobal.Deno?.env?.toObject() || {},
+        cwd: () => runtimeGlobal.Deno?.cwd?.() || '/',
+        exit: (code: number) => runtimeGlobal.Deno?.exit?.(code),
       };
-      
+
     case 'bun':
     case 'node':
       return {
@@ -110,7 +132,7 @@ export function getRuntimeGlobals() {
         cwd: () => process.cwd(),
         exit: (code: number) => process.exit(code),
       };
-      
+
     default:
       return {
         process: null,
@@ -126,7 +148,7 @@ export function getRuntimeGlobals() {
  */
 export function getExecutableName(): string {
   const runtime = detectRuntime();
-  
+
   switch (runtime) {
     case 'deno':
       return 'deno';
@@ -142,11 +164,13 @@ export function getExecutableName(): string {
 /**
  * Cross-runtime compatible dynamic import
  */
-export async function crossRuntimeImport(specifier: string): Promise<any> {
+export async function crossRuntimeImport(specifier: string): Promise<unknown> {
   try {
     return await import(specifier);
   } catch (error) {
     // Fallback for different runtime import behaviors
-    throw new Error(`Failed to import ${specifier}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to import ${specifier}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }

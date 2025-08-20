@@ -1,7 +1,4 @@
 import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
 import { JsqProcessor } from '../core/processor';
 import type { JsqOptions } from '../types/cli';
 
@@ -47,11 +44,11 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
   rl.on('line', async (input: string) => {
     // Clear the current line before processing
     process.stdout.write('\r\x1b[K');
-    
+
     // Reset history navigation
     session.historyIndex = -1;
     session.currentInput = '';
-    
+
     await handleReplInput(input, rl, session);
   });
 
@@ -161,7 +158,10 @@ async function processExpression(
     console.log(`\r✓ ${output}`);
 
     // Add to history only if it's not a duplicate of the last command
-    if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
+    if (
+      session.history.length === 0 ||
+      session.history[session.history.length - 1].expression !== trimmed
+    ) {
       session.history.push({
         expression: trimmed,
         result: output,
@@ -172,7 +172,10 @@ async function processExpression(
     console.log(`\r✗ Error: ${errorMsg}`);
 
     // Add to history only if it's not a duplicate of the last command
-    if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
+    if (
+      session.history.length === 0 ||
+      session.history[session.history.length - 1].expression !== trimmed
+    ) {
       session.history.push({
         expression: trimmed,
         result: '',

@@ -2,9 +2,9 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { detectRuntime, getRuntimeGlobals, getExecutableName } from '@/utils/runtime';
 import NodeCache from 'node-cache';
 import type { JsqOptions, LibraryCache, LibraryInfo } from '@/types/cli';
+import { detectRuntime } from '@/utils/runtime';
 
 export class LibraryManager {
   private cache: NodeCache;
@@ -152,7 +152,7 @@ export class LibraryManager {
     const runtime = detectRuntime();
     const packageManager = this.getPackageManager();
     const args = this.getInstallArgs(spec, runtime);
-    
+
     return new Promise((resolve, reject) => {
       const childProcess = spawn(packageManager, args, {
         cwd,
@@ -236,13 +236,12 @@ export class LibraryManager {
 
   private getPackageManager(): string {
     const runtime = detectRuntime();
-    
+
     switch (runtime) {
       case 'bun':
         return 'bun';
       case 'deno':
         return 'deno'; // Deno can use npm: imports, but for package installation we might need different approach
-      case 'node':
       default:
         return 'npm';
     }
@@ -256,7 +255,6 @@ export class LibraryManager {
         // For Deno, we might need to handle npm: imports differently
         // For now, fallback to npm
         return ['install', '--no-save', '--prefer-offline', spec];
-      case 'node':
       default:
         return ['install', '--no-save', '--prefer-offline', spec];
     }

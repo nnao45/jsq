@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/processor';
 import type { JsqOptions } from '@/types/cli';
@@ -10,8 +12,6 @@ import {
   validateFile,
 } from '@/utils/file-input';
 import { getStdinStream, isStdinAvailable, readStdin } from '@/utils/input';
-import { spawn } from 'node:child_process';
-import { dirname, join } from 'node:path';
 
 const program = new Command();
 
@@ -107,14 +107,25 @@ program
     await runWithRuntime('deno', expression, options);
   });
 
-async function runWithRuntime(runtime: 'bun' | 'deno', expression: string | undefined, options: JsqOptions): Promise<void> {
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex runtime delegation logic required
+async function runWithRuntime(
+  runtime: 'bun' | 'deno',
+  expression: string | undefined,
+  options: JsqOptions
+): Promise<void> {
   try {
     const args: string[] = [];
-    
+
     if (runtime === 'bun') {
       args.push('bun', join(process.cwd(), 'dist/index.js'));
     } else if (runtime === 'deno') {
-      args.push('deno', 'run', '--allow-all', '--unstable-sloppy-imports', join(process.cwd(), 'src/simple-cli.ts'));
+      args.push(
+        'deno',
+        'run',
+        '--allow-all',
+        '--unstable-sloppy-imports',
+        join(process.cwd(), 'src/simple-cli.ts')
+      );
     }
 
     // Add expression if provided
@@ -136,18 +147,19 @@ async function runWithRuntime(runtime: 'bun' | 'deno', expression: string | unde
     }
     if (options.batch) args.push('--batch', String(options.batch));
     if (options.file) args.push('--file', options.file);
-    if (options.fileFormat && options.fileFormat !== 'auto') args.push('--file-format', options.fileFormat);
+    if (options.fileFormat && options.fileFormat !== 'auto')
+      args.push('--file-format', options.fileFormat);
 
     const child = spawn(args[0], args.slice(1), {
       stdio: 'inherit',
       env: process.env,
     });
 
-    child.on('exit', (code) => {
+    child.on('exit', code => {
       process.exit(code || 0);
     });
 
-    child.on('error', (error) => {
+    child.on('error', error => {
       console.error(`Failed to start ${runtime}:`, error.message);
       process.exit(1);
     });

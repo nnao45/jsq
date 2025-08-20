@@ -1,7 +1,13 @@
-import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import path from 'node:path';
+import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
+
+// Extended readline interface for internal history access
+interface ExtendedReadlineInterface extends ReadlineInterface {
+  history?: string[];
+}
+
 import { JsqProcessor } from '../core/processor';
 import type { JsqOptions } from '../types/cli';
 
@@ -49,7 +55,7 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
     // Reset history navigation
     session.historyIndex = -1;
     session.currentInput = '';
-    
+
     await handleReplInput(input, rl, session);
   });
 
@@ -176,15 +182,18 @@ async function processExpression(
     console.log(`✓ ${output}`);
 
     // Add to history only if it's not a duplicate of the last command
-    if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
+    if (
+      session.history.length === 0 ||
+      session.history[session.history.length - 1].expression !== trimmed
+    ) {
       session.history.push({
         expression: trimmed,
         result: output,
       });
-      
+
       // Update readline's internal history
-      const rlAny = rl as any;
-      rlAny.history.unshift(trimmed);
+      const rlExtended = rl as ExtendedReadlineInterface;
+      rlExtended.history?.unshift(trimmed);
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -193,16 +202,19 @@ async function processExpression(
     console.log(`✗ Error: ${errorMsg}`);
 
     // Add to history only if it's not a duplicate of the last command
-    if (session.history.length === 0 || session.history[session.history.length - 1].expression !== trimmed) {
+    if (
+      session.history.length === 0 ||
+      session.history[session.history.length - 1].expression !== trimmed
+    ) {
       session.history.push({
         expression: trimmed,
         result: '',
         error: errorMsg,
       });
-      
+
       // Update readline's internal history
-      const rlAny = rl as any;
-      rlAny.history.unshift(trimmed);
+      const rlExtended = rl as ExtendedReadlineInterface;
+      rlExtended.history?.unshift(trimmed);
     }
   }
 
@@ -210,7 +222,9 @@ async function processExpression(
 }
 
 // History persistence functions
-async function loadHistory(): Promise<Array<{ expression: string; result: string; error?: string }>> {
+async function loadHistory(): Promise<
+  Array<{ expression: string; result: string; error?: string }>
+> {
   try {
     const historyPath = path.join(os.homedir(), '.jsq_history');
     const historyData = await fs.readFile(historyPath, 'utf-8');
@@ -221,7 +235,9 @@ async function loadHistory(): Promise<Array<{ expression: string; result: string
   }
 }
 
-async function saveHistory(history: Array<{ expression: string; result: string; error?: string }>): Promise<void> {
+async function saveHistory(
+  history: Array<{ expression: string; result: string; error?: string }>
+): Promise<void> {
   try {
     const historyPath = path.join(os.homedir(), '.jsq_history');
     // Keep only the last 1000 history entries
@@ -232,49 +248,52 @@ async function saveHistory(history: Array<{ expression: string; result: string; 
   }
 }
 
-// Keyboard handler setup  
+// Keyboard handler setup
 function setupKeyboardHandlers(rl: ReadlineInterface, session: REPLSession): void {
   // Load command history into readline's internal history
-  const rlAny = rl as any;
-  
+  const rlExtended = rl as ExtendedReadlineInterface;
+
   // Clear readline's default history and load ours
-  rlAny.history = [];
-  session.history.forEach(entry => {
-    rlAny.history.push(entry.expression);
-  });
-  
+  if (rlExtended.history) {
+    rlExtended.history.length = 0;
+    session.history.forEach(entry => {
+      rlExtended.history?.push(entry.expression);
+    });
+  }
+
   // Enable keypress events
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);
   }
-  
+
   let isProcessingEnter = false;
-  
+
   // Handle process.stdin keypress events for additional functionality
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex REPL key handling logic required
   process.stdin.on('keypress', (str, key) => {
     if (!key) return;
-    
+
     // Handle Enter/Return key
     if ((key.name === 'return' || key.name === 'enter') && !key.ctrl && !key.meta) {
       if (!isProcessingEnter) {
         isProcessingEnter = true;
         const currentLine = rlAny.line || '';
-        
+
         // Clear the input line visually without sending newline
         process.stdout.write('\r\x1b[K');
-        
+
         // Process the command
         handleReplInput(currentLine, rl, session).finally(() => {
           isProcessingEnter = false;
         });
-        
+
         // Clear the readline buffer
         rlAny.line = '';
         rlAny.cursor = 0;
       }
       return; // Don't let readline handle this enter key
     }
-    
+
     // Handle Ctrl+L to clear screen (like bash)
     if (key.ctrl && key.name === 'l') {
       console.clear();
@@ -283,12 +302,12 @@ function setupKeyboardHandlers(rl: ReadlineInterface, session: REPLSession): voi
       rl.prompt();
       return;
     }
-    
+
     // Reset history navigation state on regular input
     if (key.name !== 'up' && key.name !== 'down' && key.name !== 'return' && key.name !== 'enter') {
       session.historyIndex = -1;
     }
-    
+
     // Let readline handle other keys normally
     if (key.name !== 'return' && key.name !== 'enter') {
       rlAny._ttyWrite(str, key);
