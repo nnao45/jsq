@@ -50,7 +50,11 @@ export async function detectFileFormat(
     return detectedFormat;
   }
 
-  // If extension is ambiguous, check file content (first few lines for JSON/JSONL)
+  // If extension is ambiguous, check file content
+  return await detectFormatFromContent(filePath);
+}
+
+async function detectFormatFromContent(filePath: string): Promise<SupportedFormat> {
   try {
     const stream = createReadStream(filePath, { encoding: 'utf8' });
     let content = '';
@@ -61,43 +65,16 @@ export async function detectFileFormat(
         content += chunk;
         const lines = content.split('\n');
 
-        // Check first few lines to determine format
-        for (let i = linesChecked; i < Math.min(lines.length, 3); i++) {
-          const line = lines[i].trim();
-          if (line) {
-            linesChecked++;
-            try {
-              JSON.parse(line);
-              // If we can parse individual lines as JSON, it's likely JSONL
-              if (linesChecked >= 2) {
-                stream.destroy();
-                resolve('jsonl');
-                return;
-              }
-            } catch {
-              // Check if it looks like CSV (contains commas)
-              if (line.includes(',')) {
-                stream.destroy();
-                resolve('csv');
-                return;
-              }
-              // Check if it looks like TSV (contains tabs)
-              if (line.includes('\t')) {
-                stream.destroy();
-                resolve('tsv');
-                return;
-              }
-              // If individual line parsing fails, it's likely a single JSON
-              stream.destroy();
-              resolve('json');
-              return;
-            }
-          }
+        const result = analyzeContentLines(lines, linesChecked);
+        if (result.format) {
+          stream.destroy();
+          resolve(result.format);
+          return;
         }
+        linesChecked = result.linesChecked;
       });
 
       stream.on('end', () => {
-        // Default to JSON if we can't determine
         resolve('json');
       });
 
@@ -108,6 +85,47 @@ export async function detectFileFormat(
   } catch {
     return 'json';
   }
+}
+
+function analyzeContentLines(
+  lines: string[],
+  startIndex: number
+): { format?: SupportedFormat; linesChecked: number } {
+  let linesChecked = startIndex;
+
+  for (let i = startIndex; i < Math.min(lines.length, 3); i++) {
+    const line = lines[i].trim();
+    if (line) {
+      linesChecked++;
+      const lineFormat = detectLineFormat(line, linesChecked);
+      if (lineFormat) {
+        return { format: lineFormat, linesChecked };
+      }
+    }
+  }
+
+  return { linesChecked };
+}
+
+function detectLineFormat(line: string, linesChecked: number): SupportedFormat | null {
+  try {
+    JSON.parse(line);
+    // If we can parse individual lines as JSON, it's likely JSONL
+    if (linesChecked >= 2) {
+      return 'jsonl';
+    }
+  } catch {
+    if (line.includes(',')) {
+      return 'csv';
+    }
+    if (line.includes('\t')) {
+      return 'tsv';
+    }
+    // If individual line parsing fails, it's likely a single JSON
+    return 'json';
+  }
+
+  return null;
 }
 
 /**

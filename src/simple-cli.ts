@@ -87,7 +87,8 @@ function prepareOptions(options: JsqOptions): void {
   }
 
   if (options.batch) {
-    const batchSize = typeof options.batch === 'string' ? parseInt(options.batch, 10) : options.batch;
+    const batchSize =
+      typeof options.batch === 'string' ? parseInt(options.batch, 10) : options.batch;
     if (Number.isNaN(batchSize) || batchSize <= 0) {
       console.error('Error: Batch size must be a positive number');
       process.exit(1);
@@ -176,7 +177,12 @@ async function handleStreamingMode(
     const transformStream = processor.createBatchTransformStream(expression, streamOptions);
     inputStream.pipe(transformStream).pipe(process.stdout);
   } else {
-    const transformStream = createTransformStream(processor, expression, detectedFormat, streamOptions);
+    const transformStream = createTransformStream(
+      processor,
+      expression,
+      detectedFormat,
+      streamOptions
+    );
     inputStream.pipe(transformStream).pipe(process.stdout);
   }
 
@@ -196,7 +202,11 @@ async function getInputStream(
 function createStreamOptions(options: JsqOptions, detectedFormat: string) {
   const streamingFormats = ['jsonl', 'csv', 'tsv', 'parquet'];
   return {
-    jsonLines: options.jsonLines || options.stream || !!options.batch || streamingFormats.includes(detectedFormat),
+    jsonLines:
+      options.jsonLines ||
+      options.stream ||
+      !!options.batch ||
+      streamingFormats.includes(detectedFormat),
     batchSize: typeof options.batch === 'number' ? options.batch : undefined,
   };
 }
@@ -205,14 +215,14 @@ function createTransformStream(
   processor: JsqProcessor,
   expression: string,
   detectedFormat: string,
-  streamOptions: any
+  streamOptions: { jsonLines?: boolean; batchSize?: number }
 ) {
   const objectFormats = ['csv', 'tsv', 'parquet'];
-  
+
   if (objectFormats.includes(detectedFormat)) {
     return processor.createObjectTransformStream(expression, streamOptions);
   }
-  
+
   return processor.createTransformStream(expression, streamOptions);
 }
 
@@ -231,7 +241,7 @@ async function handleNonStreamingMode(
   processor: JsqProcessor
 ): Promise<void> {
   const input = await getInputData(inputSource, options.file, detectedFormat);
-  
+
   if (isStructuredFormat(detectedFormat)) {
     await processStructuredData(expression, input, processor, options);
   } else {
@@ -247,7 +257,7 @@ async function getInputData(
   if (inputSource === 'file' && filePath) {
     return await readFileByFormat(filePath, detectedFormat);
   }
-  
+
   return await readStdin();
 }
 
@@ -299,11 +309,11 @@ async function processRegularData(
 function handleError(error: unknown, options: JsqOptions): void {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
   console.error('Error:', errorMessage);
-  
+
   if (options.debug && error instanceof Error && error.stack) {
     console.error('Stack trace:', error.stack);
   }
-  
+
   process.exit(1);
 }
 

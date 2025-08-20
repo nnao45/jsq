@@ -79,16 +79,16 @@ function endsWithOperator(expression: string): boolean {
 
 function hasUnmatchedBrackets(expression: string): boolean {
   const stack: string[] = [];
-  const { inString } = processStringLiterals(expression, (i, char) => {
+  const { inString } = processStringLiterals(expression, (_i, char) => {
     if (OPENING_BRACKETS.includes(char)) {
       stack.push(char);
       return true;
     }
-    
+
     if (CLOSING_BRACKETS.includes(char)) {
       return processBracketPair(stack, char);
     }
-    
+
     return true;
   });
 
@@ -124,8 +124,8 @@ function processStringLiterals(
 function handleStringDelimiter(
   char: string,
   prevChar: string,
-  inString: boolean,
-  stringChar: string
+  _inString: boolean,
+  _stringChar: string
 ): boolean {
   return (char === '"' || char === "'") && prevChar !== '\\\\';
 }
@@ -138,11 +138,11 @@ function updateStringState(
   if (!inString) {
     return { inString: true, stringChar: char };
   }
-  
+
   if (char === stringChar) {
     return { inString: false, stringChar: '' };
   }
-  
+
   return { inString, stringChar };
 }
 
@@ -153,7 +153,7 @@ function processBracketPair(stack: string[], char: string): boolean {
   if (lastOpening && BRACKET_PAIRS[lastOpening] !== char) {
     return false; // Mismatched bracket pair
   }
-  
+
   return true;
 }
 

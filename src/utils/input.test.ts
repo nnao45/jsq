@@ -121,11 +121,7 @@ describe('Input Utils', () => {
       mockStdin.on.mockImplementation((event, callback) => {
         if (event === 'data') {
           dataCallbackCount++;
-          if (dataCallbackCount === 1) {
-            setTimeout(() => callback(Buffer.from(chunk1)), 0);
-          } else if (dataCallbackCount === 2) {
-            setTimeout(() => callback(Buffer.from(chunk2)), 5);
-          }
+          handleDataEvent(dataCallbackCount, callback, chunk1, chunk2);
         } else if (event === 'end') {
           setTimeout(() => callback(), 15);
         }
@@ -404,3 +400,16 @@ describe('Input Utils', () => {
     });
   });
 });
+
+function handleDataEvent(
+  count: number,
+  callback: (chunk: Buffer) => void,
+  chunk1: string,
+  chunk2: string
+): void {
+  if (count === 1) {
+    setTimeout(() => callback(Buffer.from(chunk1)), 0);
+  } else if (count === 2) {
+    setTimeout(() => callback(Buffer.from(chunk2)), 5);
+  }
+}
