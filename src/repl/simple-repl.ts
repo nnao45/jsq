@@ -87,11 +87,7 @@ async function handleReplInput(
   await processExpression(trimmed, rl, session);
 }
 
-function handleReplCommands(
-  trimmed: string,
-  rl: ReadlineInterface,
-  session: REPLSession
-): boolean {
+function handleReplCommands(trimmed: string, rl: ReadlineInterface, session: REPLSession): boolean {
   if (trimmed === 'exit' || trimmed === '.exit') {
     rl.close();
     return true;

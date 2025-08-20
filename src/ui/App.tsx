@@ -19,34 +19,21 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
   useEffect(() => {
     const processInput = async (): Promise<void> => {
       try {
-        if (!expression) {
-          setError('No expression provided. Use: jsq "expression" < input.json');
-          setLoading(false);
+        const validationError = validateInputs(expression);
+        if (validationError) {
+          handleValidationError(validationError, setError, setLoading);
           return;
         }
 
         const input = await readStdin();
         if (!input) {
-          setError('No input data received from stdin');
-          setLoading(false);
+          handleValidationError('No input data received from stdin', setError, setLoading);
           return;
         }
 
-        const processor = new JsqProcessor(options);
-        const result = await processor.process(expression, input);
-
-        setResult(JSON.stringify(result.data, null, 2));
-        setLoading(false);
-
-        // Exit after processing unless in watch mode
-        if (!options.watch) {
-          setTimeout(() => exit(), 100);
-        }
+        await processExpression(expression, input, options, setResult, setLoading, exit);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        setError(errorMessage);
-        setLoading(false);
-        setTimeout(() => exit(1), 100);
+        handleProcessingError(err, setError, setLoading, exit);
       }
     };
 
@@ -75,3 +62,51 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
     </Box>
   );
 };
+
+function validateInputs(expression: string): string | null {
+  if (!expression) {
+    return 'No expression provided. Use: jsq "expression" < input.json';
+  }
+  return null;
+}
+
+function handleValidationError(
+  error: string,
+  setError: (error: string) => void,
+  setLoading: (loading: boolean) => void
+): void {
+  setError(error);
+  setLoading(false);
+}
+
+async function processExpression(
+  expression: string,
+  input: string,
+  options: JsqOptions,
+  setResult: (result: string) => void,
+  setLoading: (loading: boolean) => void,
+  exit: (code?: number) => void
+): Promise<void> {
+  const processor = new JsqProcessor(options);
+  const result = await processor.process(expression, input);
+
+  setResult(JSON.stringify(result.data, null, 2));
+  setLoading(false);
+
+  // Exit after processing unless in watch mode
+  if (!options.watch) {
+    setTimeout(() => exit(), 100);
+  }
+}
+
+function handleProcessingError(
+  err: unknown,
+  setError: (error: string) => void,
+  setLoading: (loading: boolean) => void,
+  exit: (code?: number) => void
+): void {
+  const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+  setError(errorMessage);
+  setLoading(false);
+  setTimeout(() => exit(1), 100);
+}

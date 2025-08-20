@@ -243,11 +243,7 @@ export class StreamProcessor {
     try {
       lineNumber.value++;
       if (jsonLines) {
-        const result = await this.processJsonLine(
-          buffer,
-          transformedExpression,
-          lineNumber.value
-        );
+        const result = await this.processJsonLine(buffer, transformedExpression, lineNumber.value);
         callback(null, result || undefined);
       } else {
         callback();

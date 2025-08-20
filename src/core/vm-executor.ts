@@ -1742,8 +1742,8 @@ export class VMExecutor {
   }
 
   private sanitizeFunctionLibrary(
-    library: Function,
-    depth: number
+    library: (...args: unknown[]) => unknown,
+    _depth: number
   ): Record<string, ivm.Reference> {
     const sanitized: Record<string, ivm.Reference> = {};
 
@@ -1756,39 +1756,39 @@ export class VMExecutor {
       }
     }
 
-      // Add properties/methods attached to the function
-      try {
-        const entries = Object.entries(library);
-        for (const [key, value] of entries) {
-          if (!this.isSafePropertyName(key)) {
-            continue;
-          }
-
-          if (typeof value === 'function') {
-            sanitized[key] = new ivm.Reference((...args: unknown[]) => {
-              try {
-                return (value as Function)(...args);
-              } catch (error) {
-                throw new Error(
-                  `Library function error: ${error instanceof Error ? error.message : 'Unknown error'}`
-                );
-              }
-            });
-          } else if (
-            typeof value === 'string' ||
-            typeof value === 'number' ||
-            typeof value === 'boolean'
-          ) {
-            sanitized[key] = new ivm.Reference(value);
-          }
+    // Add properties/methods attached to the function
+    try {
+      const entries = Object.entries(library);
+      for (const [key, value] of entries) {
+        if (!this.isSafePropertyName(key)) {
+          continue;
         }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Debug: Failed to process function properties:', error);
+
+        if (typeof value === 'function') {
+          sanitized[key] = new ivm.Reference((...args: unknown[]) => {
+            try {
+              return (value as (...args: unknown[]) => unknown)(...args);
+            } catch (error) {
+              throw new Error(
+                `Library function error: ${error instanceof Error ? error.message : 'Unknown error'}`
+              );
+            }
+          });
+        } else if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
+          sanitized[key] = new ivm.Reference(value);
         }
       }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug: Failed to process function properties:', error);
+      }
+    }
 
-      return Object.keys(sanitized).length > 0 ? sanitized : null;
+    return Object.keys(sanitized).length > 0 ? sanitized : null;
   }
 
   private sanitizeObjectLibrary(
@@ -1836,7 +1836,7 @@ export class VMExecutor {
 
   private sanitizeObjectFunction(
     key: string,
-    fn: Function,
+    fn: (...args: unknown[]) => unknown,
     sanitized: Record<string, ivm.Reference>
   ): void {
     try {
@@ -1861,11 +1861,7 @@ export class VMExecutor {
   }
 
   private isPrimitiveValue(value: unknown): boolean {
-    return (
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean'
-    );
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
   }
 
   private logDevelopmentMessage(message: string): void {
@@ -1880,18 +1876,18 @@ export class VMExecutor {
     }
   }
 
-  private createSafeFunction(fn: Function): ivm.Reference {
+  private createSafeFunction(fn: (...args: unknown[]) => unknown): ivm.Reference {
     return new ivm.Reference((...args: unknown[]) => {
       try {
         const result = fn(...args);
-        
+
         // Handle promises
         if (result && typeof result.then === 'function') {
           return result.catch((error: Error) => {
             throw new Error(`Library function error: ${error.message}`);
           });
         }
-        
+
         return result;
       } catch (error) {
         throw new Error(
@@ -1909,13 +1905,19 @@ export class VMExecutor {
         this.handleTransferError(key, error);
       }
     }
+
+    // Set up special library aliases after all libraries are transferred
+    await this.setupLibraryAliases(contextData);
+
+    // Set up pre-loaded libraries if they exist in context
+    await this.setupPreloadedLibraries(contextData);
   }
 
   private async transferContextItem(key: string, value: unknown): Promise<void> {
     this.logContextProcessing(key, value);
 
     const wrapper = value as VMChainableWrapper;
-    
+
     if (this.isVMChainableWrapper(value, wrapper)) {
       await this.handleVMChainableWrapper(key, wrapper);
     } else if (this.isDollarFunction(key, value)) {
@@ -1950,15 +1952,19 @@ export class VMExecutor {
 
   private async handleVMChainableWrapper(key: string, wrapper: VMChainableWrapper): Promise<void> {
     const data = wrapper.data || wrapper.value;
-    this.logDevelopmentMessage(`Transferring VMChainableWrapper ${key} with data: ${JSON.stringify(data)}`);
+    this.logDevelopmentMessage(
+      `Transferring VMChainableWrapper ${key} with data: ${JSON.stringify(data)}`
+    );
     await this.transferVMChainableData(key, data);
   }
 
   private async handleDollarFunction(key: string, value: unknown): Promise<void> {
     const dollarWrapper = value as unknown as VMChainableWrapper;
     const dollarData = dollarWrapper.data || dollarWrapper.value;
-    
-    this.logDevelopmentMessage(`Processing $ function, hasData: ${dollarData !== undefined}, data: ${JSON.stringify(dollarData)}`);
+
+    this.logDevelopmentMessage(
+      `Processing $ function, hasData: ${dollarData !== undefined}, data: ${JSON.stringify(dollarData)}`
+    );
 
     if (dollarData !== undefined) {
       this.logDevelopmentMessage('Transferring $ function data via transferVMChainableData');
@@ -1976,76 +1982,86 @@ export class VMExecutor {
     if (sanitizedLibrary) {
       const libraryProxy = this.createLibraryProxy(sanitizedLibrary);
       await this.jail.set(key, libraryProxy);
+      this.logDevelopmentMessage(
+        `Successfully transferred library ${key} with ${Object.keys(sanitizedLibrary).length} methods`
+      );
+    } else if (typeof value === 'function') {
+      this.handleSkippedFunction(key);
+    }
+  }
 
-            if (process.env.NODE_ENV === 'development') {
-              console.log(
-                `Debug: Successfully transferred library ${key} with ${Object.keys(sanitizedLibrary).length} methods`
-              );
-            }
-          } else if (typeof value === 'function') {
-            // Skip regular functions that are not libraries
-            if (this.context.unsafe || process.env.NODE_ENV === 'development') {
-              console.log(`Debug: Skipping function ${key} (not a library or unsafe)`);
-            }
-          }
-        } else if (this.isTransferable(value)) {
-          // Simple transferable values
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Debug: Transferring simple value ${key}:`, value);
-          }
-          const copy = new ivm.ExternalCopy(value);
-          await this.jail.set(key, copy.copyInto());
+  private createLibraryProxy(
+    sanitizedLibrary: Record<string, ivm.Reference>
+  ): Record<string, unknown> {
+    const libraryProxy: Record<string, unknown> = {};
+    for (const [libKey, libValue] of Object.entries(sanitizedLibrary)) {
+      libraryProxy[libKey] = libValue;
+    }
+    return libraryProxy;
+  }
 
-          // For arrays, manually set up proper array with prototype
-          if (Array.isArray(value)) {
-            const arraySetupScript = `
-              (function() {
-                var originalData = ${key};
-                var properArray = [];
-                for (var i = 0; i < originalData.length; i++) {
-                  properArray.push(originalData[i]);
-                }
-                ${key} = properArray;
-                console.log('Array prototype fix applied to ${key}:', ${key}, 'has filter:', typeof ${key}.filter);
-              })();
-            `;
-            const script = await this.isolate.compileScript(arraySetupScript);
-            await script.run(this.persistentContext);
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`Debug: Applied array prototype fix for ${key}`);
-            }
-          }
-        } else {
-          // Try to serialize complex objects
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Debug: Attempting to serialize complex object ${key}:`, value);
-          }
-          try {
-            const serialized = JSON.stringify(value);
-            const parsed = JSON.parse(serialized);
-            const copy = new ivm.ExternalCopy(parsed);
-            await this.jail.set(key, copy.copyInto());
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`Debug: Successfully serialized and transferred ${key}`);
-            }
-          } catch {
-            if (this.context.unsafe || process.env.NODE_ENV === 'development') {
-              console.log(`Debug: Skipping non-transferable ${key} (could not serialize)`);
-            }
-          }
+  private handleSkippedFunction(key: string): void {
+    if (this.context.unsafe || process.env.NODE_ENV === 'development') {
+      console.log(`Debug: Skipping function ${key} (not a library or unsafe)`);
+    }
+  }
+
+  private async handleRegularValue(key: string, value: unknown): Promise<void> {
+    if (this.isTransferable(value)) {
+      await this.handleTransferableValue(key, value);
+    } else {
+      await this.handleComplexObject(key, value);
+    }
+  }
+
+  private async handleTransferableValue(key: string, value: unknown): Promise<void> {
+    this.logDevelopmentMessage(`Transferring simple value ${key}: ${JSON.stringify(value)}`);
+    const copy = new ivm.ExternalCopy(value);
+    await this.jail.set(key, copy.copyInto());
+
+    if (Array.isArray(value)) {
+      await this.setupArrayPrototype(key);
+    }
+  }
+
+  private async setupArrayPrototype(key: string): Promise<void> {
+    const arraySetupScript = `
+      (function() {
+        var originalData = ${key};
+        var properArray = [];
+        for (var i = 0; i < originalData.length; i++) {
+          properArray.push(originalData[i]);
         }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`Warning: Could not transfer ${key}:`, error);
-        }
+        ${key} = properArray;
+        console.log('Array prototype fix applied to ${key}:', ${key}, 'has filter:', typeof ${key}.filter);
+      })();
+    `;
+    const script = await this.isolate.compileScript(arraySetupScript);
+    await script.run(this.persistentContext);
+    this.logDevelopmentMessage(`Applied array prototype fix for ${key}`);
+  }
+
+  private async handleComplexObject(key: string, value: unknown): Promise<void> {
+    this.logDevelopmentMessage(
+      `Attempting to serialize complex object ${key}: ${JSON.stringify(value)}`
+    );
+    try {
+      const serialized = JSON.stringify(value);
+      const parsed = JSON.parse(serialized);
+      const copy = new ivm.ExternalCopy(parsed);
+      await this.jail.set(key, copy.copyInto());
+      this.logDevelopmentMessage(`Successfully serialized and transferred ${key}`);
+    } catch {
+      if (this.context.unsafe || process.env.NODE_ENV === 'development') {
+        console.log(`Debug: Skipping non-transferable ${key} (could not serialize)`);
       }
     }
+  }
 
-    // Set up special library aliases after all libraries are transferred
-    await this.setupLibraryAliases(contextData);
-
-    // Set up pre-loaded libraries if they exist in context
-    await this.setupPreloadedLibraries(contextData);
+  private handleTransferError(key: string, error: unknown): void {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`Warning: Could not transfer ${key}:`, error);
+    }
   }
 
   private async setupLibraryAliases(contextData: Record<string, unknown>): Promise<void> {
@@ -2080,62 +2096,69 @@ export class VMExecutor {
   }
 
   private async setupPreloadedLibraries(contextData: Record<string, unknown>): Promise<void> {
-    // Direct library setup approach - more reliable than complex transfer
+    const librarySetups = this.findLibrarySetups(contextData);
+
+    for (const { key, library } of librarySetups) {
+      try {
+        await this.setupSingleLibrary(key, library);
+      } catch (error) {
+        this.logDevelopmentError(`Failed to set up library ${key}`, error);
+      }
+    }
+  }
+
+  private findLibrarySetups(
+    contextData: Record<string, unknown>
+  ): Array<{ key: string; library: unknown }> {
     const librarySetups: Array<{ key: string; library: unknown }> = [];
 
-    // Find libraries in context data
     for (const [key, value] of Object.entries(contextData)) {
       if (this.isExternalLibrary(key, value)) {
         librarySetups.push({ key, library: value });
       }
     }
 
-    // Set up each library directly
-    for (const { key, library } of librarySetups) {
-      try {
-        if (key === 'validator' && library && typeof library === 'object') {
-          // Special handling for validator library
-          const validatorRef = new ivm.Reference(library as any);
-          await this.jail.set('validator', validatorRef);
+    return librarySetups;
+  }
 
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Debug: Set up validator library directly');
-          }
-        } else if (key === 'lodash' || key === '_') {
-          // Special handling for lodash
-          const lodashRef = new ivm.Reference(library as any);
-          await this.jail.set('lodash', lodashRef);
-          await this.jail.set('_', lodashRef);
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Debug: Set up lodash library directly');
-          }
-        } else if (key === 'uuid' && library && typeof library === 'object') {
-          // Special handling for uuid
-          const uuidRef = new ivm.Reference(library as any);
-          await this.jail.set('uuid', uuidRef);
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Debug: Set up uuid library directly');
-          }
-        } else {
-          // Generic library setup
-          const libraryRef = new ivm.Reference(library as any);
-          await this.jail.set(key, libraryRef);
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Debug: Set up ${key} library directly`);
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Debug: Failed to set up library ${key}:`, error);
-        }
-      }
+  private async setupSingleLibrary(key: string, library: unknown): Promise<void> {
+    if (key === 'validator' && library && typeof library === 'object') {
+      await this.setupValidatorLibrary(library);
+    } else if (key === 'lodash' || key === '_') {
+      await this.setupLodashLibrary(library);
+    } else if (key === 'uuid' && library && typeof library === 'object') {
+      await this.setupUuidLibrary(library);
+    } else {
+      await this.setupGenericLibrary(key, library);
     }
   }
 
-  private safeJSONStringify(data: any): string {
+  private async setupValidatorLibrary(library: unknown): Promise<void> {
+    const validatorRef = new ivm.Reference(library);
+    await this.jail.set('validator', validatorRef);
+    this.logDevelopmentMessage('Set up validator library directly');
+  }
+
+  private async setupLodashLibrary(library: unknown): Promise<void> {
+    const lodashRef = new ivm.Reference(library);
+    await this.jail.set('lodash', lodashRef);
+    await this.jail.set('_', lodashRef);
+    this.logDevelopmentMessage('Set up lodash library directly');
+  }
+
+  private async setupUuidLibrary(library: unknown): Promise<void> {
+    const uuidRef = new ivm.Reference(library);
+    await this.jail.set('uuid', uuidRef);
+    this.logDevelopmentMessage('Set up uuid library directly');
+  }
+
+  private async setupGenericLibrary(key: string, library: unknown): Promise<void> {
+    const libraryRef = new ivm.Reference(library);
+    await this.jail.set(key, libraryRef);
+    this.logDevelopmentMessage(`Set up ${key} library directly`);
+  }
+
+  private safeJSONStringify(data: unknown): string {
     const seen = new WeakSet();
 
     return JSON.stringify(data, (_key, value) => {
@@ -2152,7 +2175,7 @@ export class VMExecutor {
     });
   }
 
-  private async transferVMChainableData(key: string, data: any): Promise<void> {
+  private async transferVMChainableData(key: string, data: unknown): Promise<void> {
     try {
       // For arrays and complex objects, use JSON string transfer to avoid VM boundary issues
       if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
@@ -2189,124 +2212,100 @@ export class VMExecutor {
   }
 
   private transformExpressionForVM(expression: string): string {
-    let transformed = expression;
-
-    // Normalize the expression by removing extra whitespace and newlines
     const normalizedExpression = expression.replace(/\s+/g, ' ').trim();
 
-    // Check for method chaining pattern - look for multiple method calls (including nested properties)
-    const hasChaining =
-      /\$(?:\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*)*\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\(/g.test(
-        normalizedExpression
-      );
+    if (this.hasMethodChaining(normalizedExpression)) {
+      return this.transformMethodChain(normalizedExpression);
+    }
 
-    if (hasChaining) {
-      // Parse the method chain more generally
-      const methods = this.parseFullMethodChain(normalizedExpression);
-      if (methods.length >= 2) {
-        // Create comma-separated arguments for the function call
-        const basePart = this.currentBase || '$';
-        const args = [basePart];
-        for (const method of methods) {
-          args.push(`'${method.name}'`);
-          // For where method, we need special handling since it has multiple arguments
-          if (method.name === 'where') {
-            // Parse the two arguments from 'where("key", "value")'
-            const whereMatch = method.args.match(/^"([^"]+)",\s*"([^"]+)"$/);
-            if (whereMatch) {
-              args.push(`'${whereMatch[1]}'`); // key
-              args.push(`'${whereMatch[2]}'`); // value
-            } else {
-              args.push(`'${method.args}'`);
-            }
-          } else {
-            // For other methods, just escape single quotes in the args
-            const cleanArgs = method.args.replace(/'/g, "\\'");
-            args.push(`'${cleanArgs}'`);
-          }
-        }
+    return this.transformSingleMethods(expression);
+  }
 
-        // Use dynamic function based on number of methods
-        const functionName = methods.length === 2 ? '__vm_chain_simple' : '__vm_chain_multi';
-        transformed = `${functionName}(${args.join(', ')})`;
+  private hasMethodChaining(expression: string): boolean {
+    return /\$(?:\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*)*\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\(/g.test(
+      expression
+    );
+  }
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Debug: Detected method chain: ${normalizedExpression}`);
-          console.log(`Debug: Parsed methods:`, methods);
-          console.log(`Debug: Transformed to: ${transformed}`);
-        }
-      }
-    } else {
-      // Handle single method calls
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.map\(([^)]+)\)/g, '__vm_map($1, $2)');
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.filter\(([^)]+)\)/g,
-        '__vm_filter($1, $2)'
-      );
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.find\(([^)]+)\)/g, '__vm_find($1, $2)');
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.pluck\(([^)]+)\)/g,
-        '__vm_pluck($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.where\(([^)]+)\)/g,
-        '__vm_where($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.sortBy\(([^)]+)\)/g,
-        '__vm_sortBy($1, $2)'
-      );
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.take\(([^)]+)\)/g, '__vm_take($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
+  private transformMethodChain(normalizedExpression: string): string {
+    const methods = this.parseFullMethodChain(normalizedExpression);
 
-      // 新しい関数型メソッド
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.reduce\(([^)]+)\)/g,
-        '__vm_reduce($1, $2)'
-      );
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.scan\(([^)]+)\)/g, '__vm_scan($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.reverse\(\)/g, '__vm_reverse($1)');
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.concat\(([^)]+)\)/g,
-        '__vm_concat($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.flatten\(([^)]*)\)/g,
-        '__vm_flatten($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.flatMap\(([^)]+)\)/g,
-        '__vm_flatMap($1, $2)'
-      );
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.distinct\(\)/g, '__vm_distinct($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.uniq\(\)/g, '__vm_uniq($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.any\(([^)]+)\)/g, '__vm_any($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.some\(([^)]+)\)/g, '__vm_some($1, $2)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.all\(([^)]+)\)/g, '__vm_all($1, $2)');
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.every\(([^)]+)\)/g,
-        '__vm_every($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.count\(([^)]*)\)/g,
-        '__vm_count($1, $2)'
-      );
-      transformed = transformed.replace(
-        /(\$(?:\.[\w.]+)?)\.groupBy\(([^)]+)\)/g,
-        '__vm_groupBy($1, $2)'
-      );
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.min\(\)/g, '__vm_min($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.max\(\)/g, '__vm_max($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.average\(\)/g, '__vm_average($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.mean\(\)/g, '__vm_mean($1)');
-      transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.median\(\)/g, '__vm_median($1)');
+    if (methods.length < 2) {
+      return normalizedExpression;
+    }
 
-      if (process.env.NODE_ENV === 'development' && transformed !== expression) {
-        console.log(`Debug: Transformed single method: ${expression} -> ${transformed}`);
+    const args = this.buildChainArguments(methods);
+    const functionName = methods.length === 2 ? '__vm_chain_simple' : '__vm_chain_multi';
+    const transformed = `${functionName}(${args.join(', ')})`;
+
+    this.logChainTransformation(normalizedExpression, methods, transformed);
+    return transformed;
+  }
+
+  private buildChainArguments(methods: Array<{ name: string; args: string }>): string[] {
+    const basePart = this.currentBase || '$';
+    const args = [basePart];
+
+    for (const method of methods) {
+      args.push(`'${method.name}'`);
+
+      if (method.name === 'where') {
+        this.addWhereMethodArgs(method.args, args);
+      } else {
+        const cleanArgs = method.args.replace(/'/g, "\\'");
+        args.push(`'${cleanArgs}'`);
       }
     }
+
+    return args;
+  }
+
+  private addWhereMethodArgs(methodArgs: string, args: string[]): void {
+    const whereMatch = methodArgs.match(/^"([^"]+)",\s*"([^"]+)"$/);
+    if (whereMatch) {
+      args.push(`'${whereMatch[1]}'`); // key
+      args.push(`'${whereMatch[2]}'`); // value
+    } else {
+      args.push(`'${methodArgs}'`);
+    }
+  }
+
+  private logChainTransformation(
+    original: string,
+    methods: Array<{ name: string; args: string }>,
+    transformed: string
+  ): void {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Debug: Detected method chain: ${original}`);
+      console.log(`Debug: Parsed methods:`, methods);
+      console.log(`Debug: Transformed to: ${transformed}`);
+    }
+  }
+
+  private transformSingleMethods(expression: string): string {
+    let transformed = expression;
+
+    // Handle single method calls
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.map\(([^)]+)\)/g, '__vm_map($1, $2)');
+    transformed = transformed.replace(
+      /(\$(?:\.[\w.]+)?)\.filter\(([^)]+)\)/g,
+      '__vm_filter($1, $2)'
+    );
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.find\(([^)]+)\)/g, '__vm_find($1, $2)');
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.pluck\(([^)]+)\)/g, '__vm_pluck($1, $2)');
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.where\(([^)]+)\)/g, '__vm_where($1, $2)');
+    transformed = transformed.replace(
+      /(\$(?:\.[\w.]+)?)\.sortBy\(([^)]+)\)/g,
+      '__vm_sortBy($1, $2)'
+    );
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.take\(([^)]+)\)/g, '__vm_take($1, $2)');
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.skip\(([^)]+)\)/g, '__vm_skip($1, $2)');
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.sum\(([^)]*)\)/g, '__vm_sum($1, $2)');
+    transformed = transformed.replace(/(\$(?:\.[\w.]+)?)\.length\(\)/g, '__vm_length($1)');
+    transformed = transformed.replace(
+      /(\$(?:\.[\w.]+)?)\.reduce\(([^)]+)\)/g,
+      '__vm_reduce($1, $2)'
+    );
 
     return transformed;
   }
@@ -2329,153 +2328,186 @@ export class VMExecutor {
 
   private parseMethodChain(chainPart: string): Array<{ name: string; args: string }> {
     const methods: Array<{ name: string; args: string }> = [];
-
-    // More sophisticated parsing to handle nested parentheses
     let i = 0;
+
     while (i < chainPart.length) {
-      const dotIndex = chainPart.indexOf('.', i);
-      if (dotIndex === -1) break;
+      const methodInfo = this.parseNextMethod(chainPart, i);
 
-      const methodStart = dotIndex + 1;
-      const parenIndex = chainPart.indexOf('(', methodStart);
-      if (parenIndex === -1) break;
-
-      const methodName = chainPart.substring(methodStart, parenIndex);
-
-      // Find matching closing parenthesis
-      let parenCount = 1;
-      const argStart = parenIndex + 1;
-      let argEnd = argStart;
-
-      while (argEnd < chainPart.length && parenCount > 0) {
-        if (chainPart[argEnd] === '(') parenCount++;
-        else if (chainPart[argEnd] === ')') parenCount--;
-        argEnd++;
-      }
-
-      if (parenCount === 0) {
-        const args = chainPart.substring(argStart, argEnd - 1);
-        methods.push({
-          name: methodName,
-          args: args,
-        });
-        i = argEnd;
-      } else {
+      if (!methodInfo) {
         break;
       }
+
+      methods.push(methodInfo.method);
+      i = methodInfo.nextIndex;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Debug: Parsed methods from "${chainPart}":`, methods);
-    }
-
+    this.logDevelopmentMessage(`Parsed methods from "${chainPart}": ${JSON.stringify(methods)}`);
     return methods;
   }
 
-  private async processResult(result: any): Promise<unknown> {
+  private parseNextMethod(
+    chainPart: string,
+    startIndex: number
+  ): { method: { name: string; args: string }; nextIndex: number } | null {
+    const dotIndex = chainPart.indexOf('.', startIndex);
+    if (dotIndex === -1) return null;
+
+    const methodStart = dotIndex + 1;
+    const parenIndex = chainPart.indexOf('(', methodStart);
+    if (parenIndex === -1) return null;
+
+    const methodName = chainPart.substring(methodStart, parenIndex);
+    const argEnd = this.findMatchingCloseParen(chainPart, parenIndex);
+
+    if (argEnd === -1) return null;
+
+    const args = chainPart.substring(parenIndex + 1, argEnd);
+    return {
+      method: { name: methodName, args },
+      nextIndex: argEnd + 1,
+    };
+  }
+
+  private findMatchingCloseParen(text: string, openIndex: number): number {
+    let parenCount = 1;
+    let i = openIndex + 1;
+
+    while (i < text.length && parenCount > 0) {
+      if (text[i] === '(') parenCount++;
+      else if (text[i] === ')') parenCount--;
+      i++;
+    }
+
+    return parenCount === 0 ? i - 1 : -1;
+  }
+
+  private async processResult(result: unknown): Promise<unknown> {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          'Debug: Processing VM result, type:',
-          typeof result,
-          'hasCopy:',
-          !!(result && typeof result.copy === 'function')
-        );
-        if (result) {
-          console.log('Debug: Result value:', result);
-        }
-        console.log('Debug: Result is null/undefined:', result === null || result === undefined);
-        console.log(
-          'Debug: Result constructor:',
-          result?.constructor ? result.constructor.name : 'unknown'
-        );
-      }
+      this.logProcessingDebugInfo(result);
 
-      // The result from script.run() might not always be an ExternalCopy
-      if (result && typeof result.copy === 'function') {
-        const copied = result.copy();
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Debug: Copied result, type:', typeof copied, 'value:', copied);
-        }
-
-        // Check if the copied result is a JSON string from VM array methods
-        if (typeof copied === 'string') {
-          // Try to parse as JSON if it looks like JSON
-          if (
-            (copied.startsWith('[') && copied.endsWith(']')) ||
-            (copied.startsWith('{') && copied.endsWith('}'))
-          ) {
-            try {
-              const parsed = JSON.parse(copied);
-              if (process.env.NODE_ENV === 'development') {
-                console.log('Debug: Parsed JSON result:', parsed);
-              }
-              return parsed;
-            } catch {
-              // If JSON parsing fails, return the string as-is
-              return copied;
-            }
-          }
-        }
-
-        return copied;
+      if (this.hasExternalCopy(result)) {
+        return this.processCopiedResult(result);
       } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Debug: Returning result directly');
-        }
-
-        // Check if the direct result is a JSON string from VM array methods
-        if (typeof result === 'string') {
-          // Handle both quoted and unquoted JSON strings
-          let jsonStr = result;
-          if (result.startsWith('"') && result.endsWith('"')) {
-            try {
-              // Remove outer quotes and unescape
-              jsonStr = JSON.parse(result);
-            } catch {
-              // Keep as-is if parsing fails
-            }
-          }
-
-          if (typeof jsonStr === 'string' && (jsonStr.startsWith('[') || jsonStr.startsWith('{'))) {
-            try {
-              const parsed = JSON.parse(jsonStr);
-              if (process.env.NODE_ENV === 'development') {
-                console.log('Debug: Parsed JSON result from direct result:', parsed);
-              }
-              return parsed;
-            } catch {
-              // If JSON parsing fails, return the string as-is
-              return result;
-            }
-          } else if (typeof jsonStr === 'string') {
-            // For simple string values, return the unquoted string
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Debug: Returning simple string value:', jsonStr);
-            }
-            return jsonStr;
-          }
-        }
-
-        // Special handling for objects that come from VM - ensure proper JSON.stringify behavior
-        if (result && typeof result === 'object') {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Debug: Converting object result to string for JSON.stringify test');
-          }
-          try {
-            // If this is from JSON.stringify, convert to string
-            return JSON.stringify(result);
-          } catch {
-            return result;
-          }
-        }
-
-        return result;
+        return this.processDirectResult(result);
       }
     } catch (error) {
-      console.error('Error processing VM result:', error);
-      console.error('Original result:', result);
-      throw error;
+      this.logDevelopmentError('Error processing VM result', error);
+      return result;
+    }
+  }
+
+  private logProcessingDebugInfo(result: unknown): void {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        'Debug: Processing VM result, type:',
+        typeof result,
+        'hasCopy:',
+        this.hasExternalCopy(result)
+      );
+      if (result) {
+        console.log('Debug: Result value:', result);
+      }
+      console.log('Debug: Result is null/undefined:', result === null || result === undefined);
+      console.log(
+        'Debug: Result constructor:',
+        result?.constructor ? result.constructor.name : 'unknown'
+      );
+    }
+  }
+
+  private hasExternalCopy(result: unknown): boolean {
+    return result && typeof (result as { copy?: () => unknown }).copy === 'function';
+  }
+
+  private processCopiedResult(result: unknown): unknown {
+    const copied = (result as { copy: () => unknown }).copy();
+    this.logDevelopmentMessage(
+      `Copied result, type: ${typeof copied}, value: ${JSON.stringify(copied)}`
+    );
+
+    if (typeof copied === 'string') {
+      return this.parseJsonString(copied);
+    }
+
+    return copied;
+  }
+
+  private processDirectResult(result: unknown): unknown {
+    this.logDevelopmentMessage('Returning result directly');
+
+    if (typeof result === 'string') {
+      return this.processStringResult(result);
+    }
+
+    if (result && typeof result === 'object') {
+      return this.processObjectResult(result);
+    }
+
+    return result;
+  }
+
+  private processStringResult(result: string): unknown {
+    const jsonStr = this.unquoteString(result);
+
+    if (this.looksLikeJson(jsonStr)) {
+      const parsed = this.tryParseJson(jsonStr);
+      if (parsed !== null) {
+        this.logDevelopmentMessage(
+          `Parsed JSON result from direct result: ${JSON.stringify(parsed)}`
+        );
+        return parsed;
+      }
+      return result;
+    }
+
+    if (typeof jsonStr === 'string') {
+      this.logDevelopmentMessage(`Returning simple string value: ${jsonStr}`);
+      return jsonStr;
+    }
+
+    return result;
+  }
+
+  private unquoteString(str: string): string {
+    if (str.startsWith('"') && str.endsWith('"')) {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return str;
+      }
+    }
+    return str;
+  }
+
+  private looksLikeJson(str: string): boolean {
+    return typeof str === 'string' && (str.startsWith('[') || str.startsWith('{'));
+  }
+
+  private parseJsonString(str: string): unknown {
+    if (this.looksLikeJson(str)) {
+      const parsed = this.tryParseJson(str);
+      if (parsed !== null) {
+        this.logDevelopmentMessage(`Parsed JSON result: ${JSON.stringify(parsed)}`);
+        return parsed;
+      }
+    }
+    return str;
+  }
+
+  private tryParseJson(str: string): unknown | null {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return null;
+    }
+  }
+
+  private processObjectResult(result: unknown): unknown {
+    this.logDevelopmentMessage('Converting object result to string for JSON.stringify test');
+    try {
+      return JSON.stringify(result);
+    } catch {
+      return result;
     }
   }
 

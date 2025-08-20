@@ -25,15 +25,15 @@ function parseOptions(args: string[]): JsqOptions {
 
 async function loadInitialData(args: string[]): Promise<string> {
   const fileIndex = args.indexOf('--file');
-  
+
   if (fileIndex !== -1 && args[fileIndex + 1]) {
     return await loadFromFile(args[fileIndex + 1]);
   }
-  
+
   if (isStdinAvailable()) {
     return await loadFromStdin();
   }
-  
+
   return '{}';
 }
 
@@ -50,17 +50,17 @@ async function loadFromFile(filePath: string): Promise<string> {
 
 async function processFileContent(filePath: string, format: string): Promise<string> {
   const content = await readFileByFormat(filePath, format);
-  
+
   if (format === 'json') {
     return typeof content === 'string' ? content : JSON.stringify(content);
   }
-  
+
   if (format === 'jsonl') {
     const lines = (content as string).split('\n').filter(line => line.trim());
     const jsonlData = lines.map(line => JSON.parse(line));
     return JSON.stringify({ data: jsonlData });
   }
-  
+
   return JSON.stringify({ data: content });
 }
 
@@ -74,7 +74,6 @@ async function loadFromStdin(): Promise<string> {
 }
 
 async function startRepl(initialData: string, options: JsqOptions): Promise<void> {
-
   // Check if stdin supports raw mode (required for interactive input)
   if (!process.stdin.isTTY) {
     console.error('🚫 REPL requires an interactive terminal (TTY)');
