@@ -501,6 +501,34 @@ export class ChainableWrapper {
     return new ChainableWrapper([]);
   }
 
+  flatMap(transform: (item: unknown, index?: number) => unknown[]): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const result: unknown[] = [];
+      for (let i = 0; i < this.data.length; i++) {
+        const mapped = transform(this.data[i], i);
+        if (Array.isArray(mapped)) {
+          result.push(...mapped);
+        } else {
+          result.push(mapped);
+        }
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper([]);
+  }
+
+  mapValues(transform: (value: unknown, key?: string) => unknown): ChainableWrapper {
+    if (this.isObject(this.data)) {
+      const obj = this.data as Record<string, unknown>;
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = transform(value, key);
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper({});
+  }
+
   // Type checking utilities
   private isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
