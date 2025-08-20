@@ -5,6 +5,11 @@
 export function transformExpression(expression: string): string {
   const trimmed = expression.trim();
 
+  // Handle variable declaration with pipeline (const a = 'xx' | a.toString())
+  if (hasVariablePipelineDeclaration(trimmed)) {
+    return transformVariablePipelineDeclaration(trimmed);
+  }
+
   // Handle pipe operations like '$.users | $'
   if (hasPipeOperator(trimmed)) {
     return transformPipeExpression(trimmed);
@@ -183,10 +188,54 @@ export function splitByPipe(expression: string): string[] {
   return parts;
 }
 
+/**
+ * Check if expression contains variable declaration with pipeline syntax
+ * Examples: const a = 'xx' | a.toString(), let b = [1,2,3] | b.length
+ */
+function hasVariablePipelineDeclaration(expression: string): boolean {
+  const trimmed = expression.trim();
+
+  // Match patterns like "const varName = value | ..." or "let varName = value | ..."
+  const variableDeclarationPattern =
+    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/;
+  return variableDeclarationPattern.test(trimmed);
+}
+
+/**
+ * Transform variable pipeline declaration into executable JavaScript
+ * const a = 'xx' | a.toString() becomes (() => { const a = 'xx'; return a.toString(); })()
+ */
+function transformVariablePipelineDeclaration(expression: string): string {
+  const trimmed = expression.trim();
+
+  // Extract parts: declaration type, variable name, initial value, pipeline expression
+  const match = trimmed.match(
+    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/
+  );
+
+  if (!match) {
+    return expression; // Should not happen if hasVariablePipelineDeclaration returned true
+  }
+
+  const [, _declType, varName, initialValue, pipelineExpr] = match;
+
+  // Create an IIFE (Immediately Invoked Function Expression) to scope the variable
+  // Also unwrap ChainableWrapper values using valueOf() or .value if available
+  return `(() => { 
+    let ${varName} = ${initialValue.trim()}; 
+    if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
+      ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
+    }
+    return ${pipelineExpr.trim()}; 
+  })()`;
+}
+
 // Keep backwards compatibility
 export const ExpressionTransformer = {
   transform: transformExpression,
   hasPipeOperator,
   transformPipeExpression,
   splitByPipe,
+  hasVariablePipelineDeclaration,
+  transformVariablePipelineDeclaration,
 };
