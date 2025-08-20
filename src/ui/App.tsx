@@ -25,10 +25,15 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
           return;
         }
 
-        const input = await readStdin();
+        let input: string;
+        try {
+          input = await readStdin();
+        } catch (err) {
+          // If no input is available, use null as default
+          input = 'null';
+        }
         if (!input) {
-          handleValidationError('No input data received from stdin', setError, setLoading);
-          return;
+          input = 'null';
         }
 
         await processExpression(expression, input, options, setResult, setLoading, exit);

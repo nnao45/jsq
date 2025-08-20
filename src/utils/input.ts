@@ -5,33 +5,31 @@ export const readStdin = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     let data = '';
 
-    // Check if there's data available on stdin
-    if (stdin.isTTY) {
-      reject(new Error('No input data available. Please pipe JSON data to jsq.'));
-      return;
-    }
+    // Try to read data with a short timeout to detect if there's input available
+    let hasReceivedData = false;
+    const timeout = setTimeout(() => {
+      if (!hasReceivedData) {
+        resolve('null');
+      }
+    }, 100); // 100ms timeout
 
     stdin.setEncoding('utf8');
 
     stdin.on('data', chunk => {
+      hasReceivedData = true;
+      clearTimeout(timeout);
       data += chunk;
     });
 
     stdin.on('end', () => {
-      resolve(data.trim());
+      if (hasReceivedData) {
+        resolve(data.trim());
+      }
     });
 
     stdin.on('error', err => {
-      reject(new Error(`Failed to read from stdin: ${err.message}`));
-    });
-
-    // Set a timeout for stdin reading
-    const timeout = setTimeout(() => {
-      reject(new Error('Timeout reading from stdin'));
-    }, 10000);
-
-    stdin.on('end', () => {
       clearTimeout(timeout);
+      reject(new Error(`Failed to read from stdin: ${err.message}`));
     });
   });
 };

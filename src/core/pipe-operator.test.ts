@@ -231,4 +231,59 @@ describe('Pipe Operator Support', () => {
       expect(parts).toEqual(['$.users', '$.filter(u => (u.age | 0) > 25)']);
     });
   });
+
+  describe('Utility function pipe transformations', () => {
+    it('should transform pipe to utility function correctly', () => {
+      const expression = '$ | _.range(5)';
+      const transformed = ExpressionTransformer.transform(expression);
+      expect(transformed).toBe('_.range(5)');
+    });
+
+    it('should transform pipe to lodash function correctly', () => {
+      const expression = '$ | lodash.range(5)';
+      const transformed = ExpressionTransformer.transform(expression);
+      expect(transformed).toBe('lodash.range(5)');
+    });
+
+    it('should transform pipe to function call correctly', () => {
+      const expression = '$ | Math.max(1, 2, 3)';
+      const transformed = ExpressionTransformer.transform(expression);
+      expect(transformed).toBe('Math.max(1, 2, 3)');
+    });
+
+    it('should handle complex utility function pipes', () => {
+      const expression = '$ | _.range(10) | $.filter(x => x % 2 === 0)';
+      const transformed = ExpressionTransformer.transform(expression);
+      expect(transformed).toBe('(_.range(10)).filter(x => x % 2 === 0)');
+    });
+
+    it('should differentiate between utility functions and method calls', () => {
+      const expression = '$.data | someMethod()';
+      const transformed = ExpressionTransformer.transform(expression);
+      expect(transformed).toBe('($.data).someMethod()');
+    });
+  });
+
+  describe('Pipe operator integration with utility functions', () => {
+    it('should execute pipe to utility function with null input', async () => {
+      const result = await evaluator.evaluate('$ | _.range(5)', null);
+      expect(result).toEqual([0, 1, 2, 3, 4]);
+    });
+
+    it('should execute complex pipe with utility function', async () => {
+      const result = await evaluator.evaluate('$ | _.range(1, 6) | $.map(x => x * x)', null);
+      expect(result).toEqual([1, 4, 9, 16, 25]);
+    });
+
+    it('should handle mixed pipes with utility functions and data methods', async () => {
+      const data = { multiplier: 2 };
+      const result = await evaluator.evaluate('$ | _.range(3) | $.map(x => x * $.multiplier)', data);
+      expect(result).toEqual([0, 2, 4]);
+    });
+
+    it('should execute utility function without dependency on input data', async () => {
+      const result = await evaluator.evaluate('$ | _.times(3, i => i + 1)', null);
+      expect(result).toEqual([1, 2, 3]);
+    });
+  });
 });
