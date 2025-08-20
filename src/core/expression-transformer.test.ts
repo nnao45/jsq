@@ -1,8 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { 
-  transformExpression,
-  ExpressionTransformer 
-} from './expression-transformer';
+import { ExpressionTransformer, transformExpression } from './expression-transformer';
 
 describe('Expression Transformer Tests', () => {
   describe('Semicolon operator detection and transformation', () => {

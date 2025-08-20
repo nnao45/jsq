@@ -244,7 +244,7 @@ export class ExpressionEvaluator {
 
     try {
       // Use AsyncFunction constructor to support await keyword
-      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
       const func = new AsyncFunction(
         ...contextKeys,
         `
