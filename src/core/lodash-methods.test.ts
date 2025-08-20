@@ -383,4 +383,142 @@ describe('Lodash-like Methods', () => {
       ]);
     });
   });
+
+  describe('ChainableWrapper Auto-Unwrapping', () => {
+    it('should automatically unwrap ChainableWrapper for mathematical functions', async () => {
+      const data = { numbers: [1, 2, 3, 4, 5] };
+
+      // Test mean with ChainableWrapper
+      const meanResult = await evaluator.evaluate('_.mean($.numbers)', data);
+      expect(meanResult).toBe(3);
+
+      // Test sum with ChainableWrapper
+      const sumResult = await evaluator.evaluate('_.sum($.numbers)', data);
+      expect(sumResult).toBe(15);
+
+      // Test min/max with ChainableWrapper
+      const minResult = await evaluator.evaluate('_.min($.numbers)', data);
+      const maxResult = await evaluator.evaluate('_.max($.numbers)', data);
+      expect(minResult).toBe(1);
+      expect(maxResult).toBe(5);
+    });
+
+    it('should automatically unwrap ChainableWrapper for string functions', async () => {
+      const data = {
+        text1: 'hello-world_test case',
+        text2: 'HelloWorldTest',
+        text3: 'hello world',
+      };
+
+      // Test camelCase with ChainableWrapper
+      const camelResult = await evaluator.evaluate('_.camelCase($.text1)', data);
+      expect(camelResult).toBe('helloWorldTestCase');
+
+      // Test kebabCase with ChainableWrapper
+      const kebabResult = await evaluator.evaluate('_.kebabCase($.text2)', data);
+      expect(kebabResult).toBe('hello-world-test');
+
+      // Test startCase with ChainableWrapper
+      const startResult = await evaluator.evaluate('_.startCase($.text3)', data);
+      expect(startResult).toBe('Hello World');
+    });
+
+    it('should automatically unwrap ChainableWrapper for object functions', async () => {
+      const data = {
+        user: {
+          name: 'Alice',
+          email: 'alice@example.com',
+          password: 'secret',
+          age: 30,
+        },
+        config: { debug: true, version: '1.0', env: 'dev' },
+      };
+
+      // Test pick with ChainableWrapper
+      const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', data);
+      expect(pickResult).toEqual({ name: 'Alice', email: 'alice@example.com' });
+
+      // Test omit with ChainableWrapper
+      const omitResult = await evaluator.evaluate('_.omit($.user, ["password"])', data);
+      expect(omitResult).toEqual({ name: 'Alice', email: 'alice@example.com', age: 30 });
+
+      // Test keys with ChainableWrapper
+      const keysResult = await evaluator.evaluate('_.keys($.config)', data);
+      expect(keysResult).toEqual(['debug', 'version', 'env']);
+
+      // Test values with ChainableWrapper
+      const valuesResult = await evaluator.evaluate('_.values($.config)', data);
+      expect(valuesResult).toEqual([true, '1.0', 'dev']);
+    });
+
+    it('should automatically unwrap ChainableWrapper for array functions', async () => {
+      const data = {
+        nested: [1, null, [2, 3], [4, [5]]],
+        mixed: [1, null, '', 0, false, 2, 3],
+        users: [
+          { id: 1, name: 'Alice' },
+          { id: 1, name: 'Alice Clone' },
+          { id: 2, name: 'Bob' },
+        ],
+      };
+
+      // Test flattenDeep with ChainableWrapper
+      const flattenResult = await evaluator.evaluate('_.flattenDeep($.nested)', data);
+      expect(flattenResult).toEqual([1, null, 2, 3, 4, 5]);
+
+      // Test compact with ChainableWrapper
+      const compactResult = await evaluator.evaluate('_.compact($.mixed)', data);
+      expect(compactResult).toEqual([1, 2, 3]);
+
+      // Test uniqBy with ChainableWrapper
+      const uniqResult = await evaluator.evaluate('_.uniqBy($.users, u => u.id)', data);
+      expect(uniqResult).toEqual([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ]);
+    });
+
+    it('should work with compound operations mixing ChainableWrapper and lodash', async () => {
+      const data = { items: [1, null, [2, 3], undefined, [4, [5]]] };
+
+      // Test compound operations: compact + flattenDeep
+      const result = await evaluator.evaluate('_.compact(_.flattenDeep($.items))', data);
+      expect(result).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should automatically unwrap ChainableWrapper for minBy and maxBy', async () => {
+      const data = {
+        products: [
+          { name: 'Laptop', price: 1200 },
+          { name: 'Mouse', price: 25 },
+          { name: 'Keyboard', price: 85 },
+        ],
+      };
+
+      // Test minBy with ChainableWrapper
+      const minResult = await evaluator.evaluate('_.minBy($.products, p => p.price)', data);
+      expect(minResult).toEqual({ name: 'Mouse', price: 25 });
+
+      // Test maxBy with ChainableWrapper
+      const maxResult = await evaluator.evaluate('_.maxBy($.products, p => p.price)', data);
+      expect(maxResult).toEqual({ name: 'Laptop', price: 1200 });
+    });
+
+    it('should handle README examples correctly', async () => {
+      // Test the exact examples from README
+      const scoresData = { scores: [85, 92, 78, 95, 88] };
+      const meanResult = await evaluator.evaluate('_.mean($.scores)', scoresData);
+      expect(meanResult).toBe(87.6);
+
+      const textData = { text: 'hello-world_test case' };
+      const camelResult = await evaluator.evaluate('_.camelCase($.text)', textData);
+      expect(camelResult).toBe('helloWorldTestCase');
+
+      const userdata = {
+        user: { name: 'Alice', email: 'alice@example.com', password: 'secret' },
+      };
+      const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', userdata);
+      expect(pickResult).toEqual({ name: 'Alice', email: 'alice@example.com' });
+    });
+  });
 });
