@@ -1,25 +1,5 @@
 import { ChainableWrapper } from './chainable';
 
-export function createJQueryLikeWrapper(data: unknown): ChainableWrapper & Record<string, unknown> {
-  // Create the base chainable wrapper
-  const baseWrapper = new ChainableWrapper(data) as ChainableWrapper;
-
-  // If data is an object, add its properties directly to the wrapper
-  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-    const obj = data as Record<string, unknown>;
-    for (const [key, value] of Object.entries(obj)) {
-      // Create chainable wrappers for each property
-      if (typeof value === 'object' && value !== null) {
-        (baseWrapper as Record<string, unknown>)[key] = new ChainableWrapper(value);
-      } else {
-        (baseWrapper as Record<string, unknown>)[key] = value;
-      }
-    }
-  }
-
-  return baseWrapper as ChainableWrapper & Record<string, unknown>;
-}
-
 // List of ChainableWrapper methods that should trigger chainable behavior
 const CHAINABLE_METHODS = [
   'map',
@@ -140,18 +120,6 @@ export function createSmartDollar(data: unknown) {
       writable: false,
     });
 
-    // Add call() method as alternative to $()
-    Object.defineProperty($, 'call', {
-      value: (...args: unknown[]) => {
-        if (args.length === 0) {
-          return new ChainableWrapper(data);
-        }
-        return new ChainableWrapper(args[0]);
-      },
-      enumerable: false,
-      configurable: true,
-      writable: false,
-    });
 
     // Override special methods for JSON compatibility
     Object.defineProperty($, 'toJSON', {
@@ -213,9 +181,18 @@ export function createSmartDollar(data: unknown) {
         if (prop === 'propertyIsEnumerable') {
           return function(propName: string) { return Object.prototype.propertyIsEnumerable.call(obj, propName); };
         }
+        if (prop === 'toJSON') {
+          return () => obj;
+        }
+        if (prop === 'valueOf') {
+          return () => obj;
+        }
+        if (prop === 'toString') {
+          return () => JSON.stringify(obj);
+        }
 
         // For data properties, check if user wants chainable or raw access
-        if (typeof prop === 'string' && prop in obj) {
+        if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(obj, prop)) {
           // If this is a method call (like .sum() on array property), return ChainableWrapper
           const value = obj[prop];
 
@@ -233,15 +210,6 @@ export function createSmartDollar(data: unknown) {
         const targetProp = Reflect.get(target, prop, receiver);
         if (targetProp !== undefined) {
           return targetProp;
-        }
-        if (prop === 'toJSON') {
-          return () => obj;
-        }
-        if (prop === 'valueOf') {
-          return () => obj;
-        }
-        if (prop === 'toString') {
-          return () => JSON.stringify(obj);
         }
 
         return undefined;
@@ -270,26 +238,15 @@ export function createSmartDollar(data: unknown) {
     });
   }
 
-  // Add special handlers first
-  // Add Object.prototype methods for compatibility
+  // Add special handlers for non-object types (objects are handled by Proxy)
   Object.defineProperty($, 'hasOwnProperty', {
-    value: function(prop: string) {
-      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        return Object.prototype.hasOwnProperty.call(data, prop);
-      }
-      return Object.prototype.hasOwnProperty.call(this, prop);
-    },
+    value: Object.prototype.hasOwnProperty,
     enumerable: false,
     configurable: true,
   });
 
   Object.defineProperty($, 'propertyIsEnumerable', {
-    value: function(prop: string) {
-      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        return Object.prototype.propertyIsEnumerable.call(data, prop);
-      }
-      return Object.prototype.propertyIsEnumerable.call(this, prop);
-    },
+    value: Object.prototype.propertyIsEnumerable,
     enumerable: false,
     configurable: true,
   });

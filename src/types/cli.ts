@@ -64,8 +64,3 @@ export interface LibraryCache {
   cacheDir: string;
 }
 
-export interface VMExecutionContext {
-  unsafe: boolean;
-  timeout?: number;
-  memoryLimit?: number;
-}

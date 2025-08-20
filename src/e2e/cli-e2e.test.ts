@@ -334,44 +334,6 @@ describe('CLI E2E Tests', () => {
     });
   });
 
-  describe.skip('Security and VM Mode', () => {
-    it('should run in secure VM mode by default', async () => {
-      const result = await runJsq([
-        '$.users[0].name',
-        '--file',
-        path.join(testDataDir, 'users.json'),
-        '--verbose',
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain('🔒 Running in secure VM mode');
-    });
-
-    it('should block dangerous operations in secure mode', async () => {
-      const result = await runJsq([
-        'process.exit()',
-        '--file',
-        path.join(testDataDir, 'users.json'),
-      ]);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('Error');
-    });
-
-    it('should support unsafe mode for advanced operations', async () => {
-      const result = await runJsq([
-        '$.users.reduce((sum, u) => sum + u.salary, 0)',
-        '--file',
-        path.join(testDataDir, 'users.json'),
-        '--unsafe',
-        '--verbose',
-      ]);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain('⚡ Running in unsafe mode');
-      expect(JSON.parse(result.stdout)).toBe(325000);
-    });
-  });
 
   describe('Complex Query Scenarios', () => {
     it('should handle deep nested object queries', async () => {

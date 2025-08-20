@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
 import { LibraryManager } from './library-manager';
 
@@ -25,12 +25,18 @@ describe('LibraryManager', () => {
   let mockOptions: JsqOptions;
   let tempCacheDir: string;
 
+  beforeAll(() => {
+    // Suppress console warnings for all tests in this suite
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
   beforeEach(() => {
     mockOptions = {
       debug: false,
       verbose: false,
       unsafe: false,
     };
+
 
     // Setup mocks before creating LibraryManager
     mockFs.mkdir.mockResolvedValue(undefined);
