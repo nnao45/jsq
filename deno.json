@@ -1,0 +1,66 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowImportingTsExtensions": true
+  },
+  "imports": {
+    "@/": "./src/",
+    "commander": "npm:commander@^11.1.0",
+    "chalk": "npm:chalk@^4.1.2",
+    "boxen": "npm:boxen@^5.1.2",
+    "inquirer": "npm:inquirer@^8.2.6",
+    "csv-parse": "npm:csv-parse@^6.1.0",
+    "node-cache": "npm:node-cache@^5.1.2",
+    "semver": "npm:semver@^7.5.4",
+    "joi": "npm:joi@^17.11.0",
+    "zod": "npm:zod@^3.22.4",
+    "lodash": "npm:lodash@^4.17.21",
+    "papaparse": "npm:papaparse@^5.5.3"
+  },
+  "tasks": {
+    "dev": "deno run --allow-all --watch src/simple-cli.ts",
+    "start": "deno run --allow-all src/simple-cli.ts",
+    "test": "deno test --allow-all",
+    "bench": "deno bench --allow-all",
+    "check": "deno check src/**/*.ts",
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  },
+  "fmt": {
+    "files": {
+      "include": ["src/", "bin/"],
+      "exclude": ["dist/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "semiColons": true,
+      "singleQuote": true,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["src/", "bin/"],
+      "exclude": ["dist/"]
+    }
+  },
+  "test": {
+    "files": {
+      "include": ["src/**/*test.ts", "tests/**/*.ts"]
+    }
+  }
+}
