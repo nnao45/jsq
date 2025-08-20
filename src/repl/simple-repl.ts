@@ -24,7 +24,7 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
   });
 
   console.log('🚀 jsq REPL - jQuery-style JSON processor');
-  console.log(`${options.safe ? '🔒 Safe' : '⚡ Fast'} mode enabled`);
+  console.log('⚡ Optimized mode enabled');
   console.log('Type your expression or "exit" to quit, ".help" for help\n');
 
   // Show data preview

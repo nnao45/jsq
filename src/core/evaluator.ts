@@ -3,41 +3,34 @@ import type { ChainableWrapper } from './chainable';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
 import { LibraryManager } from './library-manager';
-import { VMChainableWrapper } from './vm-chainable';
-import { VMExecutor } from './vm-executor';
 
 export class ExpressionEvaluator {
   private options: JsqOptions;
   private libraryManager: LibraryManager;
-  private vmExecutor?: VMExecutor;
+  private static warningShown = false;
 
   constructor(options: JsqOptions) {
     this.options = options;
     this.libraryManager = new LibraryManager(options);
 
-    // VM is enabled only with --safe flag, disabled by default
-    if (options.safe) {
-      this.vmExecutor = new VMExecutor({
-        unsafe: false,
-        timeout: 10000, // 10 second timeout
-        memoryLimit: 256, // 256MB memory limit
-      });
+    // Show warning if --safe flag is used (no longer supported) - only once
+    if (options.safe && !ExpressionEvaluator.warningShown) {
+      console.warn('⚠️  Warning: --safe mode has been deprecated. All evaluations now run in optimized mode.');
+      ExpressionEvaluator.warningShown = true;
     }
   }
 
   async dispose(): Promise<void> {
-    if (this.vmExecutor) {
-      await this.vmExecutor.dispose();
-    }
+    // No cleanup needed for simplified implementation
   }
 
   async evaluate(expression: string, data: unknown): Promise<unknown> {
     try {
       const transformedExpression = this.transformExpression(expression);
       const loadedLibraries = await this.loadExternalLibraries();
-      const $ = this.createSmartDollar(data);
+      const $ = createSmartDollar(data);
       const context = await this.createEvaluationContext($, loadedLibraries, data);
-      const result = await this.executeExpression(transformedExpression, context);
+      const result = this.executeExpression(transformedExpression, context);
       return this.unwrapResult(result);
     } catch (error) {
       throw new Error(
@@ -47,9 +40,7 @@ export class ExpressionEvaluator {
   }
 
   private transformExpression(expression: string): string {
-    const transformedExpression = !this.options.safe
-      ? ExpressionTransformer.transform(expression)
-      : expression;
+    const transformedExpression = ExpressionTransformer.transform(expression);
 
     if (this.options.verbose && transformedExpression !== expression) {
       console.error('Transformed expression:', transformedExpression);
@@ -60,92 +51,6 @@ export class ExpressionEvaluator {
 
   private async loadExternalLibraries(): Promise<Record<string, unknown>> {
     return this.options.use ? await this.libraryManager.loadLibraries(this.options.use) : {};
-  }
-
-  private createSmartDollar(data: unknown): unknown {
-    if (!this.options.safe) {
-      return createSmartDollar(data);
-    }
-    return this.createVMDollar(data);
-  }
-
-  private createVMDollar(data: unknown): unknown {
-    const $ = (...args: unknown[]) => {
-      if (args.length === 0) {
-        return new VMChainableWrapper(data);
-      }
-      return new VMChainableWrapper(args[0]);
-    };
-
-    this.setupVMDollarProperties($, data);
-    this.addDataPropertiesToVMDollar($, data);
-    this.setupVMDollarMethods($, data);
-
-    return $;
-  }
-
-  private setupVMDollarProperties($: unknown, data: unknown): void {
-    const dollarObj = $ as Record<string, unknown>;
-    dollarObj.__isVMChainableWrapper = true;
-    dollarObj.data = data;
-    dollarObj.value = data;
-  }
-
-  private addDataPropertiesToVMDollar($: unknown, data: unknown): void {
-    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-      const obj = data as Record<string, unknown>;
-      const dollarObj = $ as Record<string, unknown>;
-
-      for (const [key, value] of Object.entries(obj)) {
-        if (this.isValidPropertyKey(key)) {
-          this.setVMDollarProperty(dollarObj, key, value);
-        }
-      }
-    }
-  }
-
-  private isValidPropertyKey(key: string): boolean {
-    const reservedKeys = ['length', 'prototype', 'constructor', 'call', 'apply', 'bind'];
-    return !reservedKeys.includes(key);
-  }
-
-  private setVMDollarProperty(
-    dollarObj: Record<string, unknown>,
-    key: string,
-    value: unknown
-  ): void {
-    try {
-      Object.defineProperty(dollarObj, key, {
-        value: new VMChainableWrapper(value),
-        enumerable: true,
-        configurable: true,
-        writable: false,
-      });
-    } catch {
-      dollarObj[key] = new VMChainableWrapper(value);
-    }
-  }
-
-  private setupVMDollarMethods($: unknown, data: unknown): void {
-    const dollarObj = $ as Record<string, unknown>;
-
-    try {
-      Object.defineProperty(dollarObj, 'valueOf', {
-        value: () => data,
-        enumerable: false,
-        configurable: true,
-        writable: false,
-      });
-      Object.defineProperty(dollarObj, 'toString', {
-        value: () => JSON.stringify(data),
-        enumerable: false,
-        configurable: true,
-        writable: false,
-      });
-    } catch {
-      dollarObj.valueOf = () => data;
-      dollarObj.toString = () => JSON.stringify(data);
-    }
   }
 
   private async createEvaluationContext(
@@ -164,6 +69,10 @@ export class ExpressionEvaluator {
       String,
       Number,
       Boolean,
+      Set,
+      Map,
+      Reflect,
+      Symbol,
       _: await this.loadUtilities(),
       ...loadedLibraries,
       data,
@@ -192,33 +101,15 @@ export class ExpressionEvaluator {
     }
   }
 
-  private async executeExpression(
+  private executeExpression(
     transformedExpression: string,
     context: Record<string, unknown>
-  ): Promise<unknown> {
-    if (this.vmExecutor && this.options.safe) {
-      this.logVMMode();
-      return await this.vmExecutor.executeExpression(transformedExpression, context);
+  ): unknown {
+    if (this.options.verbose) {
+      console.error('⚡ Running in optimized mode');
     }
-
-    this.logUnsafeMode();
+    
     return this.safeEval(transformedExpression, context);
-  }
-
-  private logVMMode(): void {
-    if (this.options.verbose) {
-      console.error('🔒 Running in secure VM mode');
-    }
-  }
-
-  private logUnsafeMode(): void {
-    if (this.options.verbose) {
-      if (this.options.unsafe) {
-        console.error('⚡ Running in unsafe mode (VM disabled)');
-      } else {
-        console.error('⚡ Running in fast mode (VM disabled)');
-      }
-    }
   }
 
   private unwrapResult(result: unknown): unknown {
@@ -226,11 +117,6 @@ export class ExpressionEvaluator {
 
     if (this.isChainableWrapper(result)) {
       return this.unwrapChainableWrapper(result);
-    }
-
-    if (this.isVMChainableWrapper(result)) {
-      const wrapped = result as Record<string, unknown>;
-      return wrapped.data;
     }
 
     return result;
@@ -252,9 +138,8 @@ export class ExpressionEvaluator {
       typeof result === 'object' &&
       !Array.isArray(result) &&
       'value' in result &&
-      ((result as object).constructor.name === 'ChainableWrapper' ||
-        (result as object).constructor.name === 'VMChainableWrapper' ||
-        (result as Record<string, unknown>).__isVMChainableWrapper)
+      ((result as object).constructor.name.includes('ChainableWrapper') ||
+       (result as object).constructor.name.includes('_ChainableWrapper'))
     );
   }
 
@@ -262,22 +147,12 @@ export class ExpressionEvaluator {
     if (this.options.verbose) {
       console.error('Debug: Unwrapping result with .value');
     }
-    const wrapped = result as ChainableWrapper | VMChainableWrapper;
+    const wrapped = result as ChainableWrapper;
     const unwrapped = wrapped.value;
     if (this.options.verbose) {
       console.error('Debug: Unwrapped value type:', typeof unwrapped);
     }
     return unwrapped;
-  }
-
-  private isVMChainableWrapper(result: unknown): boolean {
-    return (
-      result !== null &&
-      typeof result === 'object' &&
-      !Array.isArray(result) &&
-      'data' in result &&
-      (result as Record<string, unknown>).__isVMChainableWrapper
-    );
   }
 
   private safeEval(expression: string, context: Record<string, unknown>): unknown {

@@ -22,28 +22,81 @@ export function createJQueryLikeWrapper(data: unknown): ChainableWrapper & Recor
 
 // List of ChainableWrapper methods that should trigger chainable behavior
 const CHAINABLE_METHODS = [
-  'map', 'filter', 'find', 'reduce', 'groupBy', 'sortBy', 'slice',
-  'flatten', 'uniq', 'compact', 'pluck', 'where', 'findWhere',
-  'first', 'last', 'take', 'drop', 'sample', 'shuffle',
-  'keys', 'values', 'entries', 'pick', 'omit', 'defaults',
-  'merge', 'extend', 'clone', 'has', 'get', 'set',
-  'sum', 'mean', 'min', 'max', 'count', 'size',
-  'isEmpty', 'isArray', 'isObject', 'isString', 'isNumber',
-  'toArray'
+  'map',
+  'filter',
+  'find',
+  'reduce',
+  'groupBy',
+  'sortBy',
+  'slice',
+  'flatten',
+  'uniq',
+  'compact',
+  'pluck',
+  'where',
+  'findWhere',
+  'first',
+  'last',
+  'take',
+  'drop',
+  'sample',
+  'shuffle',
+  'keys',
+  'values',
+  'entries',
+  'pick',
+  'omit',
+  'defaults',
+  'merge',
+  'extend',
+  'clone',
+  'has',
+  'get',
+  'set',
+  'sum',
+  'mean',
+  'min',
+  'max',
+  'count',
+  'size',
+  'isEmpty',
+  'isArray',
+  'isObject',
+  'isString',
+  'isNumber',
+  'toArray',
 ];
 
 // Native array methods that should be available on array $
 const NATIVE_ARRAY_METHODS = [
-  'forEach', 'some', 'every', 'indexOf', 'lastIndexOf',
-  'includes', 'join', 'reverse', 'sort', 'push', 'pop',
-  'shift', 'unshift', 'splice', 'concat', 'fill',
-  'find', 'findIndex', 'flat', 'flatMap', 'reduce', 'reduceRight'
+  'forEach',
+  'some',
+  'every',
+  'indexOf',
+  'lastIndexOf',
+  'includes',
+  'join',
+  'reverse',
+  'sort',
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'concat',
+  'fill',
+  'find',
+  'findIndex',
+  'flat',
+  'flatMap',
+  'reduce',
+  'reduceRight',
 ];
 
 export function createSmartDollar(data: unknown) {
   // If data is null or undefined, return a minimal wrapper
   if (data === null || data === undefined) {
-    const $ = function(...args: unknown[]) {
+    const $ = (...args: unknown[]) => {
       if (args.length === 0) {
         return data;
       }
@@ -54,44 +107,42 @@ export function createSmartDollar(data: unknown) {
     Object.defineProperty($, 'toJSON', { value: () => data });
     return $;
   }
-  
+
   // For arrays, return actual array with added methods
   if (Array.isArray(data)) {
     // Create an actual array - this will pass Array.isArray()
     const $ = [...data] as any;
-    
+
     // Add .data property to access raw data (for tests)
     Object.defineProperty($, 'data', {
       value: data,
       enumerable: false,
       configurable: true,
-      writable: false
+      writable: false,
     });
-    
+
     // Add .value property for consistency with ChainableWrapper
     Object.defineProperty($, 'value', {
       value: data,
       enumerable: false,
       configurable: true,
-      writable: false
+      writable: false,
     });
-    
+
     // Attach chainable methods directly to the array
     attachChainableMethods($, data);
-    
+
     // Add special chain() method for explicit function-like behavior
     Object.defineProperty($, 'chain', {
-      value: function() {
-        return new ChainableWrapper(data);
-      },
+      value: () => new ChainableWrapper(data),
       enumerable: false,
       configurable: true,
-      writable: false
+      writable: false,
     });
-    
+
     // Add call() method as alternative to $()
     Object.defineProperty($, 'call', {
-      value: function(...args: unknown[]) {
+      value: (...args: unknown[]) => {
         if (args.length === 0) {
           return new ChainableWrapper(data);
         }
@@ -99,33 +150,33 @@ export function createSmartDollar(data: unknown) {
       },
       enumerable: false,
       configurable: true,
-      writable: false
+      writable: false,
     });
-    
+
     // Override special methods for JSON compatibility
     Object.defineProperty($, 'toJSON', {
       value: () => data,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
-    
+
     Object.defineProperty($, 'valueOf', {
       value: () => data,
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
-    
+
     Object.defineProperty($, 'toString', {
       value: () => JSON.stringify(data),
       enumerable: false,
-      configurable: true
+      configurable: true,
     });
-    
+
     return $; // This is a real array, so Array.isArray($) === true
   }
-  
+
   // Create the $ function for objects
-  const $ = function(...args: unknown[]) {
+  const $ = (...args: unknown[]) => {
     if (args.length === 0) {
       // Return a chainable wrapper when called
       return new ChainableWrapper(data);
@@ -134,48 +185,131 @@ export function createSmartDollar(data: unknown) {
       return new ChainableWrapper(args[0]);
     }
   };
-  
-  // For objects, add properties as ChainableWrappers with Proxy for conflicts
+
+  // For objects, add properties with dual accessor pattern
   if (typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>;
-    
-    // Add all properties first
+
+    // First, add all raw properties for Object.keys/values/entries compatibility
     for (const [key, value] of Object.entries(obj)) {
-      Object.defineProperty($, key, {
-        value: new ChainableWrapper(value),
-        enumerable: true,
-        configurable: true,
-        writable: true // Allow overwriting by chainable methods
-      });
+      if (!CHAINABLE_METHODS.includes(key)) {
+        // Add raw property for native operations
+        Object.defineProperty($, key, {
+          value: value,
+          enumerable: true,
+          configurable: true,
+          writable: false,
+        });
+      }
     }
-    
-    // Add a special accessor for conflicting property names
-    Object.defineProperty($, 'prop', {
-      value: function(propertyName: string) {
-        return new ChainableWrapper(obj[propertyName]);
+
+    // Create a proxy to handle chainable property access
+    return new Proxy($, {
+      get(target, prop, receiver) {
+        // Handle special built-in methods FIRST before checking data properties
+        if (prop === 'hasOwnProperty') {
+          return function(propName: string) { return Object.prototype.hasOwnProperty.call(obj, propName); };
+        }
+        if (prop === 'propertyIsEnumerable') {
+          return function(propName: string) { return Object.prototype.propertyIsEnumerable.call(obj, propName); };
+        }
+
+        // For data properties, check if user wants chainable or raw access
+        if (typeof prop === 'string' && prop in obj) {
+          // If this is a method call (like .sum() on array property), return ChainableWrapper
+          const value = obj[prop];
+
+          // For conflicting names with chainable methods, prefer data property
+          if (CHAINABLE_METHODS.includes(prop)) {
+            return new ChainableWrapper(value);
+          }
+
+          // For regular property access in expressions like $.prop, return ChainableWrapper
+          // But for Object.values/keys/entries, this won't be called due to getOwnPropertyDescriptor
+          return new ChainableWrapper(value);
+        }
+
+        // Handle function properties and methods normally 
+        const targetProp = Reflect.get(target, prop, receiver);
+        if (targetProp !== undefined) {
+          return targetProp;
+        }
+        if (prop === 'toJSON') {
+          return () => obj;
+        }
+        if (prop === 'valueOf') {
+          return () => obj;
+        }
+        if (prop === 'toString') {
+          return () => JSON.stringify(obj);
+        }
+
+        return undefined;
       },
-      enumerable: false,
-      configurable: true,
-      writable: false
+
+      getOwnPropertyDescriptor(target, prop) {
+        // For Object.values/entries/keys, return the descriptor with raw value
+        if (typeof prop === 'string' && prop in obj) {
+          return {
+            configurable: true,
+            enumerable: true,
+            value: obj[prop], // Raw value for native operations
+            writable: false,
+          };
+        }
+        return Reflect.getOwnPropertyDescriptor(target, prop);
+      },
+
+      has(target, prop) {
+        return prop in obj || Reflect.has(target, prop);
+      },
+
+      ownKeys() {
+        return Object.keys(obj);
+      },
     });
   }
-  
+
+  // Add special handlers first
+  // Add Object.prototype methods for compatibility
+  Object.defineProperty($, 'hasOwnProperty', {
+    value: function(prop: string) {
+      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        return Object.prototype.hasOwnProperty.call(data, prop);
+      }
+      return Object.prototype.hasOwnProperty.call(this, prop);
+    },
+    enumerable: false,
+    configurable: true,
+  });
+
+  Object.defineProperty($, 'propertyIsEnumerable', {
+    value: function(prop: string) {
+      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        return Object.prototype.propertyIsEnumerable.call(data, prop);
+      }
+      return Object.prototype.propertyIsEnumerable.call(this, prop);
+    },
+    enumerable: false,
+    configurable: true,
+  });
+
   // Attach chainable methods
   attachChainableMethods($, data);
-  
-  // Add special handlers
+
+  // Add other special handlers
   Object.defineProperty($, 'toJSON', {
     value: () => data,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
-  
+
   Object.defineProperty($, 'valueOf', {
     value: () => data,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
-  
+
   Object.defineProperty($, 'toString', {
     value: () => {
       if (typeof data === 'string') return data;
@@ -183,70 +317,72 @@ export function createSmartDollar(data: unknown) {
       return JSON.stringify(data);
     },
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
-  
+
   // Make Object.keys/values/entries work correctly
   Object.defineProperty($, Symbol.for('nodejs.util.inspect.custom'), {
     value: () => data,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
-  
+
   return $;
 }
 
 function attachChainableMethods(target: any, originalData: unknown): void {
   // Create a ChainableWrapper instance for method delegation
   const wrapper = new ChainableWrapper(originalData);
-  
+
   // Attach each chainable method
   for (const methodName of CHAINABLE_METHODS) {
     if (methodName in wrapper && typeof (wrapper as any)[methodName] === 'function') {
       // For objects, check if property already exists (data property takes precedence)
-      if (typeof originalData === 'object' && !Array.isArray(originalData) && 
-          originalData !== null && methodName in (originalData as Record<string, unknown>)) {
+      if (
+        typeof originalData === 'object' &&
+        !Array.isArray(originalData) &&
+        originalData !== null &&
+        methodName in (originalData as Record<string, unknown>)
+      ) {
         // Skip attaching chainable method if data property exists with same name
         continue;
       }
-      
+
       Object.defineProperty(target, methodName, {
-        value: function(...args: unknown[]) {
+        value: (...args: unknown[]) => {
           const result = (wrapper as any)[methodName](...args);
-          
+
           // For arrays, return ChainableWrapper as-is for chaining
           if (Array.isArray(originalData)) {
             return result;
           }
-          
+
           // For objects, unwrap if needed
           if (result && typeof result === 'object' && 'value' in result) {
             const unwrappedValue = result.value;
-            
+
             // If the unwrapped value is an array, return it as a smart array
             if (Array.isArray(unwrappedValue)) {
               return createSmartDollar(unwrappedValue);
             }
-            
+
             return unwrappedValue;
           }
-          
+
           return result;
         },
         enumerable: false,
         configurable: true,
-        writable: false
+        writable: false,
       });
     }
   }
-  
+
   // Add chain method to explicitly start chaining
   Object.defineProperty(target, 'chain', {
-    value: function() {
-      return new ChainableWrapper(originalData);
-    },
+    value: () => new ChainableWrapper(originalData),
     enumerable: false,
     configurable: true,
-    writable: false
+    writable: false,
   });
 }
