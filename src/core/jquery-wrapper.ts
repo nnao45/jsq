@@ -48,7 +48,9 @@ const CHAINABLE_METHODS = [
 ];
 
 // Native array methods that should be available on array $
-const NATIVE_ARRAY_METHODS = [
+// NOTE: Unused for now, may be needed for future array method extensions
+// biome-ignore lint/correctness/noUnusedVariables: Reserved for future use
+const _NATIVE_ARRAY_METHODS = [
   'forEach',
   'some',
   'every',
@@ -91,7 +93,7 @@ export function createSmartDollar(data: unknown) {
   // For arrays, return actual array with added methods
   if (Array.isArray(data)) {
     // Create an actual array - this will pass Array.isArray()
-    const $ = [...data] as any;
+    const $ = [...data] as unknown[] & Record<string, unknown>;
 
     // Add .data property to access raw data (for tests)
     Object.defineProperty($, 'data', {
@@ -286,13 +288,16 @@ export function createSmartDollar(data: unknown) {
   return $;
 }
 
-function attachChainableMethods(target: any, originalData: unknown): void {
+function attachChainableMethods(target: Record<string, unknown>, originalData: unknown): void {
   // Create a ChainableWrapper instance for method delegation
   const wrapper = new ChainableWrapper(originalData);
 
   // Attach each chainable method
   for (const methodName of CHAINABLE_METHODS) {
-    if (methodName in wrapper && typeof (wrapper as any)[methodName] === 'function') {
+    if (
+      methodName in wrapper &&
+      typeof (wrapper as Record<string, unknown>)[methodName] === 'function'
+    ) {
       // For objects, check if property already exists (data property takes precedence)
       if (
         typeof originalData === 'object' &&
@@ -306,7 +311,7 @@ function attachChainableMethods(target: any, originalData: unknown): void {
 
       Object.defineProperty(target, methodName, {
         value: (...args: unknown[]) => {
-          const result = (wrapper as any)[methodName](...args);
+          const result = (wrapper as Record<string, unknown>)[methodName](...args);
 
           // For arrays, return ChainableWrapper as-is for chaining
           if (Array.isArray(originalData)) {
