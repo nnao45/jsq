@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/processor';
 import type { JsqOptions } from '@/types/cli';
@@ -12,6 +12,38 @@ import {
   validateFile,
 } from '@/utils/file-input';
 import { getStdinStream, isStdinAvailable, readStdin } from '@/utils/input';
+
+function findPackageRoot(): string {
+  const fs = require('fs');
+  
+  // Try to find package root from the script location
+  let currentDir = dirname(__filename || process.argv[1]);
+  
+  while (currentDir !== dirname(currentDir)) {
+    const packageJsonPath = join(currentDir, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        if (packageJson.name === '@nnao45/jsq') {
+          return currentDir;
+        }
+      } catch {
+        // Continue searching
+      }
+    }
+    currentDir = dirname(currentDir);
+  }
+  
+  // If we can't find it, try from the dist directory upwards
+  // This handles the case where we're running from dist/index.js
+  currentDir = join(dirname(__filename || process.argv[1]), '..');
+  if (fs.existsSync(join(currentDir, 'package.json'))) {
+    return currentDir;
+  }
+  
+  // Final fallback
+  return join(__dirname, '..');
+}
 
 const program = new Command();
 
@@ -115,16 +147,17 @@ async function runWithRuntime(
 ): Promise<void> {
   try {
     const args: string[] = [];
+    const packageRoot = findPackageRoot();
 
     if (runtime === 'bun') {
-      args.push('bun', join(process.cwd(), 'dist/index.js'));
+      args.push('bun', join(packageRoot, 'dist/index.js'));
     } else if (runtime === 'deno') {
       args.push(
         'deno',
         'run',
         '--allow-all',
         '--unstable-sloppy-imports',
-        join(process.cwd(), 'src/simple-cli.ts')
+        join(packageRoot, 'src/simple-cli.ts')
       );
     }
 
