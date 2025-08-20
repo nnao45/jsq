@@ -25,8 +25,15 @@ export class JsqProcessor {
     const startTime = Date.now();
 
     try {
-      // Parse the input JSON
-      const data = this.parser.parse(input);
+      // Check if expression starts with array literal and has no input data
+      let data: unknown;
+      if (this.isArrayLiteralExpression(expression) && (!input || input.trim() === '' || input === 'null')) {
+        // For expressions like "[1,2,3].method()", treat the array as the data
+        data = null; // Will be handled by the expression evaluator
+      } else {
+        // Parse the input JSON
+        data = this.parser.parse(input);
+      }
 
       // Evaluate the expression
       const result = await this.evaluator.evaluate(expression, data);
@@ -53,6 +60,11 @@ export class JsqProcessor {
         `Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  private isArrayLiteralExpression(expression: string): boolean {
+    const trimmed = expression.trim();
+    return trimmed.startsWith('[') && trimmed.includes('].') && !trimmed.startsWith('$');
   }
 
   async processStream(

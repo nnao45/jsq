@@ -32,7 +32,7 @@ export class ExpressionEvaluator {
       const loadedLibraries = await this.loadExternalLibraries();
       const $ = createSmartDollar(data);
       const context = await this.createEvaluationContext($, loadedLibraries, data);
-      const result = this.executeExpression(transformedExpression, context);
+      const result = await this.executeExpression(transformedExpression, context);
       return this.unwrapResult(result);
     } catch (error) {
       throw new Error(
@@ -75,6 +75,7 @@ export class ExpressionEvaluator {
       Map,
       Reflect,
       Symbol,
+      createSmartDollar,
       _: await this.loadUtilities(),
       ...loadedLibraries,
       data,
@@ -83,6 +84,7 @@ export class ExpressionEvaluator {
     this.setupLibraryAliases(context, loadedLibraries);
     return context;
   }
+
 
   private createConsoleObject(): Record<string, unknown> {
     return this.options.verbose ? console : { log: () => {}, error: () => {}, warn: () => {} };
@@ -103,10 +105,10 @@ export class ExpressionEvaluator {
     }
   }
 
-  private executeExpression(
+  private async executeExpression(
     transformedExpression: string,
     context: Record<string, unknown>
-  ): unknown {
+  ): Promise<unknown> {
     if (this.options.verbose) {
       console.error('⚡ Running in optimized mode');
     }
@@ -114,8 +116,20 @@ export class ExpressionEvaluator {
     return this.safeEval(transformedExpression, context);
   }
 
-  private unwrapResult(result: unknown): unknown {
+  private async unwrapResult(result: unknown): Promise<unknown> {
     this.debugResult(result);
+
+    // Handle promises first
+    if (result instanceof Promise) {
+      result = await result;
+      // After awaiting promise, recursively process the result
+      return this.unwrapResult(result);
+    }
+
+    // Handle async generators
+    if (this.isAsyncGenerator(result)) {
+      return this.handleAsyncGenerator(result);
+    }
 
     if (this.isChainableWrapper(result)) {
       return this.unwrapChainableWrapper(result);
@@ -143,6 +157,25 @@ export class ExpressionEvaluator {
       ((result as object).constructor.name.includes('ChainableWrapper') ||
         (result as object).constructor.name.includes('_ChainableWrapper'))
     );
+  }
+
+  private isAsyncGenerator(result: unknown): result is AsyncGenerator<unknown> {
+    return (
+      result !== null &&
+      typeof result === 'object' &&
+      typeof (result as any).next === 'function' &&
+      typeof (result as any)[Symbol.asyncIterator] === 'function'
+    );
+  }
+
+  private async handleAsyncGenerator(generator: AsyncGenerator<unknown>): Promise<unknown[]> {
+    const results: unknown[] = [];
+    for await (const value of generator) {
+      // Unwrap ChainableWrapper if needed
+      const unwrapped = this.isChainableWrapper(value) ? this.unwrapChainableWrapper(value) : value;
+      results.push(unwrapped);
+    }
+    return results;
   }
 
   private unwrapChainableWrapper(result: unknown): unknown {

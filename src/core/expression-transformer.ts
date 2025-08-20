@@ -15,11 +15,104 @@ export function transformExpression(expression: string): string {
     return transformPipeExpression(trimmed);
   }
 
+  // Handle array literals with method calls
+  if (isArrayLiteralWithMethods(trimmed)) {
+    return transformArrayLiteralExpression(trimmed);
+  }
+
+  // Handle async methods that return generators (interval, timer)
+  if (hasAsyncGeneratorMethods(trimmed)) {
+    return transformAsyncGeneratorExpression(trimmed);
+  }
+
   // Handle standalone '$' - convert to '$()' to get the data wrapper
   if (trimmed === '$') {
     return '$()';
   }
 
+  return expression;
+}
+
+/**
+ * Check if expression contains async generator methods
+ */
+export function hasAsyncGeneratorMethods(expression: string): boolean {
+  // Check for methods that return async generators
+  const asyncGeneratorMethods = ['interval', 'timer'];
+  return asyncGeneratorMethods.some(method => 
+    expression.includes(`.${method}(`) || 
+    expression.match(new RegExp(`\\$\\.${method}\\(`))
+  );
+}
+
+/**
+ * Check if expression is an array literal with method calls
+ */
+export function isArrayLiteralWithMethods(expression: string): boolean {
+  const trimmed = expression.trim();
+  return trimmed.startsWith('[') && trimmed.includes('].') && !trimmed.startsWith('$.') && !trimmed.startsWith('_.');
+}
+
+/**
+ * Transform array literal expressions to wrap with createSmartDollar
+ */
+export function transformArrayLiteralExpression(expression: string): string {
+  const trimmed = expression.trim();
+  
+  // Find the end of the array literal
+  let bracketCount = 0;
+  let arrayEndIndex = -1;
+  let inString = false;
+  let stringChar = '';
+  
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i];
+    const prevChar = trimmed[i - 1];
+    
+    // Handle string states
+    if (!inString && (char === '"' || char === "'" || char === '`')) {
+      inString = true;
+      stringChar = char;
+      continue;
+    }
+    
+    if (inString && char === stringChar && prevChar !== '\\') {
+      inString = false;
+      stringChar = '';
+      continue;
+    }
+    
+    if (inString) continue;
+    
+    // Handle brackets
+    if (char === '[') {
+      bracketCount++;
+    } else if (char === ']') {
+      bracketCount--;
+      if (bracketCount === 0) {
+        arrayEndIndex = i;
+        break;
+      }
+    }
+  }
+  
+  if (arrayEndIndex === -1) {
+    return expression; // Malformed array
+  }
+  
+  const arrayPart = trimmed.substring(0, arrayEndIndex + 1);
+  const methodPart = trimmed.substring(arrayEndIndex + 1);
+  
+  // Transform to createSmartDollar(array).methods
+  return `createSmartDollar(${arrayPart})${methodPart}`;
+}
+
+/**
+ * Transform expressions with async generator methods
+ */
+export function transformAsyncGeneratorExpression(expression: string): string {
+  // For now, just return the expression as-is
+  // The evaluator will handle async generator detection and processing
   return expression;
 }
 

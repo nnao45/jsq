@@ -2,6 +2,7 @@ import { ChainableWrapper } from './chainable';
 
 // List of ChainableWrapper methods that should trigger chainable behavior
 const CHAINABLE_METHODS = [
+  // Core methods
   'map',
   'filter',
   'find',
@@ -63,6 +64,72 @@ const CHAINABLE_METHODS = [
   'isString',
   'isNumber',
   'toArray',
+  
+  // Advanced collection methods (Tier 1)
+  'partition',
+  'windowed',
+  'chunked',
+  'span',
+  'takeUntil',
+  'dropUntil',
+  
+  // Advanced collection methods (Tier 2)
+  'frequencies',
+  'groupWith',
+  'reduceBy',
+  'scanLeft',
+  'distinctBy',
+  'intersectBy',
+  
+  // Advanced collection methods (Tier 3)
+  'spy',
+  'filterMap',
+  'findLast',
+  'quantify',
+  'pairwise',
+  'intersperse',
+  
+  // Advanced collection methods (Tier 4)
+  'peekable',
+  'batched',
+  
+  // Functional programming methods
+  'foldLeft',
+  'foldRight',
+  'traverse',
+  
+  // Reactive/Async methods (RxJS-style operators)
+  // Time-based operators
+  'delay',
+  'debounceTime',
+  'throttleTime',
+  'timeout',
+  'interval',
+  'timer',
+  
+  // Advanced transformation operators
+  'concatMap',
+  'mergeMap',
+  'switchMap',
+  'exhaustMap',
+  
+  // Enhanced filtering operators
+  'distinctUntilChanged',
+  'skipLast',
+  'takeLast',
+  
+  // Stream combination operators
+  'combineLatest',
+  'zip',
+  'merge',
+  
+  // Error handling operators
+  'retry',
+  'catchError',
+  
+  // Utility operators
+  'tap', // Note: this is the RxJS-style tap, different from spy
+  'startWith',
 ];
 
 // Native array methods available for potential future array method delegation
@@ -116,6 +183,14 @@ export function createSmartDollar(data: unknown) {
       enumerable: false,
       configurable: true,
       writable: false,
+    });
+
+    // Ensure constructor property is correctly set to Array
+    Object.defineProperty($, 'constructor', {
+      value: Array,
+      enumerable: false,
+      configurable: true,
+      writable: true,
     });
 
     // Attach chainable methods directly to the array
