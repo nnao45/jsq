@@ -108,7 +108,79 @@ echo '["posts/1", "posts/2", "posts/3"]' | jsq '$.map(async endpoint => { const 
 jsq 'try { const response = await fetch("https://invalid-url"); const data = await response.json(); return data; } catch (error) { return {error: error.message}; }'
 ```
 
-### 8. 🎯 Full TypeScript Support
+### 8. 🔗 Sequential Execution with Semicolon Operator ✨ NEW
+Execute multiple expressions sequentially, returning only the final result - perfect for side effects and complex data processing
+
+```bash
+# Basic sequential execution - log and return
+echo '{"value": 42}' | jsq 'console.log("Processing data..."); $.value * 2'
+# Output: Processing data...
+#         84
+
+# Multiple operations with side effects
+echo '{"users": [{"name": "Alice"}, {"name": "Bob"}]}' | jsq 'console.log("Found", $.users.length, "users"); $.users.map(u => u.name).join(", ")'
+# Output: Found 2 users
+#         "Alice, Bob"
+
+# Complex data transformation pipeline
+echo '[1,2,3,4,5]' | jsq 'const sum = _.sum($); const max = _.max($); console.log(`Sum: ${sum}, Max: ${max}`); $.length'
+# Output: Sum: 15, Max: 5
+#         5
+
+# Async operations with side effects
+echo '["https://jsonplaceholder.typicode.com/posts/1"]' | jsq 'console.log("Fetching data..."); const response = await fetch($[0]); const data = await response.json(); console.log("Received:", data.title.substring(0, 20) + "..."); data.id'
+# Output: Fetching data...
+#         Received: sunt aut facere rep...
+#         1
+```
+
+### 9. ⚡ Advanced Async Array Methods ✨ NEW  
+Powerful async array processing with both parallel and sequential execution modes - perfect for API calls and async operations
+
+```bash
+# Parallel async processing - fastest execution
+echo '["https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2"]' | jsq 'await $.forEachAsync(async url => { const res = await fetch(url); console.log("Processed:", url); })'
+
+# Sequential async processing - controlled execution, perfect for rate limiting
+echo '[1, 2, 3]' | jsq 'await $.forEachAsyncSeq(async id => { await new Promise(r => setTimeout(r, 100)); console.log("Processed ID:", id); })'
+
+# Parallel async mapping - transform data with async operations  
+echo '["posts/1", "posts/2", "posts/3"]' | jsq 'await $.mapAsync(async endpoint => { const res = await fetch(`https://jsonplaceholder.typicode.com/${endpoint}`); const data = await res.json(); return { id: data.id, title: data.title.substring(0, 30) + "..." }; })'
+
+# Sequential async mapping - for operations that must be ordered
+echo '[1, 2, 3]' | jsq 'await $.mapAsyncSeq(async id => { await new Promise(r => setTimeout(r, 50)); return { id, processed: true, timestamp: new Date().toISOString() }; })'
+
+# Combine with error handling
+echo '["valid-url", "invalid-url"]' | jsq 'await $.mapAsync(async url => { try { const res = await fetch(`https://jsonplaceholder.typicode.com/${url}`); return { url, status: "success", data: await res.json() }; } catch (error) { return { url, status: "error", message: error.message }; } })'
+```
+
+### 10. 🛠️ Shell Command Integration ✨ NEW
+Execute shell commands directly within jsq expressions using dynamic imports - powerful system integration capabilities
+
+```bash
+# Basic shell command execution
+echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("echo Hello from shell!").toString()'
+# Output: "Hello from shell!\n"
+
+# File system operations
+echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("ls -la | head -5").toString()'
+
+# Combine shell commands with data processing
+echo '{"files": ["package.json", "README.md"]}' | jsq 'const { execSync } = await import("child_process"); await $.files.mapAsync(async file => { const output = execSync(`wc -l ${file}`).toString(); return { file, lines: parseInt(output.split(" ")[0]) }; })'
+
+# System information gathering
+echo '{}' | jsq 'const { execSync } = await import("child_process"); const info = { platform: execSync("uname -s").toString().trim(), user: execSync("whoami").toString().trim(), date: execSync("date").toString().trim() }; info'
+
+# Complex pipeline: find files, process with shell, return structured data
+echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("find . -name \"*.ts\" | head -3").toString().split("\n").filter(line => line.length > 0).map(file => ({ file, size: execSync(`wc -c < "${file}"`).toString().trim() }))'
+
+# Combine with semicolon operator for complex workflows
+echo '{}' | jsq 'const { execSync } = await import("child_process"); console.log("Checking system..."); const uptime = execSync("uptime").toString(); const disk = execSync("df -h /").toString(); { uptime: uptime.trim(), disk: disk.split("\n")[1] }'
+```
+
+**⚠️ Security Note**: Shell execution provides full system access. Use with trusted input only and consider security implications in production environments.
+
+### 11. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
 
 ## 📦 Installation
@@ -339,6 +411,15 @@ cat large-data.json | jsq -v '$.records.filter(r => r.status === "active").lengt
 | `shuffle()` | Randomly shuffle array elements | `$.cards.shuffle()` |
 | `sample()` | Get random element from array | `$.options.sample()` |
 | `sampleSize(count)` | Get N random elements from array | `$.items.sampleSize(3)` |
+
+### Async Array Processing ✨ NEW
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `forEachAsync(asyncFn)` | Execute async function for each element in parallel | `await $.urls.forEachAsync(async url => await fetch(url))` |
+| `forEachAsyncSeq(asyncFn)` | Execute async function for each element sequentially | `await $.ids.forEachAsyncSeq(async id => await process(id))` |
+| `mapAsync(asyncTransform)` | Transform each element with async function in parallel | `await $.endpoints.mapAsync(async url => await fetch(url).then(r => r.json()))` |
+| `mapAsyncSeq(asyncTransform)` | Transform each element with async function sequentially | `await $.items.mapAsyncSeq(async item => await processInOrder(item))` |
 
 ### Advanced Sorting & Grouping
 
@@ -745,6 +826,136 @@ cat customers.json | jsq '
 '
 ```
 
+### Advanced Async Processing & System Integration ✨ NEW
+
+```bash
+# Multi-endpoint API aggregation with parallel processing
+cat endpoints.json | jsq '
+  console.log("Fetching data from", $.endpoints.length, "endpoints...");
+  const results = await $.endpoints.mapAsync(async endpoint => {
+    const response = await fetch(endpoint.url);
+    const data = await response.json();
+    return { source: endpoint.name, data: data.slice(0, 5) }; # Take first 5 items
+  });
+  console.log("Aggregated", results.length, "sources");
+  results
+'
+
+# Sequential API processing with rate limiting
+cat api-keys.json | jsq '
+  console.log("Processing", $.keys.length, "API calls with rate limiting...");
+  await $.keys.forEachAsyncSeq(async (key, index) => {
+    console.log(`Processing ${index + 1}/${$.keys.length}: ${key.name}`);
+    const response = await fetch(`https://api.example.com/data?key=${key.value}`);
+    await new Promise(r => setTimeout(r, 100)); # Rate limit: 100ms between calls
+  });
+  "All API calls completed"
+'
+
+# System monitoring with shell integration
+echo '{}' | jsq '
+  const { execSync } = await import("child_process");
+  console.log("Gathering system information...");
+  
+  const diskUsage = execSync("df -h /").toString().split("\n")[1].split(/\s+/);
+  const memInfo = execSync("free -h").toString().split("\n")[1].split(/\s+/);
+  const processCount = parseInt(execSync("ps aux | wc -l").toString().trim()) - 1;
+  
+  const systemInfo = {
+    timestamp: new Date().toISOString(),
+    disk: {
+      total: diskUsage[1],
+      used: diskUsage[2], 
+      available: diskUsage[3],
+      usage: diskUsage[4]
+    },
+    memory: {
+      total: memInfo[1],
+      used: memInfo[2],
+      available: memInfo[6]
+    },
+    processes: processCount,
+    uptime: execSync("uptime -p").toString().trim()
+  };
+  
+  console.log("System monitoring complete");
+  systemInfo
+'
+
+# Log analysis with async file processing 
+cat log-files.json | jsq '
+  const { execSync } = await import("child_process");
+  console.log("Analyzing", $.logFiles.length, "log files...");
+  
+  const analysis = await $.logFiles.mapAsync(async logFile => {
+    const errorCount = parseInt(execSync(`grep -c "ERROR" ${logFile} || echo 0`).toString().trim());
+    const warningCount = parseInt(execSync(`grep -c "WARN" ${logFile} || echo 0`).toString().trim());
+    const totalLines = parseInt(execSync(`wc -l < ${logFile}`).toString().trim());
+    
+    return {
+      file: logFile,
+      totalLines,
+      errors: errorCount,
+      warnings: warningCount,
+      errorRate: (errorCount / totalLines * 100).toFixed(2) + "%"
+    };
+  });
+  
+  const summary = {
+    totalFiles: analysis.length,
+    totalErrors: _.sum(analysis.map(a => a.errors)),
+    totalWarnings: _.sum(analysis.map(a => a.warnings)),
+    mostProblematic: _.maxBy(analysis, a => a.errors + a.warnings),
+    analysis: analysis.orderBy(["errors"], ["desc"])
+  };
+  
+  console.log(`Found ${summary.totalErrors} errors and ${summary.totalWarnings} warnings across ${summary.totalFiles} files`);
+  summary
+'
+
+# DevOps pipeline status check with mixed processing
+cat services.json | jsq '
+  const { execSync } = await import("child_process");
+  console.log("Checking", $.services.length, "services...");
+  
+  const serviceStatus = await $.services.mapAsync(async service => {
+    # Check if service is running
+    const isRunning = execSync(`systemctl is-active ${service.name} || echo inactive`).toString().trim() === "active";
+    
+    # Get service logs if running
+    let recentErrors = 0;
+    if (isRunning) {
+      try {
+        recentErrors = parseInt(execSync(`journalctl -u ${service.name} --since "1 hour ago" | grep -c ERROR || echo 0`).toString().trim());
+      } catch (e) {
+        recentErrors = -1; # Could not check logs
+      }
+    }
+    
+    return {
+      name: service.name,
+      status: isRunning ? "active" : "inactive",
+      recentErrors,
+      priority: service.priority || "normal"
+    };
+  });
+  
+  const results = {
+    timestamp: new Date().toISOString(),
+    summary: {
+      total: serviceStatus.length,
+      active: serviceStatus.filter(s => s.status === "active").length,
+      inactive: serviceStatus.filter(s => s.status === "inactive").length,
+      withErrors: serviceStatus.filter(s => s.recentErrors > 0).length
+    },
+    services: serviceStatus.orderBy(["priority", "recentErrors"], ["asc", "desc"])
+  };
+  
+  console.log(`Status: ${results.summary.active}/${results.summary.total} active, ${results.summary.withErrors} with errors`);
+  results
+'
+```
+
 ## 🎮 REPL Commands & Navigation
 
 The interactive REPL supports these keyboard shortcuts:
@@ -826,6 +1037,9 @@ deno lint
 - [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
 - [x] **Smart Loading Indicators** - Visual feedback for processing time
 - [x] **Pipeline Variable Declarations** ✨ NEW - Declare and use variables in expressions (`const x = value | x.method()`)
+- [x] **Sequential Execution with Semicolon Operator** ✨ NEW - Execute multiple expressions sequentially with side effects (`console.log("debug"); $.data`)
+- [x] **Advanced Async Array Methods** ✨ NEW - Parallel and sequential async processing (`forEachAsync`, `mapAsync`, `forEachAsyncSeq`, `mapAsyncSeq`)
+- [x] **Shell Command Integration** ✨ NEW - Execute shell commands within expressions using dynamic imports
 - [x] **Built-in Fetch & Async/Await Support** ✨ NEW - Native fetch API and async/await for HTTP requests and asynchronous operations
 - [x] **Multi-CPU Parallel Processing** ✨ NEW - Leverage all CPU cores for blazingly fast processing (10-20x faster than jq)
 - [x] **Streaming processing** - Large file support with real-time output
@@ -844,7 +1058,7 @@ deno lint
 - [x] **Cross-Runtime Library Loading** - Automatic runtime detection and package management
 - [x] **Unified Subcommand Interface** - Single binary with runtime-specific execution
 
-### Comprehensive Method Library (80+ Methods)
+### Comprehensive Method Library (85+ Methods)
 - [x] **60+ Built-in Utility Methods** - Extensive lodash-like method collection without external dependencies
 - [x] **Array Manipulation** - uniqBy, flatten, compact, chunk, shuffle, sample, takeWhile, dropWhile
 - [x] **Advanced Sorting** - orderBy with multi-key support, groupBy, countBy, keyBy
@@ -854,7 +1068,10 @@ deno lint
 - [x] **Mathematical Tools** - clamp, random, range generation, times iteration
 - [x] **Collection Methods** - size, isEmpty, includes for arrays and objects
 - [x] **Function Utilities** - debounce, throttle, identity, constant, noop
+- [x] **4+ Async Array Methods** ✨ NEW - forEachAsync, forEachAsyncSeq, mapAsync, mapAsyncSeq for parallel and sequential async processing
 - [x] **20+ RxJS-style Reactive Methods** ✨ NEW - Time-based operators (delay, debounce, throttle, interval), transformation operators (concatMap, mergeMap, switchMap), filtering (distinctUntilChanged), stream combination (zip, merge), error handling (retry, catchError), and utilities (tap, startWith)
+- [x] **Sequential Execution Support** ✨ NEW - Semicolon operator for multi-expression execution with side effects
+- [x] **System Integration** ✨ NEW - Dynamic shell command execution via import("child_process")
 - [x] **Chainable API** - All methods work seamlessly with jQuery-style chaining
 
 ## 🚧 Future Plans
