@@ -268,7 +268,7 @@ async function processExpression(expression: string, options: JsqOptions): Promi
 }
 
 async function determineInputSource(options: JsqOptions): Promise<{
-  inputSource: 'stdin' | 'file';
+  inputSource: 'stdin' | 'file' | 'none';
   detectedFormat: string;
 }> {
   if (options.file) {
@@ -283,13 +283,12 @@ async function determineInputSource(options: JsqOptions): Promise<{
     return { inputSource: 'file', detectedFormat };
   }
 
-  if (!isStdinAvailable()) {
-    console.error(
-      'Error: No input data available. Please pipe JSON data to jsq or use --file option.'
-    );
-    process.exit(1);
+  // Check stdin availability - only assume no input when explicitly running in a terminal
+  if (process.stdin.isTTY === true) {
+    return { inputSource: 'none', detectedFormat: 'json' };
   }
-
+  
+  // For all other cases (false or undefined), assume stdin might have input and let readStdin handle it
   return { inputSource: 'stdin', detectedFormat: 'json' };
 }
 
@@ -306,7 +305,7 @@ function shouldUseStreaming(options: JsqOptions, detectedFormat: string): boolea
 async function handleStreamingMode(
   expression: string,
   options: JsqOptions,
-  inputSource: 'stdin' | 'file',
+  inputSource: 'stdin' | 'file' | 'none',
   detectedFormat: string,
   processor: JsqProcessor
 ): Promise<void> {
@@ -338,13 +337,19 @@ async function handleStreamingMode(
 }
 
 async function getInputStream(
-  inputSource: 'stdin' | 'file',
+  inputSource: 'stdin' | 'file' | 'none',
   filePath: string | undefined,
   detectedFormat: string
 ) {
-  return inputSource === 'file' && filePath
-    ? await createFormatStream(filePath, detectedFormat)
-    : getStdinStream();
+  if (inputSource === 'file' && filePath) {
+    return await createFormatStream(filePath, detectedFormat);
+  }
+  if (inputSource === 'none') {
+    // Create a readable stream with null data
+    const { Readable } = await import('node:stream');
+    return Readable.from(['null']);
+  }
+  return getStdinStream();
 }
 
 function createStreamOptions(options: JsqOptions, detectedFormat: string) {
@@ -384,7 +389,7 @@ async function waitForStreamCompletion(): Promise<void> {
 async function handleNonStreamingMode(
   expression: string,
   options: JsqOptions,
-  inputSource: 'stdin' | 'file',
+  inputSource: 'stdin' | 'file' | 'none',
   detectedFormat: string,
   processor: JsqProcessor
 ): Promise<void> {
@@ -398,12 +403,15 @@ async function handleNonStreamingMode(
 }
 
 async function getInputData(
-  inputSource: 'stdin' | 'file',
+  inputSource: 'stdin' | 'file' | 'none',
   filePath: string | undefined,
   detectedFormat: string
 ): Promise<string | unknown> {
   if (inputSource === 'file' && filePath) {
     return await readFileByFormat(filePath, detectedFormat);
+  }
+  if (inputSource === 'none') {
+    return 'null';
   }
 
   return await readStdin();
@@ -438,10 +446,8 @@ async function processRegularData(
   processor: JsqProcessor,
   options: JsqOptions
 ): Promise<void> {
-  if (!input) {
-    console.error('Error: No input data received');
-    process.exit(1);
-  }
+  // Allow null input - jsq will handle $ as null when no input is available
+  // This enables usage like: jsq '_.range(5)' without requiring input data
 
   const result = await processor.process(expression, input as string);
   console.log(JSON.stringify(result.data, null, 2));

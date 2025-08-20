@@ -121,6 +121,9 @@ export function transformPipeExpression(expression: string): string {
     if (part.startsWith('$')) {
       // Replace '$' with the result from previous operation
       result = part.replace(/^\$/, `(${result})`);
+    } else if (part.startsWith('_.') || part.startsWith('lodash.') || part.match(/^(Math|Date|Object|Array|String|Number|Boolean|console)\.[a-zA-Z_$][a-zA-Z0-9_$]*\(/)) {
+      // If it's a utility function call (_.method, lodash.method) or global object method (Math.max, Date.now), use it directly
+      result = part;
     } else {
       // If it doesn't start with '$', assume it's a method call on the previous result
       result = `(${result}).${part}`;

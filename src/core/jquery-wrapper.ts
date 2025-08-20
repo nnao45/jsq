@@ -80,6 +80,20 @@ export function createSmartDollar(data: unknown) {
     Object.defineProperty($, 'valueOf', { value: () => data });
     Object.defineProperty($, 'toString', { value: () => String(data) });
     Object.defineProperty($, 'toJSON', { value: () => data });
+    
+    // Add Symbol.toPrimitive for proper type coercion in conditionals
+    Object.defineProperty($, Symbol.toPrimitive, { 
+      value: (hint: string) => {
+        if (hint === 'default' || hint === 'string') {
+          return data;
+        }
+        if (hint === 'number') {
+          return typeof data === 'number' ? data : Number(data);
+        }
+        return data;
+      }
+    });
+    
     return $;
   }
 
