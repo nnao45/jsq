@@ -180,6 +180,22 @@ export class ExpressionEvaluator {
     }
   }
 
+  private unwrapValue(value: unknown): unknown {
+    // Unwrap ChainableWrapper objects to get their raw values
+    if (value && typeof value === 'object' && 'value' in value) {
+      return (value as { value: unknown }).value;
+    }
+    if (
+      value &&
+      typeof value === 'object' &&
+      'valueOf' in value &&
+      typeof (value as { valueOf: () => unknown }).valueOf === 'function'
+    ) {
+      return (value as { valueOf: () => unknown }).valueOf();
+    }
+    return value;
+  }
+
   private async loadUtilities(): Promise<Record<string, unknown>> {
     // Load utility functions similar to lodash
     return {
@@ -258,18 +274,24 @@ export class ExpressionEvaluator {
           return true;
         });
       },
-      flatten: <T>(arr: (T | T[])[]): T[] => arr.flat() as T[],
-      flattenDeep: (arr: unknown[]): unknown[] => {
+      flatten: <T>(arr: unknown): T[] => {
+        const unwrapped = this.unwrapValue(arr) as (T | T[])[];
+        return unwrapped.flat() as T[];
+      },
+      flattenDeep: (arr: unknown): unknown[] => {
+        const unwrapped = this.unwrapValue(arr) as unknown[];
         const flatten = (a: unknown[]): unknown[] =>
           a.reduce(
             (acc: unknown[], val: unknown) =>
               Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val),
             []
           );
-        return flatten(arr);
+        return flatten(unwrapped);
       },
-      compact: <T>(arr: (T | null | undefined | false | 0 | '')[]): T[] =>
-        arr.filter(Boolean) as T[],
+      compact: <T>(arr: unknown): T[] => {
+        const unwrapped = this.unwrapValue(arr) as (T | null | undefined | false | 0 | '')[];
+        return unwrapped.filter(Boolean) as T[];
+      },
       chunk: <T>(arr: T[], size: number): T[][] => {
         const chunks: T[][] = [];
         for (let i = 0; i < arr.length; i += size) {
@@ -312,25 +334,36 @@ export class ExpressionEvaluator {
       },
 
       // Object manipulation methods
-      pick: <T extends Record<string, unknown>>(obj: T, keys: (keyof T)[]): Partial<T> => {
+      pick: <T extends Record<string, unknown>>(obj: unknown, keys: (keyof T)[]): Partial<T> => {
+        const unwrapped = this.unwrapValue(obj) as T;
         const result: Partial<T> = {};
         for (const key of keys) {
-          if (key in obj) {
-            result[key] = obj[key];
+          if (key in unwrapped) {
+            result[key] = unwrapped[key];
           }
         }
         return result;
       },
-      omit: <T extends Record<string, unknown>>(obj: T, keys: (keyof T)[]): Partial<T> => {
-        const result: Partial<T> = { ...obj };
+      omit: <T extends Record<string, unknown>>(obj: unknown, keys: (keyof T)[]): Partial<T> => {
+        const unwrapped = this.unwrapValue(obj) as T;
+        const result: Partial<T> = { ...unwrapped };
         for (const key of keys) {
           delete result[key];
         }
         return result;
       },
-      keys: (obj: Record<string, unknown>): string[] => Object.keys(obj),
-      values: (obj: Record<string, unknown>): unknown[] => Object.values(obj),
-      entries: (obj: Record<string, unknown>): [string, unknown][] => Object.entries(obj),
+      keys: (obj: unknown): string[] => {
+        const unwrapped = this.unwrapValue(obj) as Record<string, unknown>;
+        return Object.keys(unwrapped);
+      },
+      values: (obj: unknown): unknown[] => {
+        const unwrapped = this.unwrapValue(obj) as Record<string, unknown>;
+        return Object.values(unwrapped);
+      },
+      entries: (obj: unknown): [string, unknown][] => {
+        const unwrapped = this.unwrapValue(obj) as Record<string, unknown>;
+        return Object.entries(unwrapped);
+      },
       fromPairs: (pairs: [string, unknown][]): Record<string, unknown> => {
         const result: Record<string, unknown> = {};
         for (const [key, value] of pairs) {
@@ -400,47 +433,75 @@ export class ExpressionEvaluator {
       },
 
       // Mathematical/statistical methods
-      sum: (arr: number[]): number => arr.reduce((sum, num) => sum + num, 0),
-      mean: (arr: number[]): number =>
-        arr.length ? arr.reduce((sum, num) => sum + num, 0) / arr.length : 0,
-      min: (arr: number[]): number => Math.min(...arr),
-      max: (arr: number[]): number => Math.max(...arr),
-      minBy: <T>(arr: T[], keyFn: (item: T) => number): T | undefined => {
-        if (arr.length === 0) return undefined;
-        return arr.reduce((min, item) => (keyFn(item) < keyFn(min) ? item : min));
+      sum: (arr: unknown): number => {
+        const unwrapped = this.unwrapValue(arr) as number[];
+        return unwrapped.reduce((sum, num) => sum + num, 0);
       },
-      maxBy: <T>(arr: T[], keyFn: (item: T) => number): T | undefined => {
-        if (arr.length === 0) return undefined;
-        return arr.reduce((max, item) => (keyFn(item) > keyFn(max) ? item : max));
+      mean: (arr: unknown): number => {
+        const unwrapped = this.unwrapValue(arr) as number[];
+        return unwrapped.length
+          ? unwrapped.reduce((sum, num) => sum + num, 0) / unwrapped.length
+          : 0;
+      },
+      min: (arr: unknown): number => {
+        const unwrapped = this.unwrapValue(arr) as number[];
+        return Math.min(...unwrapped);
+      },
+      max: (arr: unknown): number => {
+        const unwrapped = this.unwrapValue(arr) as number[];
+        return Math.max(...unwrapped);
+      },
+      minBy: <T>(arr: unknown, keyFn: (item: T) => number): T | undefined => {
+        const unwrapped = this.unwrapValue(arr) as T[];
+        if (unwrapped.length === 0) return undefined;
+        return unwrapped.reduce((min, item) => (keyFn(item) < keyFn(min) ? item : min));
+      },
+      maxBy: <T>(arr: unknown, keyFn: (item: T) => number): T | undefined => {
+        const unwrapped = this.unwrapValue(arr) as T[];
+        if (unwrapped.length === 0) return undefined;
+        return unwrapped.reduce((max, item) => (keyFn(item) > keyFn(max) ? item : max));
       },
 
       // String manipulation methods
-      camelCase: (str: string): string => {
-        return str.replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''));
+      camelCase: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped.replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''));
       },
-      kebabCase: (str: string): string => {
-        return str
+      kebabCase: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped
           .replace(/([a-z])([A-Z])/g, '$1-$2')
           .replace(/[\s_]+/g, '-')
           .toLowerCase();
       },
-      snakeCase: (str: string): string => {
-        return str
+      snakeCase: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped
           .replace(/([a-z])([A-Z])/g, '$1_$2')
           .replace(/[\s-]+/g, '_')
           .toLowerCase();
       },
-      startCase: (str: string): string => {
-        return str
+      startCase: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped
           .replace(/([a-z])([A-Z])/g, '$1 $2')
           .replace(/[-_\s]+/g, ' ')
           .split(' ')
           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
       },
-      upperFirst: (str: string): string => str.charAt(0).toUpperCase() + str.slice(1),
-      lowerFirst: (str: string): string => str.charAt(0).toLowerCase() + str.slice(1),
-      capitalize: (str: string): string => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(),
+      upperFirst: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped.charAt(0).toUpperCase() + unwrapped.slice(1);
+      },
+      lowerFirst: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped.charAt(0).toLowerCase() + unwrapped.slice(1);
+      },
+      capitalize: (str: unknown): string => {
+        const unwrapped = this.unwrapValue(str) as string;
+        return unwrapped.charAt(0).toUpperCase() + unwrapped.slice(1).toLowerCase();
+      },
 
       // Utility methods
       identity: <T>(value: T): T => value,
