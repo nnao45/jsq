@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import { Box, Text, useApp, useInput } from 'ink';
+import { useCallback, useEffect, useState } from 'react';
 import { JsqProcessor } from '../core/processor';
-import { JsqOptions } from '../types/cli';
+import type { JsqOptions } from '../types/cli';
 
 interface REPLAppProps {
   initialData?: string;
@@ -20,66 +20,107 @@ export function REPLApp({ initialData = '{}', options }: REPLAppProps) {
   const [processor] = useState(() => new JsqProcessor(options));
   const [currentExpression, setCurrentExpression] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [data, setData] = useState(initialData);
+  const [data, _setData] = useState(initialData);
   const [status, setStatus] = useState<'ready' | 'processing' | 'error'>('ready');
 
-  const processExpression = useCallback(async (expression: string) => {
-    if (!expression.trim()) return;
+  const processExpression = useCallback(
+    async (expression: string) => {
+      if (!expression.trim()) return;
 
-    setStatus('processing');
-    const timestamp = new Date();
+      setStatus('processing');
+      const timestamp = new Date();
 
-    try {
-      const result = await processor.process(expression, data);
-      let resultStr: string;
-      
-      if (typeof result.data === 'string') {
-        resultStr = JSON.stringify(result.data);
-      } else {
-        resultStr = JSON.stringify(result.data, null, 2);
+      try {
+        const result = await processor.process(expression, data);
+        let resultStr: string;
+
+        if (typeof result.data === 'string') {
+          resultStr = JSON.stringify(result.data);
+        } else {
+          resultStr = JSON.stringify(result.data, null, 2);
+        }
+
+        setHistory(prev => [
+          ...prev,
+          {
+            expression,
+            result: resultStr,
+            timestamp,
+          },
+        ]);
+        setStatus('ready');
+
+        // Auto-scroll to bottom after processing
+        setTimeout(() => setStatus('ready'), 100);
+      } catch (error) {
+        const errorStr = error instanceof Error ? error.message : 'Unknown error';
+        setHistory(prev => [
+          ...prev,
+          {
+            expression,
+            result: '',
+            error: errorStr,
+            timestamp,
+          },
+        ]);
+        setStatus('ready');
       }
-      
-      setHistory(prev => [...prev, {
-        expression,
-        result: resultStr,
-        timestamp
-      }]);
-      setStatus('ready');
-      
-      // Auto-scroll to bottom after processing
-      setTimeout(() => setStatus('ready'), 100);
-    } catch (error) {
-      const errorStr = error instanceof Error ? error.message : 'Unknown error';
-      setHistory(prev => [...prev, {
-        expression,
-        result: '',
-        error: errorStr,
-        timestamp
-      }]);
-      setStatus('ready');
-    }
-  }, [processor, data]);
+    },
+    [processor, data]
+  );
 
-  useInput((input, key) => {
-    if (key.return) {
-      if (currentExpression.trim()) {
+  const handleKeyInput = useCallback(
+    (
+      input: string,
+      key: {
+        return?: boolean;
+        ctrl?: boolean;
+        meta?: boolean;
+        backspace?: boolean;
+      }
+    ) => {
+      if (key.return && currentExpression.trim()) {
         processExpression(currentExpression);
         setCurrentExpression('');
+        return;
       }
-    } else if (key.ctrl && input === 'c') {
-      exit();
-    } else if (key.ctrl && input === 'd') {
-      exit();
-    } else if (key.backspace) {
-      setCurrentExpression(prev => prev.slice(0, -1));
-    } else if (key.ctrl && input === 'l') {
-      setHistory([]);
-    } else if (key.ctrl && input === 'u') {
-      setCurrentExpression('');
-    } else if (!key.ctrl && !key.meta && input) {
-      setCurrentExpression(prev => prev + input);
-    }
-  });
+
+      if (key.ctrl && input) {
+        handleCtrlInput(input);
+        return;
+      }
+
+      if (key.backspace) {
+        setCurrentExpression(prev => prev.slice(0, -1));
+        return;
+      }
+
+      if (!key.ctrl && !key.meta && input) {
+        setCurrentExpression(prev => prev + input);
+      }
+    },
+    [currentExpression, processExpression]
+  );
+
+  const handleCtrlInput = useCallback(
+    (input: string) => {
+      switch (input) {
+        case 'c':
+        case 'd':
+          exit();
+          break;
+        case 'l':
+          setHistory([]);
+          break;
+        case 'u':
+          setCurrentExpression('');
+          break;
+      }
+    },
+    [exit]
+  );
+
+  useInput(handleKeyInput);
 
   useEffect(() => {
     return () => {
@@ -89,17 +130,23 @@ export function REPLApp({ initialData = '{}', options }: REPLAppProps) {
 
   const getStatusColor = () => {
     switch (status) {
-      case 'processing': return 'yellow';
-      case 'error': return 'red';
-      default: return 'green';
+      case 'processing':
+        return 'yellow';
+      case 'error':
+        return 'red';
+      default:
+        return 'green';
     }
   };
 
   const getStatusText = () => {
     switch (status) {
-      case 'processing': return 'Processing...';
-      case 'error': return 'Error';
-      default: return 'Ready';
+      case 'processing':
+        return 'Processing...';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Ready';
     }
   };
 
@@ -111,7 +158,7 @@ export function REPLApp({ initialData = '{}', options }: REPLAppProps) {
           jsq REPL - jQuery-style JSON processor
         </Text>
       </Box>
-      
+
       {/* Data preview */}
       <Box marginBottom={1} borderStyle="single" paddingX={1}>
         <Box flexDirection="column">
@@ -125,7 +172,9 @@ export function REPLApp({ initialData = '{}', options }: REPLAppProps) {
         {history.slice(-5).map((item, index) => (
           <Box key={`${item.timestamp.getTime()}-${index}`} flexDirection="column" marginBottom={1}>
             <Box>
-              <Text color="blue" bold>jsq&gt; </Text>
+              <Text color="blue" bold>
+                jsq&gt;{' '}
+              </Text>
               <Text>{item.expression}</Text>
             </Box>
             {item.error ? (
@@ -148,7 +197,9 @@ export function REPLApp({ initialData = '{}', options }: REPLAppProps) {
 
       {/* Input line */}
       <Box>
-        <Text color="blue" bold>jsq&gt; </Text>
+        <Text color="blue" bold>
+          jsq&gt;{' '}
+        </Text>
         <Text>{currentExpression}</Text>
         <Text color={status === 'processing' ? 'yellow' : 'gray'}>
           {status === 'processing' ? '⏳' : '█'}

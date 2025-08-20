@@ -1,180 +1,192 @@
 /**
- * Expression transformer to handle special cases and syntax sugar
+ * Transform expression to handle special cases like standalone '$'
+ * This is used for non-streaming mode where $ is a complex function/proxy
  */
-export class ExpressionTransformer {
-  
-  /**
-   * Transform expression to handle special cases like standalone '$'
-   * This is used for non-streaming mode where $ is a complex function/proxy
-   */
-  static transform(expression: string): string {
-    const trimmed = expression.trim();
-    
-    // Handle pipe operations like '$.users | $'
-    if (this.hasPipeOperator(trimmed)) {
-      return this.transformPipeExpression(trimmed);
-    }
-    
-    // Handle standalone '$' - convert to '$()' to get the data wrapper
-    if (trimmed === '$') {
-      return '$()';
-    }
-    
-    // For arithmetic expressions with $.property, convert to data.property for consistency
-    // This avoids the ChainableWrapper issue in complex expressions
-    if (this.hasArithmeticWithDollar(trimmed)) {
-      return this.toDataExpression(trimmed);
-    }
-    
-    // Handle '$.' patterns - these should work as-is for simple property access
-    if (trimmed.startsWith('$.') && !this.hasArithmeticOperators(trimmed)) {
-      return trimmed;
-    }
-    
-    // Handle other $ patterns that might need transformation
-    // For now, pass through as-is
-    return trimmed;
+export function transformExpression(expression: string): string {
+  const trimmed = expression.trim();
+
+  // Handle pipe operations like '$.users | $'
+  if (hasPipeOperator(trimmed)) {
+    return transformPipeExpression(trimmed);
   }
-  
-  /**
-   * Check if expression has pipe operators
-   */
-  static hasPipeOperator(expression: string): boolean {
-    return expression.includes('|');
+
+  // Handle standalone '$' - convert to '$()' to get the data wrapper
+  if (trimmed === '$') {
+    return '$()';
   }
-  
-  /**
-   * Transform pipe expressions like '$.users | $' to proper function calls
-   */
-  static transformPipeExpression(expression: string): string {
-    // Split by pipe operator, but be careful with strings and nested expressions
-    const parts = this.splitByPipe(expression);
-    
-    if (parts.length < 2) {
-      return expression;
-    }
-    
-    // Start with the first expression
-    let result = parts[0].trim();
-    
-    // Apply each subsequent pipe operation
-    for (let i = 1; i < parts.length; i++) {
-      const pipeExpr = parts[i].trim();
-      
-      if (pipeExpr === '$') {
-        // '| $' means "pass the result through unchanged"
-        // Convert to a function call that returns the value
-        result = `(function(temp) { return $(temp).valueOf(); })(${result})`;
-      } else if (pipeExpr.startsWith('$.')) {
-        // '| $.method()' or '| $.property' means "apply to the result"
-        const chainExpression = pipeExpr.substring(2);
-        
-        // Check if the result is already a $ expression to avoid double wrapping
-        if (result.startsWith('$.')) {
-          // Already a $ expression - just chain directly
-          result = `${result}.${chainExpression}`;
-        } else {
-          // Complex expression or method call - wrap in $()
-          result = `$(${result}).${chainExpression}`;
-        }
-      } else {
-        // General pipe operation - wrap in a function
-        // Replace $ in the pipe expression with the result
-        const transformedPipe = pipeExpr.replace(/\$/g, `$(${result})`);
-        result = transformedPipe;
-      }
-    }
-    
-    return result;
+
+  return expression;
+}
+
+interface ParseState {
+  inString: boolean;
+  stringChar: string;
+  parenDepth: number;
+  braceDepth: number;
+  bracketDepth: number;
+}
+
+function createInitialParseState(): ParseState {
+  return {
+    inString: false,
+    stringChar: '',
+    parenDepth: 0,
+    braceDepth: 0,
+    bracketDepth: 0,
+  };
+}
+
+function updateStringState(state: ParseState, char: string, prevChar: string): void {
+  if (!state.inString && (char === '"' || char === "'" || char === '`')) {
+    state.inString = true;
+    state.stringChar = char;
+    return;
   }
-  
-  /**
-   * Split expression by pipe operator, respecting strings and parentheses
-   */
-  static splitByPipe(expression: string): string[] {
-    const parts: string[] = [];
-    let current = '';
-    let depth = 0;
-    let inString = false;
-    let stringChar = '';
-    
-    for (let i = 0; i < expression.length; i++) {
-      const char = expression[i];
-      const prevChar = i > 0 ? expression[i - 1] : '';
-      
-      if (!inString) {
-        if (char === '"' || char === "'") {
-          inString = true;
-          stringChar = char;
-        } else if (char === '(') {
-          depth++;
-        } else if (char === ')') {
-          depth--;
-        } else if (char === '|' && depth === 0) {
-          parts.push(current);
-          current = '';
-          continue;
-        }
-      } else {
-        if (char === stringChar && prevChar !== '\\') {
-          inString = false;
-          stringChar = '';
-        }
-      }
-      
-      current += char;
-    }
-    
-    if (current) {
-      parts.push(current);
-    }
-    
-    return parts;
-  }
-  
-  /**
-   * Check if expression has arithmetic operations with $ references
-   */
-  static hasArithmeticWithDollar(expression: string): boolean {
-    // Check for any $ reference in combination with arithmetic operators
-    return /\$/.test(expression) && /[\+\-\*\/\%]/.test(expression);
-  }
-  
-  /**
-   * Check if expression has arithmetic operators
-   */
-  static hasArithmeticOperators(expression: string): boolean {
-    return /[\+\-\*\/\%]/.test(expression);
-  }
-  
-  /**
-   * Detect if expression needs data access optimization
-   */
-  static needsDataAccess(expression: string): boolean {
-    const trimmed = expression.trim();
-    return trimmed === '$' || trimmed.startsWith('$.') || trimmed.includes('$.');
-  }
-  
-  /**
-   * Convert expression to use 'data' variable for better performance in streaming
-   */
-  static toDataExpression(expression: string): string {
-    const trimmed = expression.trim();
-    
-    // Convert standalone '$' to 'data'
-    if (trimmed === '$') {
-      return 'data';
-    }
-    
-    // Handle more complex patterns first (contains operators or multiple $ references)
-    let transformed = trimmed;
-    
-    // Replace all $.property patterns with data.property
-    transformed = transformed.replace(/\$\.(\w+)/g, 'data.$1');
-    
-    // Replace standalone $ in expressions like '$ > 10' with 'data > 10'
-    transformed = transformed.replace(/\b\$\b(?!\()/g, 'data');
-    
-    return transformed;
+
+  if (state.inString && char === state.stringChar && prevChar !== '\\') {
+    state.inString = false;
+    state.stringChar = '';
   }
 }
+
+function updateBracketDepth(state: ParseState, char: string): void {
+  if (char === '(') state.parenDepth++;
+  if (char === ')') state.parenDepth--;
+  if (char === '{') state.braceDepth++;
+  if (char === '}') state.braceDepth--;
+  if (char === '[') state.bracketDepth++;
+  if (char === ']') state.bracketDepth--;
+}
+
+function isPipeOperatorAt(expression: string, i: number, state: ParseState): boolean {
+  const char = expression[i];
+  const next = expression[i + 1];
+  const afterNext = expression[i + 2];
+
+  return (
+    char === ' ' &&
+    next === '|' &&
+    afterNext === ' ' &&
+    state.parenDepth === 0 &&
+    state.braceDepth === 0 &&
+    state.bracketDepth === 0
+  );
+}
+
+/**
+ * Check if expression contains pipe operator
+ */
+export function hasPipeOperator(expression: string): boolean {
+  const state = createInitialParseState();
+
+  for (let i = 0; i < expression.length - 2; i++) {
+    const char = expression[i];
+    const prevChar = expression[i - 1] || '';
+
+    updateStringState(state, char, prevChar);
+
+    if (state.inString) continue;
+
+    updateBracketDepth(state, char);
+
+    if (isPipeOperatorAt(expression, i, state)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Transform pipe expressions like '$.users | $.filter(...) | $.length'
+ */
+export function transformPipeExpression(expression: string): string {
+  const parts = splitByPipe(expression);
+
+  if (parts.length <= 1) {
+    return expression;
+  }
+
+  let result = parts[0].trim();
+
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i].trim();
+
+    // If the part starts with '$', replace it with the result of previous operation
+    if (part.startsWith('$')) {
+      // Replace '$' with the result from previous operation
+      result = part.replace(/^\$/, `(${result})`);
+    } else {
+      // If it doesn't start with '$', assume it's a method call on the previous result
+      result = `(${result}).${part}`;
+    }
+  }
+
+  return result;
+}
+
+function handleStringChar(state: ParseState, char: string, prev: string): string {
+  updateStringState(state, char, prev);
+  return char;
+}
+
+function shouldSplitAtPipe(char: string, prev: string, next: string, state: ParseState): boolean {
+  return (
+    char === '|' &&
+    prev === ' ' &&
+    next === ' ' &&
+    state.parenDepth === 0 &&
+    state.braceDepth === 0 &&
+    state.bracketDepth === 0
+  );
+}
+
+function processSplit(parts: string[], current: string): string {
+  parts.push(current.trim());
+  return '';
+}
+
+function addFinalPart(parts: string[], current: string): void {
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+}
+
+/**
+ * Split expression by pipe operator, respecting strings and parentheses
+ */
+export function splitByPipe(expression: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  const state = createInitialParseState();
+
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+    const next = expression[i + 1];
+    const prev = expression[i - 1];
+
+    const charToAdd = handleStringChar(state, char, prev);
+    current += charToAdd;
+
+    if (state.inString) continue;
+
+    updateBracketDepth(state, char);
+
+    if (shouldSplitAtPipe(char, prev, next, state)) {
+      current = current.slice(0, -1); // Remove the '|' from current
+      current = processSplit(parts, current);
+      i++; // Skip the space after '|'
+    }
+  }
+
+  addFinalPart(parts, current);
+  return parts;
+}
+
+// Keep backwards compatibility
+export const ExpressionTransformer = {
+  transform: transformExpression,
+  hasPipeOperator,
+  transformPipeExpression,
+  splitByPipe,
+};

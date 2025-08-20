@@ -1,6 +1,6 @@
+import { createReadStream, promises as fs } from 'node:fs';
+import { Readable } from 'node:stream';
 import { parse as csvParse } from 'csv-parse';
-import { createReadStream, promises as fs } from 'fs';
-import { Readable } from 'stream';
 
 export type SupportedFormat = 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet';
 
@@ -13,13 +13,16 @@ export interface ParseOptions {
 /**
  * Parse CSV/TSV files and convert to JSON objects
  */
-export async function parseCSVToJSON(filePath: string, options: { delimiter?: string; headers?: boolean } = {}): Promise<unknown[]> {
+export async function parseCSVToJSON(
+  filePath: string,
+  options: { delimiter?: string; headers?: boolean } = {}
+): Promise<unknown[]> {
   const { delimiter = ',', headers = true } = options;
-  
+
   return new Promise((resolve, reject) => {
     const records: unknown[] = [];
     const stream = createReadStream(filePath);
-    
+
     const parser = csvParse({
       delimiter,
       columns: headers,
@@ -29,10 +32,10 @@ export async function parseCSVToJSON(filePath: string, options: { delimiter?: st
 
     stream
       .pipe(parser)
-      .on('data', (record) => {
+      .on('data', record => {
         records.push(record);
       })
-      .on('error', (error) => {
+      .on('error', error => {
         reject(new Error(`CSV parsing error: ${error.message}`));
       })
       .on('end', () => {
@@ -44,9 +47,12 @@ export async function parseCSVToJSON(filePath: string, options: { delimiter?: st
 /**
  * Create a streaming parser for CSV/TSV files
  */
-export function createCSVStream(filePath: string, options: { delimiter?: string; headers?: boolean } = {}): Readable {
+export function createCSVStream(
+  filePath: string,
+  options: { delimiter?: string; headers?: boolean } = {}
+): Readable {
   const { delimiter = ',', headers = true } = options;
-  
+
   const fileStream = createReadStream(filePath);
   const parser = csvParse({
     delimiter,
@@ -61,7 +67,10 @@ export function createCSVStream(filePath: string, options: { delimiter?: string;
 /**
  * Parse TSV files (Tab-separated values)
  */
-export async function parseTSVToJSON(filePath: string, options: { headers?: boolean } = {}): Promise<unknown[]> {
+export async function parseTSVToJSON(
+  filePath: string,
+  options: { headers?: boolean } = {}
+): Promise<unknown[]> {
   return parseCSVToJSON(filePath, { delimiter: '\t', ...options });
 }
 
@@ -81,19 +90,22 @@ export async function parseParquetToJSON(filePath: string): Promise<unknown[]> {
     // For now, we'll use a simple approach - in production, you'd want to use a proper Parquet reader
     const parquet = await import('parquetjs-lite');
     const reader = await parquet.ParquetReader.openFile(filePath);
-    
+
     const records: unknown[] = [];
     const cursor = reader.getCursor();
-    
-    let record = null;
-    while ((record = await cursor.next())) {
+
+    let record = await cursor.next();
+    while (record) {
       records.push(record);
+      record = await cursor.next();
     }
-    
+
     await reader.close();
     return records;
   } catch (error) {
-    throw new Error(`Parquet parsing error: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the file is a valid Parquet file.`);
+    throw new Error(
+      `Parquet parsing error: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the file is a valid Parquet file.`
+    );
   }
 }
 
@@ -104,10 +116,10 @@ export async function parseParquetToJSON(filePath: string): Promise<unknown[]> {
 export async function createParquetStream(filePath: string): Promise<Readable> {
   try {
     const records = await parseParquetToJSON(filePath);
-    
+
     // Create a readable stream from the parsed records
     const stream = new Readable({ objectMode: true });
-    
+
     let index = 0;
     stream._read = () => {
       if (index < records.length) {
@@ -116,10 +128,12 @@ export async function createParquetStream(filePath: string): Promise<Readable> {
         stream.push(null); // End of stream
       }
     };
-    
+
     return stream;
   } catch (error) {
-    throw new Error(`Failed to create Parquet stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to create Parquet stream: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -128,7 +142,7 @@ export async function createParquetStream(filePath: string): Promise<Readable> {
  */
 export function detectFormatFromExtension(filePath: string): SupportedFormat | null {
   const ext = filePath.split('.').pop()?.toLowerCase();
-  
+
   switch (ext) {
     case 'json':
       return 'json';
@@ -149,29 +163,35 @@ export function detectFormatFromExtension(filePath: string): SupportedFormat | n
 /**
  * Parse file based on format
  */
-export async function parseFile(filePath: string, format: SupportedFormat, options: any = {}): Promise<unknown[] | unknown> {
+export async function parseFile(
+  filePath: string,
+  format: SupportedFormat,
+  options: Record<string, unknown> = {}
+): Promise<unknown[] | unknown> {
   switch (format) {
-    case 'json':
+    case 'json': {
       const jsonContent = await fs.readFile(filePath, 'utf8');
       return JSON.parse(jsonContent);
-      
-    case 'jsonl':
+    }
+
+    case 'jsonl': {
       const jsonlContent = await fs.readFile(filePath, 'utf8');
       return jsonlContent
         .trim()
         .split('\n')
         .filter(line => line.trim())
         .map(line => JSON.parse(line));
-        
+    }
+
     case 'csv':
       return parseCSVToJSON(filePath, options);
-      
+
     case 'tsv':
       return parseTSVToJSON(filePath, options);
-      
+
     case 'parquet':
       return parseParquetToJSON(filePath);
-      
+
     default:
       throw new Error(`Unsupported format: ${format}`);
   }

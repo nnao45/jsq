@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
-import { JsqOptions } from '@/types/cli';
+import type { JsqOptions } from '@/types/cli';
 
 const program = new Command();
 

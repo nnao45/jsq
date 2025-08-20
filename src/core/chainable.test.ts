@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { ChainableWrapper } from './chainable';
 
 describe('ChainableWrapper', () => {
@@ -29,8 +29,8 @@ describe('ChainableWrapper', () => {
   describe('Proxy property access', () => {
     it('should access object properties directly', () => {
       const data = { user: { name: 'Alice', age: 30 } };
-      const wrapper = new ChainableWrapper(data) as any;
-      
+      const wrapper = new ChainableWrapper(data) as ChainableWrapper & Record<string, unknown>;
+
       expect(wrapper.user.value).toEqual({ name: 'Alice', age: 30 });
       expect(wrapper.user.name.value).toBe('Alice');
       expect(wrapper.user.age.value).toBe(30);
@@ -38,21 +38,21 @@ describe('ChainableWrapper', () => {
 
     it('should return wrapped undefined for non-existent properties', () => {
       const data = { name: 'Alice' };
-      const wrapper = new ChainableWrapper(data) as any;
-      
+      const wrapper = new ChainableWrapper(data) as ChainableWrapper & Record<string, unknown>;
+
       expect(wrapper.nonexistent.value).toBe(undefined);
     });
 
     it('should access nested object properties', () => {
-      const data = { 
-        user: { 
-          profile: { 
-            settings: { theme: 'dark' } 
-          } 
-        } 
+      const data = {
+        user: {
+          profile: {
+            settings: { theme: 'dark' },
+          },
+        },
       };
-      const wrapper = new ChainableWrapper(data) as any;
-      
+      const wrapper = new ChainableWrapper(data) as ChainableWrapper & Record<string, unknown>;
+
       expect(wrapper.user.profile.settings.theme.value).toBe('dark');
     });
   });
@@ -66,8 +66,8 @@ describe('ChainableWrapper', () => {
 
     it('should filter arrays', () => {
       const wrapper = new ChainableWrapper(testArray);
-      const result = wrapper.filter(item => (item as any).age > 27);
-      
+      const result = wrapper.filter(item => ((item as Record<string, unknown>).age as number) > 27);
+
       expect(result.value).toEqual([
         { name: 'Alice', age: 30, department: 'engineering' },
         { name: 'Charlie', age: 35, department: 'engineering' },
@@ -77,21 +77,21 @@ describe('ChainableWrapper', () => {
     it('should map arrays', () => {
       const wrapper = new ChainableWrapper([1, 2, 3]);
       const result = wrapper.map(x => (x as number) * 2);
-      
+
       expect(result.value).toEqual([2, 4, 6]);
     });
 
     it('should find elements', () => {
       const wrapper = new ChainableWrapper(testArray);
-      const result = wrapper.find(item => (item as any).name === 'Bob');
-      
+      const result = wrapper.find(item => (item as Record<string, unknown>).name === 'Bob');
+
       expect(result.value).toEqual({ name: 'Bob', age: 25, department: 'design' });
     });
 
     it('should filter by key-value pairs with where', () => {
       const wrapper = new ChainableWrapper(testArray);
       const result = wrapper.where('department', 'engineering');
-      
+
       expect(result.value).toEqual([
         { name: 'Alice', age: 30, department: 'engineering' },
         { name: 'Charlie', age: 35, department: 'engineering' },
@@ -101,14 +101,14 @@ describe('ChainableWrapper', () => {
     it('should pluck values by key', () => {
       const wrapper = new ChainableWrapper(testArray);
       const result = wrapper.pluck('name');
-      
+
       expect(result.value).toEqual(['Alice', 'Bob', 'Charlie']);
     });
 
     it('should sort by key', () => {
       const wrapper = new ChainableWrapper(testArray);
       const result = wrapper.sortBy('age');
-      
+
       expect(result.value).toEqual([
         { name: 'Bob', age: 25, department: 'design' },
         { name: 'Alice', age: 30, department: 'engineering' },
@@ -118,8 +118,8 @@ describe('ChainableWrapper', () => {
 
     it('should sort by function', () => {
       const wrapper = new ChainableWrapper(testArray);
-      const result = wrapper.sortBy((item: any) => item.name);
-      
+      const result = wrapper.sortBy((item: Record<string, unknown>) => item.name);
+
       expect(result.value).toEqual([
         { name: 'Alice', age: 30, department: 'engineering' },
         { name: 'Bob', age: 25, department: 'design' },
@@ -130,7 +130,7 @@ describe('ChainableWrapper', () => {
     it('should take first N elements', () => {
       const wrapper = new ChainableWrapper(testArray);
       const result = wrapper.take(2);
-      
+
       expect(result.value).toEqual([
         { name: 'Alice', age: 30, department: 'engineering' },
         { name: 'Bob', age: 25, department: 'design' },
@@ -140,7 +140,7 @@ describe('ChainableWrapper', () => {
     it('should skip first N elements', () => {
       const wrapper = new ChainableWrapper(testArray);
       const result = wrapper.skip(1);
-      
+
       expect(result.value).toEqual([
         { name: 'Bob', age: 25, department: 'design' },
         { name: 'Charlie', age: 35, department: 'engineering' },
@@ -165,11 +165,7 @@ describe('ChainableWrapper', () => {
     });
 
     it('should sum by key', () => {
-      const data = [
-        { amount: 100 },
-        { amount: 200 },
-        { amount: 50 },
-      ];
+      const data = [{ amount: 100 }, { amount: 200 }, { amount: 50 }];
       const wrapper = new ChainableWrapper(data);
       expect(wrapper.sum('amount').value).toBe(350);
     });
@@ -196,7 +192,7 @@ describe('ChainableWrapper', () => {
 
       const wrapper = new ChainableWrapper(data);
       const result = wrapper
-        .filter(person => (person as any).age > 26)
+        .filter(person => ((person as Record<string, unknown>).age as number) > 26)
         .sortBy('salary')
         .pluck('name');
 
@@ -211,9 +207,7 @@ describe('ChainableWrapper', () => {
       ];
 
       const wrapper = new ChainableWrapper(data);
-      const result = wrapper
-        .where('category', 'A')
-        .sum('value');
+      const result = wrapper.where('category', 'A').sum('value');
 
       expect(result.value).toBe(25);
     });
@@ -222,7 +216,7 @@ describe('ChainableWrapper', () => {
   describe('Edge cases', () => {
     it('should handle empty arrays', () => {
       const wrapper = new ChainableWrapper([]);
-      
+
       expect(wrapper.filter(() => true).value).toEqual([]);
       expect(wrapper.map(x => x).value).toEqual([]);
       expect(wrapper.length().value).toBe(0);
@@ -231,7 +225,7 @@ describe('ChainableWrapper', () => {
 
     it('should handle non-array operations on arrays', () => {
       const wrapper = new ChainableWrapper('not an array');
-      
+
       expect(wrapper.filter(() => true).value).toEqual([]);
       expect(wrapper.map(x => x).value).toEqual([]);
       expect(wrapper.pluck('key').value).toEqual([]);
@@ -240,7 +234,7 @@ describe('ChainableWrapper', () => {
     it('should handle toString and valueOf', () => {
       const data = { name: 'Alice', age: 30 };
       const wrapper = new ChainableWrapper(data);
-      
+
       expect(wrapper.toString()).toBe(JSON.stringify(data, null, 2));
       expect(wrapper.valueOf()).toEqual(data);
     });

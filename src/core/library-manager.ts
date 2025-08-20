@@ -1,10 +1,9 @@
-import { LibraryInfo, LibraryCache, JsqOptions } from '@/types/cli';
+import { spawn } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import NodeCache from 'node-cache';
-import { spawn } from 'child_process';
-import { promises as fs } from 'fs';
-import path from 'path';
-import os from 'os';
-import semver from 'semver';
+import type { JsqOptions, LibraryCache, LibraryInfo } from '@/types/cli';
 
 export class LibraryManager {
   private cache: NodeCache;
@@ -29,9 +28,9 @@ export class LibraryManager {
   }
 
   async loadLibraries(librarySpecs: string | string[]): Promise<Record<string, unknown>> {
-    const specs = Array.isArray(librarySpecs) 
-      ? librarySpecs 
-      : typeof librarySpecs === 'string' 
+    const specs = Array.isArray(librarySpecs)
+      ? librarySpecs
+      : typeof librarySpecs === 'string'
         ? librarySpecs.split(',').map(s => s.trim())
         : [];
 
@@ -42,13 +41,16 @@ export class LibraryManager {
         const library = await this.loadLibrary(spec);
         const libraryName = this.parseLibraryName(spec);
         loadedLibraries[libraryName] = library;
-        
+
         if (this.options.verbose) {
           console.error(`✓ Loaded library: ${libraryName}`);
         }
       } catch (error) {
         const libraryName = this.parseLibraryName(spec);
-        console.error(`✗ Failed to load library ${libraryName}:`, error instanceof Error ? error.message : error);
+        console.error(
+          `✗ Failed to load library ${libraryName}:`,
+          error instanceof Error ? error.message : error
+        );
         // Continue loading other libraries even if one fails
       }
     }
@@ -63,8 +65,8 @@ export class LibraryManager {
     // Check cache first
     const cacheKey = `${libraryName}@${version || 'latest'}`;
     const cached = this.cache.get<LibraryInfo>(cacheKey);
-    
-    if (cached && await this.validateCachedLibrary(cached)) {
+
+    if (cached && (await this.validateCachedLibrary(cached))) {
       if (this.options.verbose) {
         console.error(`Using cached: ${libraryName}@${cached.version}`);
       }
@@ -73,11 +75,11 @@ export class LibraryManager {
 
     // Install and load the library
     const libraryInfo = await this.installAndLoadLibrary(libraryName, version);
-    
+
     // Cache the result
     this.cache.set(cacheKey, libraryInfo);
     this.libraryCache.set(cacheKey, libraryInfo);
-    
+
     return libraryInfo.exports;
   }
 
@@ -96,11 +98,11 @@ export class LibraryManager {
     try {
       // Check if the cached library path still exists
       await fs.access(library.path);
-      
+
       // Check if cache is not too old (24 hours)
       const cacheAge = Date.now() - library.installedAt.getTime();
       const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-      
+
       return cacheAge < maxAge;
     } catch {
       return false;
@@ -110,26 +112,26 @@ export class LibraryManager {
   private async installAndLoadLibrary(name: string, version?: string): Promise<LibraryInfo> {
     const installSpec = version ? `${name}@${version}` : name;
     const libraryDir = path.join(this.cacheDir, 'node_modules');
-    
+
     // Ensure node_modules directory exists
     await fs.mkdir(libraryDir, { recursive: true });
 
     try {
       // Install the library using npm
       await this.runNpmInstall(installSpec, libraryDir);
-      
+
       // Load the library
       const libraryPath = path.join(libraryDir, name);
       const packageJsonPath = path.join(libraryPath, 'package.json');
-      
+
       // Read package.json to get version and main entry
       const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
       const mainEntry = packageJson.main || 'index.js';
       const mainPath = path.join(libraryPath, mainEntry);
-      
+
       // Dynamically import the library
       const exports = await this.requireLibrary(mainPath);
-      
+
       return {
         name,
         version: packageJson.version,
@@ -139,7 +141,9 @@ export class LibraryManager {
         installedAt: new Date(),
       };
     } catch (error) {
-      throw new Error(`Failed to install/load library ${name}: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to install/load library ${name}: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -150,7 +154,7 @@ export class LibraryManager {
         stdio: this.options.verbose ? 'inherit' : 'pipe',
       });
 
-      npm.on('close', (code) => {
+      npm.on('close', code => {
         if (code === 0) {
           resolve();
         } else {
@@ -158,7 +162,7 @@ export class LibraryManager {
         }
       });
 
-      npm.on('error', (error) => {
+      npm.on('error', error => {
         reject(new Error(`npm install error: ${error.message}`));
       });
 
@@ -178,7 +182,7 @@ export class LibraryManager {
     try {
       // Use dynamic import to load the library
       const library = await import(libraryPath);
-      
+
       // Return the default export if available, otherwise return the entire module
       return library.default || library;
     } catch (error) {
@@ -186,8 +190,10 @@ export class LibraryManager {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         return require(libraryPath);
-      } catch (requireError) {
-        throw new Error(`Could not load library from ${libraryPath}: ${error instanceof Error ? error.message : error}`);
+      } catch (_requireError) {
+        throw new Error(
+          `Could not load library from ${libraryPath}: ${error instanceof Error ? error.message : error}`
+        );
       }
     }
   }
@@ -195,7 +201,7 @@ export class LibraryManager {
   async clearCache(): Promise<void> {
     this.cache.flushAll();
     this.libraryCache.clear();
-    
+
     try {
       await fs.rm(this.cacheDir, { recursive: true, force: true });
       await this.ensureCacheDir();
@@ -215,7 +221,7 @@ export class LibraryManager {
   }
 
   async getLibraryInfo(name: string): Promise<LibraryInfo | null> {
-    for (const [key, info] of this.libraryCache) {
+    for (const [_key, info] of this.libraryCache) {
       if (info.name === name) {
         return info;
       }

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Box, Text, useInput, useApp, Spacer, useStdout } from 'ink';
+import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { JsqProcessor } from '../core/processor';
-import { JsqOptions } from '../types/cli';
+import type { JsqOptions } from '../types/cli';
 import { SyntaxChecker } from './syntax-checker';
 
 interface REPLAppProps {
@@ -19,47 +19,60 @@ const DEBOUNCE_MS = 300;
 
 // Available colors for the prompt
 const PROMPT_COLORS = [
-  'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-  'redBright', 'greenBright', 'yellowBright', 'blueBright', 
-  'magentaBright', 'cyanBright', 'whiteBright'
+  'red',
+  'green',
+  'yellow',
+  'blue',
+  'magenta',
+  'cyan',
+  'white',
+  'redBright',
+  'greenBright',
+  'yellowBright',
+  'blueBright',
+  'magentaBright',
+  'cyanBright',
+  'whiteBright',
 ] as const;
 
-type PromptColor = typeof PROMPT_COLORS[number];
+type PromptColor = (typeof PROMPT_COLORS)[number];
 
 // Memoized prompt component to reduce re-renders
-const PromptSection = memo(({ 
-  promptColors, 
-  currentExpression, 
-  cursorPosition, 
-  isEvaluating,
-  showSlowLoading 
-}: {
-  promptColors: [PromptColor, PromptColor, PromptColor];
-  currentExpression: string;
-  cursorPosition: number;
-  isEvaluating: boolean;
-  showSlowLoading: boolean;
-}) => (
-  <Box borderStyle="single" borderColor="white" padding={1}>
-    <Box flexDirection="column" width="100%">
-      <Text color="white" bold>
-        {isEvaluating && showSlowLoading ? "⏳" : "🚀"} Expression
-      </Text>
-      <Box marginTop={1}>
-        <Text color={promptColors[0]}>❯</Text>
-        <Text color={promptColors[1]}>❯</Text>
-        <Text color={promptColors[2]}>❯ </Text>
-        <Text>
-          {currentExpression.slice(0, cursorPosition)}
-          <Text backgroundColor="white" color="black">
-            {currentExpression[cursorPosition] || ' '}
-          </Text>
-          {currentExpression.slice(cursorPosition + 1)}
+const PromptSection = memo(
+  ({
+    promptColors,
+    currentExpression,
+    cursorPosition,
+    isEvaluating,
+    showSlowLoading,
+  }: {
+    promptColors: [PromptColor, PromptColor, PromptColor];
+    currentExpression: string;
+    cursorPosition: number;
+    isEvaluating: boolean;
+    showSlowLoading: boolean;
+  }) => (
+    <Box borderStyle="single" borderColor="white" padding={1}>
+      <Box flexDirection="column" width="100%">
+        <Text color="white" bold>
+          {isEvaluating && showSlowLoading ? '⏳' : '🚀'} Expression
         </Text>
+        <Box marginTop={1}>
+          <Text color={promptColors[0]}>❯</Text>
+          <Text color={promptColors[1]}>❯</Text>
+          <Text color={promptColors[2]}>❯ </Text>
+          <Text>
+            {currentExpression.slice(0, cursorPosition)}
+            <Text backgroundColor="white" color="black">
+              {currentExpression[cursorPosition] || ' '}
+            </Text>
+            {currentExpression.slice(cursorPosition + 1)}
+          </Text>
+        </Box>
       </Box>
     </Box>
-  </Box>
-));
+  )
+);
 
 export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   const { exit } = useApp();
@@ -78,7 +91,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
     return [
       PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
       PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)]
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
     ];
   });
 
@@ -88,7 +101,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
       return [
         PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
         PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)]
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
       ];
     });
   }, []);
@@ -112,25 +125,25 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
 
       setIsEvaluating(true);
       setShowSlowLoading(false);
-      
+
       // Set a timer to show slow loading indicator after 500ms
       const slowLoadingTimer = setTimeout(() => {
         setShowSlowLoading(true);
       }, 500);
-      
+
       try {
         const result = await processor.process(expression, data);
-        
+
         // Clear the timer since evaluation completed
         clearTimeout(slowLoadingTimer);
         let resultStr: string;
-        
+
         if (typeof result.data === 'string') {
           resultStr = JSON.stringify(result.data);
         } else {
           resultStr = JSON.stringify(result.data, null, 2);
         }
-        
+
         setEvaluationResult({ result: resultStr });
       } catch (error) {
         // Clear the timer on error as well
@@ -138,10 +151,10 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         const errorStr = error instanceof Error ? error.message : 'Syntax error';
         // Use syntax checker to determine if expression is partial
         const isPartial = SyntaxChecker.isLikelyPartial(expression);
-                         
-        setEvaluationResult({ 
+
+        setEvaluationResult({
           error: errorStr,
-          isPartial 
+          isPartial,
         });
       } finally {
         clearTimeout(slowLoadingTimer);
@@ -162,42 +175,73 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
     setCursorPosition(prev => Math.min(prev, currentExpression.length));
   }, [currentExpression, debouncedEvaluate]);
 
-  useInput((input, key) => {
-    if (key.ctrl && input === 'c') {
-      exit();
-    } else if (key.ctrl && input === 'd') {
-      exit();
-    } else if (key.ctrl && input === 'r') {
-      setShowData(prev => !prev);
-    } else if (key.delete) {
-      // This is actually backspace! Move cursor left and delete character
-      if (cursorPosition > 0) {
-        const newPos = cursorPosition - 1;
-        // Delete character at new position
-        setCurrentExpression(prev => {
-          return prev.slice(0, newPos) + prev.slice(cursorPosition);
-        });
-        // Move cursor left
-        setCursorPosition(newPos);
+  const handleCtrlKeys = useCallback(
+    (input: string) => {
+      switch (input) {
+        case 'c':
+        case 'd':
+          exit();
+          break;
+        case 'r':
+          setShowData(prev => !prev);
+          break;
+        case 'a':
+          setCursorPosition(0);
+          break;
+        case 'e':
+          setCursorPosition(currentExpression.length);
+          break;
+        case 'l':
+          setCurrentExpression('');
+          setCursorPosition(0);
+          setEvaluationResult({});
+          break;
       }
-    } else if (key.leftArrow) {
-      setCursorPosition(prev => Math.max(0, prev - 1));
-    } else if (key.rightArrow) {
-      setCursorPosition(prev => Math.min(currentExpression.length, prev + 1));
-    } else if (key.ctrl && input === 'a') {
-      setCursorPosition(0);
-    } else if (key.ctrl && input === 'e') {
-      setCursorPosition(currentExpression.length);
-    } else if (key.ctrl && input === 'l') {
-      setCurrentExpression('');
-      setCursorPosition(0);
-      setEvaluationResult({});
-    } else if (!key.ctrl && !key.meta && input) {
+    },
+    [exit, currentExpression.length]
+  );
+
+  const handleBackspace = useCallback(() => {
+    if (cursorPosition > 0) {
+      const newPos = cursorPosition - 1;
+      setCurrentExpression(prev => {
+        return prev.slice(0, newPos) + prev.slice(cursorPosition);
+      });
+      setCursorPosition(newPos);
+    }
+  }, [cursorPosition]);
+
+  const handleArrowKeys = useCallback(
+    (key: { leftArrow?: boolean; rightArrow?: boolean }) => {
+      if (key.leftArrow) {
+        setCursorPosition(prev => Math.max(0, prev - 1));
+      } else if (key.rightArrow) {
+        setCursorPosition(prev => Math.min(currentExpression.length, prev + 1));
+      }
+    },
+    [currentExpression.length]
+  );
+
+  const handleTextInput = useCallback(
+    (input: string) => {
       const newCursorPos = cursorPosition + 1;
       setCurrentExpression(prev => {
         return prev.slice(0, cursorPosition) + input + prev.slice(cursorPosition);
       });
       setCursorPosition(newCursorPos);
+    },
+    [cursorPosition]
+  );
+
+  useInput((input, key) => {
+    if (key.ctrl && input) {
+      handleCtrlKeys(input);
+    } else if (key.delete) {
+      handleBackspace();
+    } else if (key.leftArrow || key.rightArrow) {
+      handleArrowKeys(key);
+    } else if (!key.ctrl && !key.meta && input) {
+      handleTextInput(input);
     }
   });
 
@@ -224,7 +268,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
     if (lines.length <= maxLines) {
       return result;
     }
-    
+
     const truncatedLines = lines.slice(0, maxLines - 1);
     truncatedLines.push(`... (${lines.length - maxLines + 1} more lines truncated)`);
     return truncatedLines.join('\n');
@@ -238,40 +282,56 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         return null; // No indicator for fast processing
       }
     }
-    
+
     if (evaluationResult.error) {
       if (evaluationResult.isPartial) {
         if (suggestions.length > 0) {
           return (
             <Box flexDirection="column">
-              <Text color="gray" dimColor>Continue typing...</Text>
-              <Text color="blue" dimColor>💡 Suggestions: {suggestions.slice(0, 3).join(', ')}</Text>
+              <Text color="gray" dimColor>
+                Continue typing...
+              </Text>
+              <Text color="blue" dimColor>
+                💡 Suggestions: {suggestions.slice(0, 3).join(', ')}
+              </Text>
             </Box>
           );
         }
-        return <Text color="gray" dimColor>Continue typing...</Text>;
+        return (
+          <Text color="gray" dimColor>
+            Continue typing...
+          </Text>
+        );
       }
       return <Text color="red">❌ {evaluationResult.error}</Text>;
     }
-    
+
     if (evaluationResult.result !== undefined) {
       const truncatedResult = truncateResult(evaluationResult.result);
       return <Text color="green">✓ {truncatedResult}</Text>;
     }
-    
+
     if (suggestions.length > 0) {
       return (
         <Box flexDirection="column">
-          <Text color="gray" dimColor>Type a jsq expression...</Text>
-          <Text color="blue" dimColor>💡 Try: {suggestions.slice(0, 3).join(', ')}</Text>
+          <Text color="gray" dimColor>
+            Type a jsq expression...
+          </Text>
+          <Text color="blue" dimColor>
+            💡 Try: {suggestions.slice(0, 3).join(', ')}
+          </Text>
         </Box>
       );
     }
-    
-    return <Text color="gray" dimColor>Type a jsq expression...</Text>;
+
+    return (
+      <Text color="gray" dimColor>
+        Type a jsq expression...
+      </Text>
+    );
   };
 
-  const getStatusColor = () => {
+  const _getStatusColor = () => {
     if (isEvaluating && showSlowLoading) return 'yellow';
     if (evaluationResult.error && !evaluationResult.isPartial) return 'red';
     if (evaluationResult.result !== undefined) return 'green';
@@ -291,7 +351,9 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         {showData && (
           <Box borderStyle="single" borderColor="blue" padding={1} marginBottom={1}>
             <Box flexDirection="column" width="100%">
-              <Text color="blue" bold>📊 Data</Text>
+              <Text color="blue" bold>
+                📊 Data
+              </Text>
               <Box marginTop={1}>
                 <Text wrap="wrap">{dataPreview}</Text>
               </Box>
@@ -302,10 +364,10 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         {/* Result Section */}
         <Box padding={1} flexGrow={1}>
           <Box flexDirection="column" width="100%">
-            <Text color="green" bold>💎 Result</Text>
-            <Box marginTop={1}>
-              {getResultDisplay()}
-            </Box>
+            <Text color="green" bold>
+              💎 Result
+            </Text>
+            <Box marginTop={1}>{getResultDisplay()}</Box>
           </Box>
         </Box>
       </Box>
@@ -318,7 +380,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         isEvaluating={isEvaluating}
         showSlowLoading={showSlowLoading}
       />
-      
+
       {/* Data hint below frame */}
       <Box paddingLeft={1}>
         <Text color="gray" dimColor>
@@ -330,12 +392,12 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
 }
 
 // Utility debounce function
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   return (...args: Parameters<T>) => {
     if (timeout) {
       clearTimeout(timeout);

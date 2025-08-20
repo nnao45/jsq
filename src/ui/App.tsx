@@ -1,8 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { JsqOptions } from '@/types/cli';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { JsqProcessor } from '@/core/processor';
+import type { JsqOptions } from '@/types/cli';
 import { readStdin } from '@/utils/input';
 
 interface AppProps {
@@ -34,10 +34,10 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
 
         const processor = new JsqProcessor(options);
         const result = await processor.process(expression, input);
-        
+
         setResult(JSON.stringify(result.data, null, 2));
         setLoading(false);
-        
+
         // Exit after processing unless in watch mode
         if (!options.watch) {
           setTimeout(() => exit(), 100);

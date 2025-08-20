@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { createSmartDollar } from './jquery-wrapper';
 
 describe('jQuery-wrapper (Smart $ functionality)', () => {
@@ -6,7 +6,7 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
     it('should act as constructor with arguments', () => {
       const data = { users: [{ name: 'Alice' }] };
       const $ = createSmartDollar(data);
-      
+
       const result = $([1, 2, 3]);
       expect(result.value).toEqual([1, 2, 3]);
     });
@@ -14,7 +14,7 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
     it('should return root data when called without arguments', () => {
       const data = { users: [{ name: 'Alice' }] };
       const $ = createSmartDollar(data);
-      
+
       const result = $();
       expect(result.value).toEqual(data);
     });
@@ -22,14 +22,14 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
     it('should have valueOf return original data', () => {
       const data = { name: 'Alice', age: 30 };
       const $ = createSmartDollar(data);
-      
+
       expect($.valueOf()).toEqual(data);
     });
 
     it('should have toString return JSON string', () => {
       const data = { name: 'Alice', age: 30 };
       const $ = createSmartDollar(data);
-      
+
       expect($.toString()).toBe(JSON.stringify(data));
     });
   });
@@ -39,14 +39,15 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
       const data = {
         users: [
           { name: 'Alice', age: 30 },
-          { name: 'Bob', age: 25 }
+          { name: 'Bob', age: 25 },
         ],
         config: {
           theme: 'dark',
-          language: 'en'
-        }
+          language: 'en',
+        },
       };
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       expect($.users.value).toEqual(data.users);
       expect($.config.value).toEqual(data.config);
@@ -59,12 +60,13 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
           settings: {
             ui: {
               theme: 'dark',
-              fontSize: 14
-            }
-          }
-        }
+              fontSize: 14,
+            },
+          },
+        },
       };
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       expect($.app.settings.ui.theme.value).toBe('dark');
       expect($.app.settings.ui.fontSize.value).toBe(14);
@@ -75,12 +77,15 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
         users: [
           { name: 'Alice', age: 30, active: true },
           { name: 'Bob', age: 25, active: false },
-          { name: 'Charlie', age: 35, active: true }
-        ]
+          { name: 'Charlie', age: 35, active: true },
+        ],
       };
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
-      const activeUsers = $.users.filter((user: any) => user.active).pluck('name');
+      const activeUsers = $.users
+        .filter((user: Record<string, unknown>) => user.active)
+        .pluck('name');
       expect(activeUsers.value).toEqual(['Alice', 'Charlie']);
     });
   });
@@ -89,9 +94,10 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
     it('should handle array data directly', () => {
       const data = [
         { name: 'Alice', age: 30 },
-        { name: 'Bob', age: 25 }
+        { name: 'Bob', age: 25 },
       ];
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       // $ should act like the array wrapper
       expect($.data).toEqual(data);
@@ -103,14 +109,17 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
       const data = [
         { name: 'Alice', department: 'engineering', salary: 70000 },
         { name: 'Bob', department: 'design', salary: 50000 },
-        { name: 'Charlie', department: 'engineering', salary: 80000 }
+        { name: 'Charlie', department: 'engineering', salary: 80000 },
       ];
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
-      const engineeringNames = $.filter((person: any) => person.department === 'engineering')
-                                .sortBy('salary')
-                                .pluck('name');
-      
+      const engineeringNames = $.filter(
+        (person: Record<string, unknown>) => person.department === 'engineering'
+      )
+        .sortBy('salary')
+        .pluck('name');
+
       expect(engineeringNames.value).toEqual(['Alice', 'Charlie']);
     });
   });
@@ -120,7 +129,7 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
       const data = {
         metadata: {
           version: '1.0',
-          created: '2023-01-01'
+          created: '2023-01-01',
         },
         users: [
           {
@@ -129,13 +138,13 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
               name: 'Alice',
               contact: {
                 email: 'alice@example.com',
-                phone: '555-0001'
-              }
+                phone: '555-0001',
+              },
             },
             orders: [
-              { id: 101, amount: 250.00, status: 'completed' },
-              { id: 102, amount: 150.00, status: 'pending' }
-            ]
+              { id: 101, amount: 250.0, status: 'completed' },
+              { id: 102, amount: 150.0, status: 'pending' },
+            ],
           },
           {
             id: 2,
@@ -143,21 +152,20 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
               name: 'Bob',
               contact: {
                 email: 'bob@example.com',
-                phone: '555-0002'
-              }
+                phone: '555-0002',
+              },
             },
-            orders: [
-              { id: 201, amount: 300.00, status: 'completed' }
-            ]
-          }
+            orders: [{ id: 201, amount: 300.0, status: 'completed' }],
+          },
         ],
         summary: {
           totalUsers: 2,
-          totalOrders: 3
-        }
+          totalOrders: 3,
+        },
       };
 
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       // Test metadata access
       expect($.metadata.version.value).toBe('1.0');
@@ -171,15 +179,18 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
 
       // Test complex chaining with nested data
       const completedOrderAmounts = $.users
-        .map((user: any) => user.orders)
-        .map((orders: any) => orders.filter((order: any) => order.status === 'completed'))
-        .map((completedOrders: any) => completedOrders.map((order: any) => order.amount))
-        .value;
+        .map((user: Record<string, unknown>) => user.orders)
+        .map((orders: Record<string, unknown>[]) =>
+          orders.filter((order: Record<string, unknown>) => order.status === 'completed')
+        )
+        .map((completedOrders: Record<string, unknown>[]) =>
+          completedOrders.map((order: Record<string, unknown>) => order.amount)
+        ).value;
 
       // This should give us arrays of amounts for completed orders per user
       expect(completedOrderAmounts).toEqual([
-        [250.00], // Alice's completed orders
-        [300.00]  // Bob's completed orders
+        [250.0], // Alice's completed orders
+        [300.0], // Bob's completed orders
       ]);
     });
   });
@@ -187,48 +198,50 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
   describe('Edge cases', () => {
     it('should handle null data', () => {
       const $ = createSmartDollar(null);
-      
+
       expect($.valueOf()).toBe(null);
       expect($.toString()).toBe('null');
     });
 
     it('should handle undefined data', () => {
       const $ = createSmartDollar(undefined);
-      
+
       expect($.valueOf()).toBe(undefined);
       expect($.toString()).toBe(String(undefined));
     });
 
     it('should handle primitive data', () => {
       const $ = createSmartDollar(42);
-      
+
       expect($.valueOf()).toBe(42);
       expect($.toString()).toBe('42');
     });
 
     it('should handle string data', () => {
       const $ = createSmartDollar('hello world');
-      
+
       expect($.valueOf()).toBe('hello world');
       expect($.toString()).toBe('hello world');
     });
 
     it('should handle empty object', () => {
-      const $ = createSmartDollar({}) as any;
-      
+      const $ = createSmartDollar({}) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
+
       expect($.valueOf()).toEqual({});
       expect($.toString()).toBe('{}');
-      
+
       // Should not have any enumerable properties
       expect(Object.keys($).filter(key => key !== 'valueOf' && key !== 'toString')).toEqual([]);
     });
 
     it('should handle empty array', () => {
-      const $ = createSmartDollar([]) as any;
-      
+      const $ = createSmartDollar([]) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
+
       expect($.valueOf()).toEqual([]);
       expect($.data).toEqual([]);
-      
+
       // Should have array methods available
       expect($.filter).toBeDefined();
       expect($.map).toBeDefined();
@@ -243,26 +256,25 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
           { id: 1, name: 'Laptop', price: 999, category: 'electronics', inStock: true },
           { id: 2, name: 'Mouse', price: 25, category: 'electronics', inStock: true },
           { id: 3, name: 'Book', price: 15, category: 'books', inStock: false },
-          { id: 4, name: 'Phone', price: 699, category: 'electronics', inStock: true }
-        ]
+          { id: 4, name: 'Phone', price: 699, category: 'electronics', inStock: true },
+        ],
       };
 
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       // Find all electronics products in stock, sorted by price
       const affordableElectronics = $.products
         .where('category', 'electronics')
         .where('inStock', true)
-        .filter((product: any) => product.price < 500)
+        .filter((product: { price: number }) => product.price < 500)
         .sortBy('price')
         .pluck('name');
 
       expect(affordableElectronics.value).toEqual(['Mouse']);
 
       // Get total value of in-stock items
-      const totalValue = $.products
-        .where('inStock', true)
-        .sum('price');
+      const totalValue = $.products.where('inStock', true).sum('price');
 
       expect(totalValue.value).toBe(999 + 25 + 699); // 1723
     });
@@ -273,24 +285,27 @@ describe('jQuery-wrapper (Smart $ functionality)', () => {
           { quarter: 'Q1', revenue: 100000, costs: 80000 },
           { quarter: 'Q2', revenue: 120000, costs: 85000 },
           { quarter: 'Q3', revenue: 110000, costs: 90000 },
-          { quarter: 'Q4', revenue: 140000, costs: 95000 }
-        ]
+          { quarter: 'Q4', revenue: 140000, costs: 95000 },
+        ],
       };
 
-      const $ = createSmartDollar(data) as any;
+      const $ = createSmartDollar(data) as Record<string, unknown> &
+        ((...args: unknown[]) => unknown);
 
       // Calculate profit margins
-      const profitMargins = $.sales.map((sale: any) => ({
-        quarter: sale.quarter,
-        profit: sale.revenue - sale.costs,
-        margin: ((sale.revenue - sale.costs) / sale.revenue * 100).toFixed(2) + '%'
-      }));
+      const profitMargins = $.sales.map(
+        (sale: { quarter: string; revenue: number; costs: number }) => ({
+          quarter: sale.quarter,
+          profit: sale.revenue - sale.costs,
+          margin: `${(((sale.revenue - sale.costs) / sale.revenue) * 100).toFixed(2)}%`,
+        })
+      );
 
       expect(profitMargins.value).toEqual([
         { quarter: 'Q1', profit: 20000, margin: '20.00%' },
         { quarter: 'Q2', profit: 35000, margin: '29.17%' },
         { quarter: 'Q3', profit: 20000, margin: '18.18%' },
-        { quarter: 'Q4', profit: 45000, margin: '32.14%' }
+        { quarter: 'Q4', profit: 45000, margin: '32.14%' },
       ]);
     });
   });

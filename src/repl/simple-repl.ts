@@ -1,6 +1,6 @@
-import { createInterface } from 'readline';
+import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
 import { JsqProcessor } from '../core/processor';
-import { JsqOptions } from '../types/cli';
+import type { JsqOptions } from '../types/cli';
 
 interface REPLSession {
   processor: JsqProcessor;
@@ -14,19 +14,19 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
     processor: new JsqProcessor(options),
     options,
     data,
-    history: []
+    history: [],
   };
 
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: 'jsq> '
+    prompt: 'jsq> ',
   });
 
   console.log('🚀 jsq REPL - jQuery-style JSON processor');
   console.log(`${options.safe ? '🔒 Safe' : '⚡ Fast'} mode enabled`);
   console.log('Type your expression or "exit" to quit, ".help" for help\n');
-  
+
   // Show data preview
   const preview = data.length > 200 ? `${data.slice(0, 200)}...` : data;
   console.log(`Data: ${preview}\n`);
@@ -34,75 +34,7 @@ export async function startSimpleREPL(data: string, options: JsqOptions): Promis
   rl.prompt();
 
   rl.on('line', async (input: string) => {
-    const trimmed = input.trim();
-    
-    if (trimmed === 'exit' || trimmed === '.exit') {
-      rl.close();
-      return;
-    }
-    
-    if (trimmed === '.help') {
-      showHelp();
-      rl.prompt();
-      return;
-    }
-    
-    if (trimmed === '.clear') {
-      console.clear();
-      session.history = [];
-      rl.prompt();
-      return;
-    }
-    
-    if (trimmed === '.data') {
-      console.log(`Current data: ${session.data}`);
-      rl.prompt();
-      return;
-    }
-    
-    if (trimmed === '.history') {
-      session.history.forEach((item, index) => {
-        console.log(`${index + 1}: ${item.expression} => ${item.result || item.error}`);
-      });
-      rl.prompt();
-      return;
-    }
-    
-    if (!trimmed) {
-      rl.prompt();
-      return;
-    }
-
-    try {
-      process.stdout.write('Processing... ');
-      const result = await session.processor.process(trimmed, session.data);
-      
-      let output: string;
-      if (typeof result.data === 'string') {
-        output = JSON.stringify(result.data);
-      } else {
-        output = JSON.stringify(result.data, null, 2);
-      }
-      
-      console.log(`\r✓ ${output}`);
-      
-      session.history.push({
-        expression: trimmed,
-        result: output
-      });
-      
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.log(`\r✗ Error: ${errorMsg}`);
-      
-      session.history.push({
-        expression: trimmed,
-        result: '',
-        error: errorMsg
-      });
-    }
-    
-    rl.prompt();
+    await handleReplInput(input, rl, session);
   });
 
   rl.on('close', async () => {
@@ -134,4 +66,99 @@ Examples:
   $.users.map(u => u.name)
   $.users.pluck("email")
 `);
+}
+
+async function handleReplInput(
+  input: string,
+  rl: ReadlineInterface,
+  session: REPLSession
+): Promise<void> {
+  const trimmed = input.trim();
+
+  if (handleReplCommands(trimmed, rl, session)) {
+    return;
+  }
+
+  if (!trimmed) {
+    rl.prompt();
+    return;
+  }
+
+  await processExpression(trimmed, rl, session);
+}
+
+function handleReplCommands(
+  trimmed: string,
+  rl: ReadlineInterface,
+  session: REPLSession
+): boolean {
+  if (trimmed === 'exit' || trimmed === '.exit') {
+    rl.close();
+    return true;
+  }
+
+  if (trimmed === '.help') {
+    showHelp();
+    rl.prompt();
+    return true;
+  }
+
+  if (trimmed === '.clear') {
+    console.clear();
+    session.history = [];
+    rl.prompt();
+    return true;
+  }
+
+  if (trimmed === '.data') {
+    console.log(`Current data: ${session.data}`);
+    rl.prompt();
+    return true;
+  }
+
+  if (trimmed === '.history') {
+    session.history.forEach((item, index) => {
+      console.log(`${index + 1}: ${item.expression} => ${item.result || item.error}`);
+    });
+    rl.prompt();
+    return true;
+  }
+
+  return false;
+}
+
+async function processExpression(
+  trimmed: string,
+  rl: ReadlineInterface,
+  session: REPLSession
+): Promise<void> {
+  try {
+    process.stdout.write('Processing... ');
+    const result = await session.processor.process(trimmed, session.data);
+
+    let output: string;
+    if (typeof result.data === 'string') {
+      output = JSON.stringify(result.data);
+    } else {
+      output = JSON.stringify(result.data, null, 2);
+    }
+
+    console.log(`\r✓ ${output}`);
+
+    session.history.push({
+      expression: trimmed,
+      result: output,
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.log(`\r✗ Error: ${errorMsg}`);
+
+    session.history.push({
+      expression: trimmed,
+      result: '',
+      error: errorMsg,
+    });
+  }
+
+  rl.prompt();
 }
