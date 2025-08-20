@@ -134,6 +134,12 @@ const CHAINABLE_METHODS = [
   // Standard iteration methods
   'forEach',
   'each',
+
+  // Async iteration methods
+  'forEachAsync',
+  'forEachAsyncSeq',
+  'mapAsync',
+  'mapAsyncSeq',
 ];
 
 // Native array methods available for potential future array method delegation

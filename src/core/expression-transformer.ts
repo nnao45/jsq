@@ -52,6 +52,17 @@ export function hasAsyncGeneratorMethods(expression: string): boolean {
 }
 
 /**
+ * Check if expression contains async methods that need special handling
+ */
+export function hasAsyncMethods(expression: string): boolean {
+  const asyncMethods = ['forEachAsync', 'forEachAsyncSeq', 'mapAsync', 'mapAsyncSeq'];
+  return asyncMethods.some(
+    method =>
+      expression.includes(`.${method}(`) || expression.match(new RegExp(`\\$\\.${method}\\(`))
+  );
+}
+
+/**
  * Check if expression is an array literal with method calls
  */
 export function isArrayLiteralWithMethods(expression: string): boolean {
