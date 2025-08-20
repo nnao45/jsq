@@ -133,6 +133,303 @@ export class ChainableWrapper {
     return new ChainableWrapper([]);
   }
 
+  // Advanced array methods
+  uniqBy(keyFn: (item: unknown) => any): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const seen = new Set();
+      const result = this.data.filter(item => {
+        const key = keyFn(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper([]);
+  }
+
+  flatten(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.flat());
+    }
+    return new ChainableWrapper([]);
+  }
+
+  flattenDeep(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const flattenDeep = (arr: any[]): any[] => 
+        arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val), []);
+      return new ChainableWrapper(flattenDeep(this.data));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  compact(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.filter(Boolean));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  chunk(size: number): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const chunks: unknown[][] = [];
+      for (let i = 0; i < this.data.length; i += size) {
+        chunks.push(this.data.slice(i, i + size));
+      }
+      return new ChainableWrapper(chunks);
+    }
+    return new ChainableWrapper([]);
+  }
+
+  takeWhile(predicate: (item: unknown) => boolean): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const result: unknown[] = [];
+      for (const item of this.data) {
+        if (!predicate(item)) break;
+        result.push(item);
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper([]);
+  }
+
+  drop(count: number): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.slice(count));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  dropWhile(predicate: (item: unknown) => boolean): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      let index = 0;
+      while (index < this.data.length && predicate(this.data[index])) {
+        index++;
+      }
+      return new ChainableWrapper(this.data.slice(index));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  reverse(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper([...this.data].reverse());
+    }
+    return new ChainableWrapper(this.data);
+  }
+
+  shuffle(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const result = [...this.data];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper(this.data);
+  }
+
+  sample(): ChainableWrapper {
+    if (Array.isArray(this.data) && this.data.length > 0) {
+      const randomIndex = Math.floor(Math.random() * this.data.length);
+      return new ChainableWrapper(this.data[randomIndex]);
+    }
+    return new ChainableWrapper(undefined);
+  }
+
+  sampleSize(count: number): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const shuffled = [...this.data].sort(() => 0.5 - Math.random());
+      return new ChainableWrapper(shuffled.slice(0, count));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  orderBy(keys: string[] | ((item: unknown) => any)[], orders: ('asc' | 'desc')[] = []): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const sorted = [...this.data].sort((a, b) => {
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          const order = orders[i] || 'asc';
+          
+          let aVal: any, bVal: any;
+          if (typeof key === 'function') {
+            aVal = key(a);
+            bVal = key(b);
+          } else if (this.isObject(a) && this.isObject(b)) {
+            aVal = (a as Record<string, unknown>)[key];
+            bVal = (b as Record<string, unknown>)[key];
+          } else {
+            continue;
+          }
+          
+          let comparison = 0;
+          if (aVal < bVal) comparison = -1;
+          else if (aVal > bVal) comparison = 1;
+          
+          if (comparison !== 0) {
+            return order === 'desc' ? -comparison : comparison;
+          }
+        }
+        return 0;
+      });
+      return new ChainableWrapper(sorted);
+    }
+    return new ChainableWrapper([]);
+  }
+
+  groupBy(keyFn: (item: unknown) => string): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const groups: Record<string, unknown[]> = {};
+      for (const item of this.data) {
+        const key = keyFn(item);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      }
+      return new ChainableWrapper(groups);
+    }
+    return new ChainableWrapper({});
+  }
+
+  countBy(keyFn: (item: unknown) => string): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const counts: Record<string, number> = {};
+      for (const item of this.data) {
+        const key = keyFn(item);
+        counts[key] = (counts[key] || 0) + 1;
+      }
+      return new ChainableWrapper(counts);
+    }
+    return new ChainableWrapper({});
+  }
+
+  keyBy(keyFn: (item: unknown) => string): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const result: Record<string, unknown> = {};
+      for (const item of this.data) {
+        result[keyFn(item)] = item;
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper({});
+  }
+
+  // Object methods
+  pick(keys: string[]): ChainableWrapper {
+    if (this.isObject(this.data)) {
+      const obj = this.data as Record<string, unknown>;
+      const result: Record<string, unknown> = {};
+      for (const key of keys) {
+        if (key in obj) {
+          result[key] = obj[key];
+        }
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper({});
+  }
+
+  omit(keys: string[]): ChainableWrapper {
+    if (this.isObject(this.data)) {
+      const obj = this.data as Record<string, unknown>;
+      const result: Record<string, unknown> = { ...obj };
+      for (const key of keys) {
+        delete result[key];
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper({});
+  }
+
+  invert(): ChainableWrapper {
+    if (this.isObject(this.data)) {
+      const obj = this.data as Record<string, unknown>;
+      const result: Record<string, string> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[String(value)] = key;
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper({});
+  }
+
+  // Statistical methods
+  mean(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const numbers = this.data.filter((item): item is number => typeof item === 'number');
+      if (numbers.length === 0) return new ChainableWrapper(0);
+      const sum = numbers.reduce((acc, num) => acc + num, 0);
+      return new ChainableWrapper(sum / numbers.length);
+    }
+    return new ChainableWrapper(0);
+  }
+
+  min(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const numbers = this.data.filter((item): item is number => typeof item === 'number');
+      return new ChainableWrapper(numbers.length > 0 ? Math.min(...numbers) : undefined);
+    }
+    return new ChainableWrapper(undefined);
+  }
+
+  max(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const numbers = this.data.filter((item): item is number => typeof item === 'number');
+      return new ChainableWrapper(numbers.length > 0 ? Math.max(...numbers) : undefined);
+    }
+    return new ChainableWrapper(undefined);
+  }
+
+  minBy(keyFn: (item: unknown) => number): ChainableWrapper {
+    if (Array.isArray(this.data) && this.data.length > 0) {
+      const min = this.data.reduce((minItem, item) => keyFn(item) < keyFn(minItem) ? item : minItem);
+      return new ChainableWrapper(min);
+    }
+    return new ChainableWrapper(undefined);
+  }
+
+  maxBy(keyFn: (item: unknown) => number): ChainableWrapper {
+    if (Array.isArray(this.data) && this.data.length > 0) {
+      const max = this.data.reduce((maxItem, item) => keyFn(item) > keyFn(maxItem) ? item : maxItem);
+      return new ChainableWrapper(max);
+    }
+    return new ChainableWrapper(undefined);
+  }
+
+  // Collection methods
+  size(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.length);
+    }
+    if (this.isObject(this.data)) {
+      return new ChainableWrapper(Object.keys(this.data as Record<string, unknown>).length);
+    }
+    return new ChainableWrapper(0);
+  }
+
+  isEmpty(): ChainableWrapper {
+    if (this.data == null) return new ChainableWrapper(true);
+    if (Array.isArray(this.data) || typeof this.data === 'string') {
+      return new ChainableWrapper(this.data.length === 0);
+    }
+    if (this.isObject(this.data)) {
+      return new ChainableWrapper(Object.keys(this.data as Record<string, unknown>).length === 0);
+    }
+    return new ChainableWrapper(false);
+  }
+
+  includes(value: unknown): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.includes(value));
+    }
+    if (this.isObject(this.data)) {
+      return new ChainableWrapper(Object.values(this.data as Record<string, unknown>).includes(value));
+    }
+    return new ChainableWrapper(false);
+  }
+
   // Aggregation methods
   length(): ChainableWrapper {
     if (Array.isArray(this.data)) {
@@ -170,6 +467,13 @@ export class ChainableWrapper {
   values(): ChainableWrapper {
     if (this.isObject(this.data)) {
       return new ChainableWrapper(Object.values(this.data as Record<string, unknown>));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  entries(): ChainableWrapper {
+    if (this.isObject(this.data)) {
+      return new ChainableWrapper(Object.entries(this.data as Record<string, unknown>));
     }
     return new ChainableWrapper([]);
   }

@@ -120,7 +120,6 @@ export function createSmartDollar(data: unknown) {
       writable: false,
     });
 
-
     // Override special methods for JSON compatibility
     Object.defineProperty($, 'toJSON', {
       value: () => data,
@@ -176,10 +175,10 @@ export function createSmartDollar(data: unknown) {
       get(target, prop, receiver) {
         // Handle special built-in methods FIRST before checking data properties
         if (prop === 'hasOwnProperty') {
-          return function(propName: string) { return Object.prototype.hasOwnProperty.call(obj, propName); };
+          return (propName: string) => Object.hasOwn(obj, propName);
         }
         if (prop === 'propertyIsEnumerable') {
-          return function(propName: string) { return Object.prototype.propertyIsEnumerable.call(obj, propName); };
+          return (propName: string) => Object.prototype.propertyIsEnumerable.call(obj, propName);
         }
         if (prop === 'toJSON') {
           return () => obj;
@@ -192,7 +191,7 @@ export function createSmartDollar(data: unknown) {
         }
 
         // For data properties, check if user wants chainable or raw access
-        if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(obj, prop)) {
+        if (typeof prop === 'string' && Object.hasOwn(obj, prop)) {
           // If this is a method call (like .sum() on array property), return ChainableWrapper
           const value = obj[prop];
 
@@ -206,7 +205,7 @@ export function createSmartDollar(data: unknown) {
           return new ChainableWrapper(value);
         }
 
-        // Handle function properties and methods normally 
+        // Handle function properties and methods normally
         const targetProp = Reflect.get(target, prop, receiver);
         if (targetProp !== undefined) {
           return targetProp;

@@ -63,4 +63,3 @@ export interface LibraryCache {
   libraries: Map<string, LibraryInfo>;
   cacheDir: string;
 }
-

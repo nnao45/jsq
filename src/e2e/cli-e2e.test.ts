@@ -334,7 +334,6 @@ describe('CLI E2E Tests', () => {
     });
   });
 
-
   describe('Complex Query Scenarios', () => {
     it('should handle deep nested object queries', async () => {
       const result = await runJsq([

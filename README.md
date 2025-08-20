@@ -6,15 +6,21 @@ jsq is an innovative command-line tool that allows developers to process JSON da
 
 ## 🌟 Key Features
 
-### 1. jQuery-style Chaining API
-Process JSON with intuitive syntax familiar to web developers
+### 1. 🔗 jQuery-style Chaining API with 60+ Built-in Methods
+Process JSON with intuitive syntax and comprehensive utility library - no external dependencies needed
 
 ```bash
-# jq (requires learning)
+# jq (requires learning complex syntax)
 cat users.json | jq '.users[] | select(.active == true) | .name'
 
-# jsq (intuitive)
+# jsq (intuitive with rich built-in methods)
 cat users.json | jsq '$.users.filter(u => u.active).pluck("name")'
+
+# Advanced data processing with built-in lodash-like methods
+cat data.json | jsq '$.items.compact().uniqBy(i => i.id).orderBy(["priority", "date"], ["desc", "asc"])'
+
+# Statistical analysis without external libraries
+cat sales.json | jsq '$.sales.groupBy(s => s.category).entries().map(([cat, sales]) => ({category: cat, avg: _.mean(sales.map(s => s.amount))}))'
 ```
 
 ### 2. 🔗 npm Library Integration
@@ -178,7 +184,7 @@ cat large-data.json | jsq -v '$.records.filter(r => r.status === "active").lengt
 
 ## 📚 Available Methods
 
-### Array Operations
+### Core Array Operations
 
 | Method | Description | Example |
 |--------|-------------|---------|
@@ -191,14 +197,115 @@ cat large-data.json | jsq -v '$.records.filter(r => r.status === "active").lengt
 | `take(count)` | Take first N elements | `$.results.take(5)` |
 | `skip(count)` | Skip first N elements | `$.results.skip(10)` |
 
+### Advanced Array Manipulation
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `uniqBy(keyFn)` | Remove duplicates by key function | `$.users.uniqBy(u => u.email)` |
+| `flatten()` | Flatten nested arrays by one level | `$.nested.flatten()` |
+| `flattenDeep()` | Recursively flatten all nested arrays | `$.deepNested.flattenDeep()` |
+| `compact()` | Remove falsy values (null, undefined, false, 0, "") | `$.mixed.compact()` |
+| `chunk(size)` | Split array into chunks of specified size | `$.items.chunk(3)` |
+| `takeWhile(predicate)` | Take elements while condition is true | `$.scores.takeWhile(s => s > 80)` |
+| `dropWhile(predicate)` | Drop elements while condition is true | `$.scores.dropWhile(s => s < 60)` |
+| `reverse()` | Reverse array order | `$.items.reverse()` |
+| `shuffle()` | Randomly shuffle array elements | `$.cards.shuffle()` |
+| `sample()` | Get random element from array | `$.options.sample()` |
+| `sampleSize(count)` | Get N random elements from array | `$.items.sampleSize(3)` |
+
+### Advanced Sorting & Grouping
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `orderBy(keys, orders)` | Multi-key sorting with direction control | `$.users.orderBy(['age', 'name'], ['desc', 'asc'])` |
+| `groupBy(keyFn)` | Group elements by key function | `$.sales.groupBy(s => s.category)` |
+| `countBy(keyFn)` | Count elements by key function | `$.events.countBy(e => e.type)` |
+| `keyBy(keyFn)` | Create object indexed by key function | `$.users.keyBy(u => u.id)` |
+
+### Object Manipulation
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `pick(keys)` | Select only specified object keys | `$.user.pick(['name', 'email'])` |
+| `omit(keys)` | Exclude specified object keys | `$.user.omit(['password', 'secret'])` |
+| `invert()` | Swap object keys and values | `$.mapping.invert()` |
+| `keys()` | Get object keys as array | `$.config.keys()` |
+| `values()` | Get object values as array | `$.settings.values()` |
+| `entries()` | Get object entries as [key, value] pairs | `$.data.entries()` |
+
+### Collection Methods (Arrays & Objects)
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `size()` | Get collection size (length for arrays, key count for objects) | `$.collection.size()` |
+| `isEmpty()` | Check if collection is empty | `$.data.isEmpty()` |
+| `includes(value)` | Check if collection contains value | `$.tags.includes('javascript')` |
+
+### Statistical & Mathematical
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `sum(key?)` | Calculate sum of numbers or by key | `$.orders.sum('amount')` |
+| `mean()` | Calculate average of numeric array | `$.scores.mean()` |
+| `min()` | Find minimum value in numeric array | `$.prices.min()` |
+| `max()` | Find maximum value in numeric array | `$.prices.max()` |
+| `minBy(keyFn)` | Find element with minimum key value | `$.products.minBy(p => p.price)` |
+| `maxBy(keyFn)` | Find element with maximum key value | `$.products.maxBy(p => p.rating)` |
+
+### Utility Methods (via `_` namespace)
+
+#### Array Utilities
+```bash
+# Get unique values by property
+echo '{"users": [{"id": 1, "name": "Alice"}, {"id": 1, "name": "Alice Clone"}]}' | jsq '_.uniqBy($.users, u => u.id)'
+
+# Remove falsy values and flatten
+echo '{"data": [1, null, [2, 3], undefined, [4, [5]]]}' | jsq '_.compact(_.flattenDeep($.data))'
+
+# Random sampling
+echo '{"items": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}' | jsq '_.sampleSize($.items, 3)'
+```
+
+#### Object Utilities
+```bash
+# Merge objects with defaults
+echo '{"user": {"name": "Alice"}}' | jsq '_.defaults($.user, {name: "Anonymous", role: "guest"})'
+
+# Pick/omit properties
+echo '{"user": {"name": "Alice", "email": "alice@example.com", "password": "secret"}}' | jsq '_.pick($.user, ["name", "email"])'
+
+# Convert between arrays and objects
+echo '{"pairs": [["a", 1], ["b", 2], ["c", 3]]}' | jsq '_.fromPairs($.pairs)'
+```
+
+#### String Manipulation
+```bash
+# Case transformations
+echo '{"text": "hello-world_test case"}' | jsq '_.camelCase($.text)'  # "helloWorldTestCase"
+echo '{"text": "HelloWorldTest"}' | jsq '_.kebabCase($.text)'      # "hello-world-test"
+echo '{"text": "hello world"}' | jsq '_.startCase($.text)'        # "Hello World"
+```
+
+#### Mathematical Functions
+```bash
+# Statistical operations
+echo '{"scores": [85, 92, 78, 95, 88]}' | jsq '_.mean($.scores)'  # Average
+echo '{"values": [1, 5, 3, 9, 2]}' | jsq '_.max($.values)'       # Maximum
+
+# Clamp values to range
+echo '{"value": 15}' | jsq '_.clamp($.value, 5, 10)'  # 10 (clamped to max)
+
+# Generate ranges and sequences
+jsq '_.range(5)'           # [0, 1, 2, 3, 4]
+jsq '_.range(2, 8, 2)'     # [2, 4, 6]
+jsq '_.times(3, i => i * 2)'  # [0, 2, 4]
+```
+
 ### Aggregation Operations
 
 | Method | Description | Example |
 |--------|-------------|---------|
 | `length()` | Get element count | `$.items.length()` |
-| `sum(key?)` | Calculate sum | `$.orders.sum("amount")` |
-| `keys()` | Get object keys | `$.config.keys()` |
-| `values()` | Get object values | `$.settings.values()` |
 
 ## 🎛️ Command Line Options
 
@@ -242,34 +349,178 @@ jsq consists of the following main components:
 
 ## 💡 Practical Examples
 
+### Advanced Data Processing
+
+```bash
+# Complex user analytics with new methods
+cat users.json | jsq '
+  $.users
+    .filter(u => u.active)
+    .groupBy(u => u.department)
+    .entries()
+    .map(([dept, users]) => ({
+      department: dept,
+      count: users.length,
+      avgSalary: _.mean(users.map(u => u.salary)),
+      topPerformer: _.maxBy(users, u => u.performance)
+    }))
+    .orderBy(["avgSalary"], ["desc"])
+'
+
+# Remove duplicates and clean data
+cat messy-data.json | jsq '
+  $.records
+    .compact()                    # Remove null/undefined entries
+    .uniqBy(r => r.email)        # Remove duplicate emails
+    .map(r => _.pick(r, ["id", "name", "email", "department"]))
+    .orderBy(["department", "name"])
+'
+
+# Statistical analysis with confidence
+cat sales.json | jsq '
+  $.sales
+    .groupBy(s => s.quarter)
+    .entries()
+    .map(([quarter, sales]) => ({
+      quarter,
+      revenue: _.sum(sales.map(s => s.amount)),
+      avgDeal: _.mean(sales.map(s => s.amount)),
+      topDeal: _.max(sales.map(s => s.amount)),
+      deals: sales.length
+    }))
+'
+```
+
 ### Log Analysis
 
 ```bash
-# Extract and aggregate error logs
-cat server.log | jsq '$.logs.filter(log => log.level === "error").groupBy("component").mapValues(logs => logs.length)'
+# Advanced error analysis
+cat server.log | jsq '
+  $.logs
+    .filter(log => log.level === "error")
+    .countBy(log => log.component)
+    .entries()
+    .map(([component, count]) => ({component, errorCount: count}))
+    .orderBy(["errorCount"], ["desc"])
+    .take(5)
+'
 
-# Latest TOP 5 errors
-cat server.log | jsq '$.logs.filter(l => l.level === "error").sortBy("timestamp").take(5)'
+# Performance monitoring
+cat access.log | jsq '
+  $.requests
+    .filter(r => r.responseTime > 1000)
+    .groupBy(r => r.endpoint)
+    .entries()
+    .map(([endpoint, reqs]) => ({
+      endpoint,
+      slowRequests: reqs.length,
+      avgResponseTime: _.mean(reqs.map(r => r.responseTime)),
+      maxResponseTime: _.max(reqs.map(r => r.responseTime))
+    }))
+'
 ```
 
-### Data Transformation
+### Data Transformation & Cleaning
 
 ```bash
-# API response normalization
-cat api-response.json | jsq '$.results.map(item => ({id: item._id, name: item.displayName, active: item.status === "active"}))'
+# API response normalization with advanced methods
+cat api-response.json | jsq '
+  $.results
+    .compact()                                    # Remove empty results
+    .map(item => ({
+      id: item._id,
+      name: _.startCase(item.displayName),        # Format names properly
+      email: item.contact?.email,
+      active: item.status === "active",
+      tags: _.uniq(item.tags || [])              # Remove duplicate tags
+    }))
+    .filter(item => item.email)                  # Only items with email
+    .orderBy(["name"])
+'
 
-# CSV-like data generation
-cat users.json | jsq '$.users.map(u => [u.id, u.name, u.email].join(",")).join("\n")'
+# Generate reports with grouping and statistics
+cat transactions.json | jsq '
+  $.transactions
+    .filter(t => t.status === "completed")
+    .groupBy(t => t.category)
+    .entries()
+    .map(([category, txns]) => ({
+      category: _.startCase(category),
+      totalAmount: _.sum(txns.map(t => t.amount)),
+      avgAmount: _.mean(txns.map(t => t.amount)),
+      transactionCount: txns.length,
+      dateRange: {
+        earliest: _.minBy(txns, t => t.date)?.date,
+        latest: _.maxBy(txns, t => t.date)?.date
+      }
+    }))
+    .orderBy(["totalAmount"], ["desc"])
+'
 ```
 
-### Report Generation
+### Advanced String Processing
 
 ```bash
-# Sales summary
-cat sales.json | jsq --use lodash '_.chain($.sales).groupBy("month").mapValues(sales => _.sumBy(sales, "amount")).value()'
+# Clean and standardize text data
+cat user-input.json | jsq '
+  $.responses
+    .map(r => ({
+      id: r.id,
+      name: _.startCase(_.camelCase(r.raw_name)),     # "john_doe" → "John Doe"
+      slug: _.kebabCase(r.title),                     # "My Title" → "my-title"
+      category: _.upperFirst(_.camelCase(r.category)) # "USER_TYPE" → "UserType"
+    }))
+'
 
-# User statistics
-cat analytics.json | jsq '$.users.groupBy("country").mapValues(users => ({count: users.length, avgAge: users.reduce((sum, u) => sum + u.age, 0) / users.length}))'
+# Generate configuration files
+cat config-data.json | jsq '
+  $.settings
+    .entries()
+    .map(([key, value]) => `${_.snakeCase(key).toUpperCase()}=${value}`)
+    .join("\n")
+'
+```
+
+### Complex Chaining Examples
+
+```bash
+# E-commerce analytics pipeline
+cat orders.json | jsq '
+  $.orders
+    .filter(o => o.status === "delivered")
+    .flattenDeep()                               # Flatten nested order items
+    .groupBy(item => item.category)
+    .entries()
+    .map(([category, items]) => ({
+      category,
+      revenue: _.sum(items.map(i => i.price * i.quantity)),
+      unitsSold: _.sum(items.map(i => i.quantity)),
+      avgPrice: _.mean(items.map(i => i.price)),
+      topProduct: _.maxBy(items, i => i.quantity)?.name
+    }))
+    .orderBy(["revenue"], ["desc"])
+    .take(10)
+'
+
+# Customer segmentation
+cat customers.json | jsq '
+  $.customers
+    .filter(c => c.lastPurchase)
+    .map(c => ({
+      ...c,
+      segment: c.totalSpent > 1000 ? "premium" : 
+               c.totalSpent > 500 ? "standard" : "basic",
+      daysSinceLastPurchase: Math.floor((Date.now() - new Date(c.lastPurchase)) / 86400000)
+    }))
+    .groupBy(c => c.segment)
+    .entries()
+    .map(([segment, customers]) => ({
+      segment,
+      count: customers.length,
+      avgSpent: _.mean(customers.map(c => c.totalSpent)),
+      retention: customers.filter(c => c.daysSinceLastPurchase < 30).length / customers.length
+    }))
+'
 ```
 
 ## 🎮 REPL Commands & Navigation
@@ -309,6 +560,7 @@ jsq --repl --file test-repl-data.json
 
 ## ✅ Implemented Features
 
+### Core Features
 - [x] **Beautiful Interactive REPL** - Real-time evaluation with colorful UI
 - [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
 - [x] **Smart Loading Indicators** - Visual feedback for processing time
@@ -319,8 +571,19 @@ jsq --repl --file test-repl-data.json
 - [x] **Direct file reading** - Built-in file input support
 - [x] **Secure execution with VM isolation** - Safe code execution environment
 - [x] **Dynamic npm library loading** - Use any npm package on-demand
-- [x] **Functional programming methods** - Comprehensive chainable API
 - [x] **Full TypeScript support** - Type-safe development experience
+
+### Comprehensive Lodash-like Method Library
+- [x] **60+ Built-in Utility Methods** - Extensive method collection without external dependencies
+- [x] **Array Manipulation** - uniqBy, flatten, compact, chunk, shuffle, sample, takeWhile, dropWhile
+- [x] **Advanced Sorting** - orderBy with multi-key support, groupBy, countBy, keyBy
+- [x] **Object Operations** - pick, omit, invert, merge, defaults, entries transformation
+- [x] **Statistical Functions** - mean, min/max, minBy/maxBy for data analysis
+- [x] **String Utilities** - camelCase, kebabCase, snakeCase, startCase, capitalize
+- [x] **Mathematical Tools** - clamp, random, range generation, times iteration
+- [x] **Collection Methods** - size, isEmpty, includes for arrays and objects
+- [x] **Function Utilities** - debounce, throttle, identity, constant, noop
+- [x] **Chainable API** - All methods work seamlessly with jQuery-style chaining
 
 ## 🚧 Future Plans
 

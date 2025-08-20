@@ -37,7 +37,6 @@ describe('LibraryManager', () => {
       unsafe: false,
     };
 
-
     // Setup mocks before creating LibraryManager
     mockFs.mkdir.mockResolvedValue(undefined);
 
