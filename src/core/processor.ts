@@ -1,7 +1,7 @@
-import { JsqOptions, ProcessingResult } from '@/types/cli';
-import { JsonParser } from './parser';
+import type { JsqOptions, ProcessingResult } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
-import { StreamProcessor, StreamProcessingOptions } from './stream-processor';
+import { JsonParser } from './parser';
+import { type StreamProcessingOptions, StreamProcessor } from './stream-processor';
 
 export class JsqProcessor {
   private parser: JsonParser;
@@ -23,37 +23,43 @@ export class JsqProcessor {
 
   async process(expression: string, input: string): Promise<ProcessingResult> {
     const startTime = Date.now();
-    
+
     try {
       // Parse the input JSON
       const data = this.parser.parse(input);
-      
+
       // Evaluate the expression
       const result = await this.evaluator.evaluate(expression, data);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       const metadata: ProcessingResult['metadata'] = {
         processingTime,
         inputSize: input.length,
         outputSize: JSON.stringify(result).length,
       };
-      
+
       // Add debug steps if in debug mode
       if (this.options.debug) {
-        metadata!.steps = ['Parse JSON', 'Evaluate expression', 'Format output'];
+        metadata.steps = ['Parse JSON', 'Evaluate expression', 'Format output'];
       }
-      
+
       return {
         data: result,
         metadata,
       };
     } catch (error) {
-      throw new Error(`Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
-  async processStream(expression: string, inputStream: NodeJS.ReadableStream, streamOptions?: StreamProcessingOptions): Promise<AsyncIterable<unknown>> {
+  async processStream(
+    expression: string,
+    inputStream: NodeJS.ReadableStream,
+    streamOptions?: StreamProcessingOptions
+  ): Promise<AsyncIterable<unknown>> {
     return this.streamProcessor.processStreamIterable(expression, inputStream, streamOptions);
   }
 

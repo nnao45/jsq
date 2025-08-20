@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { JsonParser } from './parser';
 
 describe('JsonParser', () => {
@@ -32,17 +32,17 @@ describe('JsonParser', () => {
           "page": 1
         }
       }`;
-      
+
       const result = parser.parse(input);
       expect(result).toEqual({
         users: [
           { name: 'Alice', profile: { age: 30, active: true } },
-          { name: 'Bob', profile: { age: 25, active: false } }
+          { name: 'Bob', profile: { age: 25, active: false } },
         ],
         metadata: {
           total: 2,
-          page: 1
-        }
+          page: 1,
+        },
       });
     });
 
@@ -108,17 +108,17 @@ describe('JsonParser', () => {
           active: true,
         },
       }`;
-      
+
       const result = parser.parse(input);
       expect(result).toEqual({
         users: [
           { name: 'Alice', age: 30 },
-          { name: 'Bob', age: 25 }
+          { name: 'Bob', age: 25 },
         ],
         metadata: {
           total: 2,
-          active: true
-        }
+          active: true,
+        },
       });
     });
   });
@@ -166,15 +166,10 @@ describe('JsonParser', () => {
         '  {"name": "Alice"}  ',
         '\t{\n  "name": "Alice"\n}\t',
         '{\r\n  "name": "Alice"\r\n}',
-        '   [1,2,3]   '
+        '   [1,2,3]   ',
       ];
 
-      const expected = [
-        { name: 'Alice' },
-        { name: 'Alice' },
-        { name: 'Alice' },
-        [1, 2, 3]
-      ];
+      const expected = [{ name: 'Alice' }, { name: 'Alice' }, { name: 'Alice' }, [1, 2, 3]];
 
       inputs.forEach((input, index) => {
         expect(parser.parse(input)).toEqual(expected[index]);
@@ -189,14 +184,14 @@ describe('JsonParser', () => {
         }
     }
 }`;
-      
+
       const result = parser.parse(input);
       expect(result).toEqual({
         level1: {
           level2: {
-            level3: 'value'
-          }
-        }
+            level3: 'value',
+          },
+        },
       });
     });
   });
@@ -350,14 +345,14 @@ describe('JsonParser', () => {
     it('should throw error when schema validation is not implemented', () => {
       const parserWithSchema = new JsonParser({ schema: 'some-schema-path' });
       const input = '{"name": "Alice"}';
-      
+
       expect(() => parserWithSchema.parse(input)).toThrow('Schema validation not yet implemented');
     });
   });
 
   describe('Stream parsing (placeholder)', () => {
     it('should throw error for stream parsing (not implemented)', () => {
-      const mockStream = {} as any;
+      const mockStream = {} as Record<string, unknown>;
       expect(() => parser.parseStream(mockStream)).toThrow('Stream parsing not yet implemented');
     });
   });
@@ -374,19 +369,19 @@ describe('JsonParser', () => {
 
       const result = parser.parse(deepObject);
       expect(result.level).toBe(1);
-      
+
       // Navigate to the deepest level
       let current = result;
       for (let i = 2; i <= 10; i++) {
-        current = (current as any).nested;
+        current = (current as Record<string, unknown>).nested;
         expect(current.level).toBe(i);
       }
     });
 
     it('should handle large arrays efficiently', () => {
-      const largeArray = '[' + Array.from({ length: 1000 }, (_, i) => i).join(',') + ']';
+      const largeArray = `[${Array.from({ length: 1000 }, (_, i) => i).join(',')}]`;
       const result = parser.parse(largeArray);
-      
+
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(1000);
       expect(result[0]).toBe(0);

@@ -3,8 +3,9 @@ export class ChainableWrapper {
 
   constructor(data: unknown) {
     this.data = data;
-    
+
     // Return a Proxy to enable direct property access
+    // biome-ignore lint/correctness/noConstructorReturn: This is intentional for proxy pattern
     return new Proxy(this, {
       get(target, prop, receiver) {
         // If it's a method or property on the wrapper, return it bound to the target
@@ -15,14 +16,14 @@ export class ChainableWrapper {
           }
           return value;
         }
-        
+
         // For data property access, return a new wrapped instance
         if (typeof prop === 'string' && target.isObject(target.data) && prop in target.data) {
           return new ChainableWrapper((target.data as Record<string, unknown>)[prop]);
         }
-        
+
         return new ChainableWrapper(undefined);
-      }
+      },
     });
   }
 
@@ -77,12 +78,14 @@ export class ChainableWrapper {
 
   pluck(key: string): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const values = this.data.map(item => {
-        if (this.isObject(item) && key in item) {
-          return (item as Record<string, unknown>)[key];
-        }
-        return undefined;
-      }).filter(val => val !== undefined);
+      const values = this.data
+        .map(item => {
+          if (this.isObject(item) && key in item) {
+            return (item as Record<string, unknown>)[key];
+          }
+          return undefined;
+        })
+        .filter(val => val !== undefined);
       return new ChainableWrapper(values);
     }
     return new ChainableWrapper([]);
@@ -92,7 +95,7 @@ export class ChainableWrapper {
     if (Array.isArray(this.data)) {
       const sorted = [...this.data].sort((a, b) => {
         let aVal: unknown, bVal: unknown;
-        
+
         if (typeof key === 'function') {
           aVal = key(a);
           bVal = key(b);
@@ -143,14 +146,14 @@ export class ChainableWrapper {
 
   sum(key?: string): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const values = key 
-        ? this.data.map(item => this.isObject(item) ? (item as Record<string, unknown>)[key] : 0)
+      const values = key
+        ? this.data.map(item => (this.isObject(item) ? (item as Record<string, unknown>)[key] : 0))
         : this.data;
-      
+
       const sum = values.reduce((acc, val) => {
         return acc + (typeof val === 'number' ? val : 0);
       }, 0);
-      
+
       return new ChainableWrapper(sum);
     }
     return new ChainableWrapper(0);

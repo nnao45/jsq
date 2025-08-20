@@ -1,4 +1,4 @@
-import { JsqOptions } from '@/types/cli';
+import type { JsqOptions } from '@/types/cli';
 
 export class JsonParser {
   private options: JsqOptions;
@@ -15,12 +15,12 @@ export class JsonParser {
 
       // Try to parse as JSON
       const result = JSON.parse(input);
-      
+
       // Use options for validation if schema is provided
       if (this.options.schema) {
         this.validateSchema(result, this.options.schema);
       }
-      
+
       return result;
     } catch (error) {
       if (error instanceof SyntaxError) {
@@ -28,7 +28,7 @@ export class JsonParser {
         const cleanedInput = this.preprocessJson(input);
         try {
           return JSON.parse(cleanedInput);
-        } catch (secondError) {
+        } catch (_secondError) {
           throw new Error(`Invalid JSON: ${error.message}`);
         }
       }
@@ -39,13 +39,13 @@ export class JsonParser {
   private preprocessJson(input: string): string {
     // Remove common issues with JSON input
     let cleaned = input.trim();
-    
+
     // Remove trailing commas (common issue)
     cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-    
+
     // Handle single quotes (convert to double quotes for property names)
     cleaned = cleaned.replace(/(\w+):/g, '"$1":');
-    
+
     return cleaned;
   }
 
@@ -59,7 +59,7 @@ export class JsonParser {
     if (!schemaPath) {
       return true;
     }
-    
+
     // Placeholder for schema validation
     // Will integrate with Joi, Zod, or JSON Schema validators
     throw new Error('Schema validation not yet implemented');

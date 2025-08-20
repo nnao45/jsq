@@ -5,19 +5,23 @@ export class VMChainableWrapper {
   constructor(data: unknown) {
     this.data = data;
     // Add a marker for VM detection
-    (this as any).__isVMChainableWrapper = true;
-    
+    (this as Record<string, unknown>).__isVMChainableWrapper = true;
+
     // For objects, add direct property access without Proxy
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
       const obj = data as Record<string, unknown>;
       for (const [key, value] of Object.entries(obj)) {
-        if (key !== 'data' && key !== 'value' && 
-            key !== 'constructor' && key !== '__isVMChainableWrapper' &&
-            typeof this[key as keyof this] === 'undefined') {
+        if (
+          key !== 'data' &&
+          key !== 'value' &&
+          key !== 'constructor' &&
+          key !== '__isVMChainableWrapper' &&
+          typeof this[key as keyof this] === 'undefined'
+        ) {
           try {
             // Use a direct property instead of getter for VM compatibility
-            (this as any)[key] = new VMChainableWrapper(value);
-          } catch (error) {
+            (this as Record<string, unknown>)[key] = new VMChainableWrapper(value);
+          } catch (_error) {
             // Skip properties that can't be defined
           }
         }
@@ -76,12 +80,14 @@ export class VMChainableWrapper {
 
   pluck(key: string): VMChainableWrapper {
     if (Array.isArray(this.data)) {
-      const values = this.data.map(item => {
-        if (this.isObject(item) && key in item) {
-          return (item as Record<string, unknown>)[key];
-        }
-        return undefined;
-      }).filter(val => val !== undefined);
+      const values = this.data
+        .map(item => {
+          if (this.isObject(item) && key in item) {
+            return (item as Record<string, unknown>)[key];
+          }
+          return undefined;
+        })
+        .filter(val => val !== undefined);
       return new VMChainableWrapper(values);
     }
     return new VMChainableWrapper([]);
@@ -91,7 +97,7 @@ export class VMChainableWrapper {
     if (Array.isArray(this.data)) {
       const sorted = [...this.data].sort((a, b) => {
         let aVal: unknown, bVal: unknown;
-        
+
         if (typeof key === 'function') {
           aVal = key(a);
           bVal = key(b);
@@ -142,14 +148,14 @@ export class VMChainableWrapper {
 
   sum(key?: string): VMChainableWrapper {
     if (Array.isArray(this.data)) {
-      const values = key 
-        ? this.data.map(item => this.isObject(item) ? (item as Record<string, unknown>)[key] : 0)
+      const values = key
+        ? this.data.map(item => (this.isObject(item) ? (item as Record<string, unknown>)[key] : 0))
         : this.data;
-      
+
       const sum = values.reduce((acc, val) => {
         return acc + (typeof val === 'number' ? val : 0);
       }, 0);
-      
+
       return new VMChainableWrapper(sum);
     }
     return new VMChainableWrapper(0);
