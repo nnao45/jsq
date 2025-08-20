@@ -50,7 +50,7 @@ const program = new Command();
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.0');
+  .version('0.1.13');
 
 // Main command (default Node.js behavior)
 program
@@ -157,7 +157,7 @@ async function runWithRuntime(
         'run',
         '--allow-all',
         '--unstable-sloppy-imports',
-        join(packageRoot, 'src/simple-cli.ts')
+        join(packageRoot, 'dist/index.js')
       );
     }
 

@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.0')
+  .version('0.1.13')
   .argument('[expression]', 'JavaScript expression to evaluate')
   .option('-d, --debug', 'Enable debug mode with step-by-step visualization')
   .option('-w, --watch <file>', 'Watch file for changes and re-execute')
