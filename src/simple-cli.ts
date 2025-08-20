@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/processor';
 import type { JsqOptions } from '@/types/cli';
@@ -14,11 +14,11 @@ import {
 import { getStdinStream, isStdinAvailable, readStdin } from '@/utils/input';
 
 function findPackageRoot(): string {
-  const fs = require('fs');
-  
+  const fs = require('node:fs');
+
   // Try to find package root from the script location
   let currentDir = dirname(__filename || process.argv[1]);
-  
+
   while (currentDir !== dirname(currentDir)) {
     const packageJsonPath = join(currentDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
@@ -33,14 +33,14 @@ function findPackageRoot(): string {
     }
     currentDir = dirname(currentDir);
   }
-  
+
   // If we can't find it, try from the dist directory upwards
   // This handles the case where we're running from dist/index.js
   currentDir = join(dirname(__filename || process.argv[1]), '..');
   if (fs.existsSync(join(currentDir, 'package.json'))) {
     return currentDir;
   }
-  
+
   // Final fallback
   return join(__dirname, '..');
 }
