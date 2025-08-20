@@ -134,7 +134,7 @@ export class ChainableWrapper {
   }
 
   // Advanced array methods
-  uniqBy(keyFn: (item: unknown) => any): ChainableWrapper {
+  uniqBy(keyFn: (item: unknown) => unknown): ChainableWrapper {
     if (Array.isArray(this.data)) {
       const seen = new Set();
       const result = this.data.filter(item => {
@@ -157,8 +157,12 @@ export class ChainableWrapper {
 
   flattenDeep(): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const flattenDeep = (arr: any[]): any[] => 
-        arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val), []);
+      const flattenDeep = (arr: unknown[]): unknown[] =>
+        arr.reduce(
+          (acc: unknown[], val: unknown) =>
+            Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val),
+          []
+        );
       return new ChainableWrapper(flattenDeep(this.data));
     }
     return new ChainableWrapper([]);
@@ -247,37 +251,50 @@ export class ChainableWrapper {
     return new ChainableWrapper([]);
   }
 
-  orderBy(keys: string[] | ((item: unknown) => any)[], orders: ('asc' | 'desc')[] = []): ChainableWrapper {
+  orderBy(
+    keys: string[] | ((item: unknown) => unknown)[],
+    orders: ('asc' | 'desc')[] = []
+  ): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const sorted = [...this.data].sort((a, b) => {
-        for (let i = 0; i < keys.length; i++) {
-          const key = keys[i];
-          const order = orders[i] || 'asc';
-          
-          let aVal: any, bVal: any;
-          if (typeof key === 'function') {
-            aVal = key(a);
-            bVal = key(b);
-          } else if (this.isObject(a) && this.isObject(b)) {
-            aVal = (a as Record<string, unknown>)[key];
-            bVal = (b as Record<string, unknown>)[key];
-          } else {
-            continue;
-          }
-          
-          let comparison = 0;
-          if (aVal < bVal) comparison = -1;
-          else if (aVal > bVal) comparison = 1;
-          
-          if (comparison !== 0) {
-            return order === 'desc' ? -comparison : comparison;
-          }
-        }
-        return 0;
-      });
+      const sorted = [...this.data].sort(this.createOrderByComparator(keys, orders));
       return new ChainableWrapper(sorted);
     }
     return new ChainableWrapper([]);
+  }
+
+  private createOrderByComparator(
+    keys: string[] | ((item: unknown) => unknown)[],
+    orders: ('asc' | 'desc')[]
+  ): (a: unknown, b: unknown) => number {
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex sorting logic required for multi-key orderBy
+    return (a: unknown, b: unknown): number => {
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const order = orders[i] || 'asc';
+
+        let aVal: unknown, bVal: unknown;
+        if (typeof key === 'function') {
+          aVal = key(a);
+          bVal = key(b);
+        } else if (this.isObject(a) && this.isObject(b)) {
+          aVal = (a as Record<string, unknown>)[key];
+          bVal = (b as Record<string, unknown>)[key];
+        } else {
+          continue;
+        }
+
+        let comparison = 0;
+        if (aVal !== null && bVal !== null && aVal !== undefined && bVal !== undefined) {
+          if (aVal < bVal) comparison = -1;
+          else if (aVal > bVal) comparison = 1;
+        }
+
+        if (comparison !== 0) {
+          return order === 'desc' ? -comparison : comparison;
+        }
+      }
+      return 0;
+    };
   }
 
   groupBy(keyFn: (item: unknown) => string): ChainableWrapper {
@@ -384,7 +401,9 @@ export class ChainableWrapper {
 
   minBy(keyFn: (item: unknown) => number): ChainableWrapper {
     if (Array.isArray(this.data) && this.data.length > 0) {
-      const min = this.data.reduce((minItem, item) => keyFn(item) < keyFn(minItem) ? item : minItem);
+      const min = this.data.reduce((minItem, item) =>
+        keyFn(item) < keyFn(minItem) ? item : minItem
+      );
       return new ChainableWrapper(min);
     }
     return new ChainableWrapper(undefined);
@@ -392,7 +411,9 @@ export class ChainableWrapper {
 
   maxBy(keyFn: (item: unknown) => number): ChainableWrapper {
     if (Array.isArray(this.data) && this.data.length > 0) {
-      const max = this.data.reduce((maxItem, item) => keyFn(item) > keyFn(maxItem) ? item : maxItem);
+      const max = this.data.reduce((maxItem, item) =>
+        keyFn(item) > keyFn(maxItem) ? item : maxItem
+      );
       return new ChainableWrapper(max);
     }
     return new ChainableWrapper(undefined);
@@ -425,7 +446,9 @@ export class ChainableWrapper {
       return new ChainableWrapper(this.data.includes(value));
     }
     if (this.isObject(this.data)) {
-      return new ChainableWrapper(Object.values(this.data as Record<string, unknown>).includes(value));
+      return new ChainableWrapper(
+        Object.values(this.data as Record<string, unknown>).includes(value)
+      );
     }
     return new ChainableWrapper(false);
   }

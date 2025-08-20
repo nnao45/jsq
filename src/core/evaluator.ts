@@ -211,34 +211,44 @@ export class ExpressionEvaluator {
           return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
         });
       },
-      orderBy: <T>(arr: T[], keys: string[] | ((item: T) => any)[], orders: ('asc' | 'desc')[] = []): T[] => {
-        return [...arr].sort((a, b) => {
-          for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            const order = orders[i] || 'asc';
-            
-            let aVal: any, bVal: any;
-            if (typeof key === 'function') {
-              aVal = key(a);
-              bVal = key(b);
-            } else {
-              aVal = (a as any)[key];
-              bVal = (b as any)[key];
+      orderBy: <T>(
+        arr: T[],
+        keys: string[] | ((item: T) => unknown)[],
+        orders: ('asc' | 'desc')[] = []
+      ): T[] => {
+        const createComparator =
+          (keys: string[] | ((item: T) => unknown)[], orders: ('asc' | 'desc')[]) =>
+          (a: T, b: T): number => {
+            for (let i = 0; i < keys.length; i++) {
+              const key = keys[i];
+              const order = orders[i] || 'asc';
+
+              let aVal: unknown, bVal: unknown;
+              if (typeof key === 'function') {
+                aVal = key(a);
+                bVal = key(b);
+              } else {
+                aVal = (a as Record<string, unknown>)[key];
+                bVal = (b as Record<string, unknown>)[key];
+              }
+
+              let comparison = 0;
+              if (aVal !== null && bVal !== null && aVal !== undefined && bVal !== undefined) {
+                if (aVal < bVal) comparison = -1;
+                else if (aVal > bVal) comparison = 1;
+              }
+
+              if (comparison !== 0) {
+                return order === 'desc' ? -comparison : comparison;
+              }
             }
-            
-            let comparison = 0;
-            if (aVal < bVal) comparison = -1;
-            else if (aVal > bVal) comparison = 1;
-            
-            if (comparison !== 0) {
-              return order === 'desc' ? -comparison : comparison;
-            }
-          }
-          return 0;
-        });
+            return 0;
+          };
+
+        return [...arr].sort(createComparator(keys, orders));
       },
       uniq: <T>(arr: T[]): T[] => [...new Set(arr)],
-      uniqBy: <T>(arr: T[], keyFn: (item: T) => any): T[] => {
+      uniqBy: <T>(arr: T[], keyFn: (item: T) => unknown): T[] => {
         const seen = new Set();
         return arr.filter(item => {
           const key = keyFn(item);
@@ -248,12 +258,16 @@ export class ExpressionEvaluator {
         });
       },
       flatten: <T>(arr: (T | T[])[]): T[] => arr.flat() as T[],
-      flattenDeep: (arr: any[]): any[] => {
-        const flatten = (a: any[]): any[] => a.reduce((acc, val) => 
-          Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
+      flattenDeep: (arr: unknown[]): unknown[] => {
+        const flatten = (a: unknown[]): unknown[] =>
+          a.reduce(
+            (acc: unknown[], val: unknown) =>
+              Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val),
+            []
+          );
         return flatten(arr);
       },
-      compact: <T>(arr: (T | null | undefined | false | 0 | '')[]): T[] => 
+      compact: <T>(arr: (T | null | undefined | false | 0 | '')[]): T[] =>
         arr.filter(Boolean) as T[],
       chunk: <T>(arr: T[], size: number): T[][] => {
         const chunks: T[][] = [];
@@ -295,9 +309,9 @@ export class ExpressionEvaluator {
         const shuffled = [...arr].sort(() => 0.5 - Math.random());
         return shuffled.slice(0, count);
       },
-      
+
       // Object manipulation methods
-      pick: <T extends Record<string, any>>(obj: T, keys: (keyof T)[]): Partial<T> => {
+      pick: <T extends Record<string, unknown>>(obj: T, keys: (keyof T)[]): Partial<T> => {
         const result: Partial<T> = {};
         for (const key of keys) {
           if (key in obj) {
@@ -306,34 +320,37 @@ export class ExpressionEvaluator {
         }
         return result;
       },
-      omit: <T extends Record<string, any>>(obj: T, keys: (keyof T)[]): Partial<T> => {
+      omit: <T extends Record<string, unknown>>(obj: T, keys: (keyof T)[]): Partial<T> => {
         const result: Partial<T> = { ...obj };
         for (const key of keys) {
           delete result[key];
         }
         return result;
       },
-      keys: (obj: Record<string, any>): string[] => Object.keys(obj),
-      values: (obj: Record<string, any>): any[] => Object.values(obj),
-      entries: (obj: Record<string, any>): [string, any][] => Object.entries(obj),
-      fromPairs: (pairs: [string, any][]): Record<string, any> => {
-        const result: Record<string, any> = {};
+      keys: (obj: Record<string, unknown>): string[] => Object.keys(obj),
+      values: (obj: Record<string, unknown>): unknown[] => Object.values(obj),
+      entries: (obj: Record<string, unknown>): [string, unknown][] => Object.entries(obj),
+      fromPairs: (pairs: [string, unknown][]): Record<string, unknown> => {
+        const result: Record<string, unknown> = {};
         for (const [key, value] of pairs) {
           result[key] = value;
         }
         return result;
       },
-      invert: (obj: Record<string, any>): Record<string, string> => {
+      invert: (obj: Record<string, unknown>): Record<string, string> => {
         const result: Record<string, string> = {};
         for (const [key, value] of Object.entries(obj)) {
           result[String(value)] = key;
         }
         return result;
       },
-      merge: (...objects: Record<string, any>[]): Record<string, any> => {
+      merge: (...objects: Record<string, unknown>[]): Record<string, unknown> => {
         return Object.assign({}, ...objects);
       },
-      defaults: (obj: Record<string, any>, ...sources: Record<string, any>[]): Record<string, any> => {
+      defaults: (
+        obj: Record<string, unknown>,
+        ...sources: Record<string, unknown>[]
+      ): Record<string, unknown> => {
         const result = { ...obj };
         for (const source of sources) {
           for (const [key, value] of Object.entries(source)) {
@@ -344,87 +361,113 @@ export class ExpressionEvaluator {
         }
         return result;
       },
-      
+
       // Collection methods (work with both arrays and objects)
-      size: (collection: any[] | Record<string, any>): number => {
+      size: (collection: unknown[] | Record<string, unknown>): number => {
         return Array.isArray(collection) ? collection.length : Object.keys(collection).length;
       },
-      isEmpty: (value: any): boolean => {
+      isEmpty: (value: unknown): boolean => {
         if (value == null) return true;
         if (Array.isArray(value) || typeof value === 'string') return value.length === 0;
         if (typeof value === 'object') return Object.keys(value).length === 0;
         return false;
       },
-      includes: (collection: any[] | Record<string, any>, value: any): boolean => {
+      includes: (collection: unknown[] | Record<string, unknown>, value: unknown): boolean => {
         if (Array.isArray(collection)) {
           return collection.includes(value);
         }
         return Object.values(collection).includes(value);
       },
       countBy: <T>(arr: T[], keyFn: (item: T) => string): Record<string, number> => {
-        return arr.reduce((counts, item) => {
-          const key = keyFn(item);
-          counts[key] = (counts[key] || 0) + 1;
-          return counts;
-        }, {} as Record<string, number>);
+        return arr.reduce(
+          (counts, item) => {
+            const key = keyFn(item);
+            counts[key] = (counts[key] || 0) + 1;
+            return counts;
+          },
+          {} as Record<string, number>
+        );
       },
       keyBy: <T>(arr: T[], keyFn: (item: T) => string): Record<string, T> => {
-        return arr.reduce((result, item) => {
-          result[keyFn(item)] = item;
-          return result;
-        }, {} as Record<string, T>);
+        return arr.reduce(
+          (result, item) => {
+            result[keyFn(item)] = item;
+            return result;
+          },
+          {} as Record<string, T>
+        );
       },
-      
+
       // Mathematical/statistical methods
       sum: (arr: number[]): number => arr.reduce((sum, num) => sum + num, 0),
-      mean: (arr: number[]): number => arr.length ? arr.reduce((sum, num) => sum + num, 0) / arr.length : 0,
+      mean: (arr: number[]): number =>
+        arr.length ? arr.reduce((sum, num) => sum + num, 0) / arr.length : 0,
       min: (arr: number[]): number => Math.min(...arr),
       max: (arr: number[]): number => Math.max(...arr),
       minBy: <T>(arr: T[], keyFn: (item: T) => number): T | undefined => {
         if (arr.length === 0) return undefined;
-        return arr.reduce((min, item) => keyFn(item) < keyFn(min) ? item : min);
+        return arr.reduce((min, item) => (keyFn(item) < keyFn(min) ? item : min));
       },
       maxBy: <T>(arr: T[], keyFn: (item: T) => number): T | undefined => {
         if (arr.length === 0) return undefined;
-        return arr.reduce((max, item) => keyFn(item) > keyFn(max) ? item : max);
+        return arr.reduce((max, item) => (keyFn(item) > keyFn(max) ? item : max));
       },
-      
+
       // String manipulation methods
       camelCase: (str: string): string => {
-        return str.replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '');
+        return str.replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''));
       },
       kebabCase: (str: string): string => {
-        return str.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g, '-').toLowerCase();
+        return str
+          .replace(/([a-z])([A-Z])/g, '$1-$2')
+          .replace(/[\s_]+/g, '-')
+          .toLowerCase();
       },
       snakeCase: (str: string): string => {
-        return str.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
+        return str
+          .replace(/([a-z])([A-Z])/g, '$1_$2')
+          .replace(/[\s-]+/g, '_')
+          .toLowerCase();
       },
       startCase: (str: string): string => {
-        return str.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_\s]+/g, ' ')
-          .split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+        return str
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/[-_\s]+/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
       },
       upperFirst: (str: string): string => str.charAt(0).toUpperCase() + str.slice(1),
       lowerFirst: (str: string): string => str.charAt(0).toLowerCase() + str.slice(1),
       capitalize: (str: string): string => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(),
-      
+
       // Utility methods
       identity: <T>(value: T): T => value,
-      constant: <T>(value: T): () => T => () => value,
+      constant:
+        <T>(value: T): (() => T) =>
+        () =>
+          value,
       noop: (): void => {},
-      times: <T>(n: number, fn: (index: number) => T): T[] => Array.from({ length: n }, (_, i) => fn(i)),
+      times: <T>(n: number, fn: (index: number) => T): T[] =>
+        Array.from({ length: n }, (_, i) => fn(i)),
       range: (start: number, end?: number, step?: number): number[] => {
-        if (end === undefined) {
-          end = start;
-          start = 0;
+        let actualStart = start;
+        let actualEnd = end;
+        let actualStep = step;
+
+        if (actualEnd === undefined) {
+          actualEnd = actualStart;
+          actualStart = 0;
         }
-        step = step || 1;
+        actualStep = actualStep || 1;
+
         const result: number[] = [];
-        if (step > 0) {
-          for (let i = start; i < end; i += step) {
+        if (actualStep > 0) {
+          for (let i = actualStart; i < actualEnd; i += actualStep) {
             result.push(i);
           }
         } else {
-          for (let i = start; i > end; i += step) {
+          for (let i = actualStart; i > actualEnd; i += actualStep) {
             result.push(i);
           }
         }
@@ -432,22 +475,24 @@ export class ExpressionEvaluator {
       },
       clamp: (num: number, min: number, max: number): number => Math.max(min, Math.min(max, num)),
       random: (min = 0, max = 1): number => Math.random() * (max - min) + min,
-      
+
       // Function utilities
-      debounce: <T extends (...args: any[]) => any>(fn: T, wait: number): T => {
+      debounce: <T extends (...args: unknown[]) => unknown>(fn: T, wait: number): T => {
         let timeout: NodeJS.Timeout;
-        return ((...args: any[]) => {
+        return ((...args: unknown[]) => {
           clearTimeout(timeout);
           timeout = setTimeout(() => fn(...args), wait);
         }) as T;
       },
-      throttle: <T extends (...args: any[]) => any>(fn: T, wait: number): T => {
+      throttle: <T extends (...args: unknown[]) => unknown>(fn: T, wait: number): T => {
         let inThrottle: boolean;
-        return ((...args: any[]) => {
+        return ((...args: unknown[]) => {
           if (!inThrottle) {
             fn(...args);
             inThrottle = true;
-            setTimeout(() => inThrottle = false, wait);
+            setTimeout(() => {
+              inThrottle = false;
+            }, wait);
           }
         }) as T;
       },

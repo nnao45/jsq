@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { ExpressionEvaluator } from './evaluator';
 import type { JsqOptions } from '@/types/cli';
+import { ExpressionEvaluator } from './evaluator';
 
 describe('Lodash-like Methods', () => {
   let evaluator: ExpressionEvaluator;
@@ -58,7 +58,7 @@ describe('Lodash-like Methods', () => {
 
     it('should support shuffle (test that it returns same length)', async () => {
       const data = [1, 2, 3, 4, 5];
-      const result = await evaluator.evaluate('_.shuffle(data)', data) as number[];
+      const result = (await evaluator.evaluate('_.shuffle(data)', data)) as number[];
       expect(result).toHaveLength(5);
       expect(result.sort()).toEqual([1, 2, 3, 4, 5]);
     });
@@ -71,9 +71,11 @@ describe('Lodash-like Methods', () => {
 
     it('should support sampleSize', async () => {
       const data = [1, 2, 3, 4, 5];
-      const result = await evaluator.evaluate('_.sampleSize(data, 3)', data) as number[];
+      const result = (await evaluator.evaluate('_.sampleSize(data, 3)', data)) as number[];
       expect(result).toHaveLength(3);
-      result.forEach(item => expect(data).toContain(item));
+      for (const item of result) {
+        expect(data).toContain(item);
+      }
     });
 
     it('should support orderBy with multiple keys', async () => {
@@ -145,12 +147,19 @@ describe('Lodash-like Methods', () => {
 
     it('should support defaults for default values', async () => {
       const data = { a: 1 };
-      const result = await evaluator.evaluate('_.defaults(data, { a: 2, b: 2 }, { b: 3, c: 3 })', data);
+      const result = await evaluator.evaluate(
+        '_.defaults(data, { a: 2, b: 2 }, { b: 3, c: 3 })',
+        data
+      );
       expect(result).toEqual({ a: 1, b: 2, c: 3 });
     });
 
     it('should support fromPairs', async () => {
-      const data = [['a', 1], ['b', 2], ['c', 3]];
+      const data = [
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ];
       const result = await evaluator.evaluate('_.fromPairs(data)', data);
       expect(result).toEqual({ a: 1, b: 2, c: 3 });
     });
@@ -225,8 +234,8 @@ describe('Lodash-like Methods', () => {
       const result2 = await evaluator.evaluate('_.clamp(3, 5, 10)', data);
       const result3 = await evaluator.evaluate('_.clamp(7, 5, 10)', data);
       expect(result1).toBe(10); // clamped to max
-      expect(result2).toBe(5);  // clamped to min
-      expect(result3).toBe(7);  // within range
+      expect(result2).toBe(5); // clamped to min
+      expect(result3).toBe(7); // within range
     });
   });
 
@@ -292,8 +301,8 @@ describe('Lodash-like Methods', () => {
 
     it('should support random (test that it returns a number in range)', async () => {
       const data = {};
-      const result1 = await evaluator.evaluate('_.random()', data) as number;
-      const result2 = await evaluator.evaluate('_.random(10, 20)', data) as number;
+      const result1 = (await evaluator.evaluate('_.random()', data)) as number;
+      const result2 = (await evaluator.evaluate('_.random(10, 20)', data)) as number;
       expect(result1).toBeGreaterThanOrEqual(0);
       expect(result1).toBeLessThanOrEqual(1);
       expect(result2).toBeGreaterThanOrEqual(10);
@@ -312,7 +321,8 @@ describe('Lodash-like Methods', () => {
       ];
 
       // Complex chaining with new methods
-      const result = await evaluator.evaluate(`
+      const result = await evaluator.evaluate(
+        `
         $.filter(item => item.active)
           .groupBy(item => item.category)
           .entries()
@@ -322,7 +332,9 @@ describe('Lodash-like Methods', () => {
             count: items.length
           }))
           .orderBy(['totalValue'], ['desc'])
-      `, data);
+      `,
+        data
+      );
 
       expect(result).toEqual([
         { category: 'A', totalValue: 25, count: 2 },
@@ -333,9 +345,12 @@ describe('Lodash-like Methods', () => {
 
     it('should support chainable compact and flatten', async () => {
       const data = [1, null, [2, 3], undefined, [4, [5, 6]], 0];
-      const result = await evaluator.evaluate(`
+      const result = await evaluator.evaluate(
+        `
         $.compact().flattenDeep()
-      `, data);
+      `,
+        data
+      );
       expect(result).toEqual([1, 2, 3, 4, 5, 6]);
     });
 
@@ -348,7 +363,8 @@ describe('Lodash-like Methods', () => {
         { score: 88, category: 'A' },
       ];
 
-      const result = await evaluator.evaluate(`
+      const result = await evaluator.evaluate(
+        `
         $.groupBy(item => item.category)
           .entries()
           .map(([category, items]) => ({
@@ -357,10 +373,12 @@ describe('Lodash-like Methods', () => {
             minScore: items.reduce((min, item) => item.score < min ? item.score : min, Infinity),
             maxScore: items.reduce((max, item) => item.score > max ? item.score : max, -Infinity)
           }))
-      `, data);
+      `,
+        data
+      );
 
       expect(result).toEqual([
-        { category: 'A', avgScore: 83.666666666666666, minScore: 78, maxScore: 88 },
+        { category: 'A', avgScore: 83.66666666666667, minScore: 78, maxScore: 88 },
         { category: 'B', avgScore: 93.5, minScore: 92, maxScore: 95 },
       ]);
     });
