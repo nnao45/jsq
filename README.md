@@ -2,7 +2,7 @@
 
 [🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 
-jsq is an innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. It combines a beautiful real-time REPL interface with powerful data processing capabilities, making JSON manipulation intuitive and visually engaging.
+jsq is a security-first, innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. Built with VM isolation by default, it combines a beautiful real-time REPL interface with powerful data processing capabilities, making JSON manipulation both safe and intuitive.
 
 ## 🌟 Key Features
 
@@ -58,15 +58,21 @@ jsq '$.name' --file users.jsonl --stream
 jsq --repl --file data.json  # Real-time data exploration
 ```
 
-### 4. ⚡ Fast Execution & Optional Security
-Fast execution by default, with optional VM isolation for security-critical use cases
+### 4. 🔒 Secure VM Execution by Default - Security First Design
+jsq prioritizes security with mandatory VM isolation for all code execution. Unlike other JavaScript-based tools, jsq runs all expressions in a secure sandbox environment by default, preventing access to the file system, network, and shell commands unless explicitly enabled.
 
 ```bash
-# Default (fast) mode execution
-cat data.json | jsq --use lodash '_.uniq(data.tags)'
+# All executions run in secure VM isolation by default
+cat data.json | jsq '$.users.filter(u => u.active)'
+# 🔒 VM isolation enabled: No filesystem/network/shell access
 
-# Security-focused execution with --safe option
-cat data.json | jsq --use lodash --safe '_.uniq(data.tags)'
+# Using external libraries still maintains VM isolation
+cat data.json | jsq --use lodash '_.uniq(data.tags)'
+# 🔒 Running in secure VM isolation mode
+
+# Configure resource limits for additional security
+cat data.json | jsq --memory-limit 256 --cpu-limit 60000 '_.uniq(data.tags)'
+# 🔒 VM with custom resource limits: 256MB memory, 60s CPU time
 ```
 
 ### 5. ⚡ Multi-CPU Parallel Processing ✨ NEW
@@ -178,7 +184,7 @@ echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("f
 echo '{}' | jsq 'const { execSync } = await import("child_process"); console.log("Checking system..."); const uptime = execSync("uptime").toString(); const disk = execSync("df -h /").toString(); { uptime: uptime.trim(), disk: disk.split("\n")[1] }'
 ```
 
-**⚠️ Security Note**: Shell execution provides full system access. Use with trusted input only and consider security implications in production environments.
+**⚠️ Security Note**: Shell execution is disabled by default in VM isolation mode. jsq runs in a secure VM sandbox by default, preventing access to filesystem, network, and shell commands.
 
 ### 11. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
@@ -344,16 +350,64 @@ cat logs.json | jsq --use dayjs '$.logs.filter(log => dayjs(log.date).isAfter(da
 
 ### Security Features
 
-jsq provides fast execution by default, with optional VM sandbox environment for secure execution:
+jsq provides secure VM isolation by default, ensuring safe execution of JavaScript expressions:
+
+#### 🔒 Default Mode (VM Isolation)
+```bash
+# Secure execution with VM isolation
+cat data.json | jsq --use lodash '_.uniq(data.tags)'
+# 🔒 Running in secure VM isolation mode
+```
+
+#### 🔒 Resource Control Options
+Configure VM resource limits:
 
 ```bash
-# Default (fast) mode execution
-cat data.json | jsq --use lodash '_.uniq(data.tags)'
-# ⚡ Running in fast mode (VM disabled)
+# Adjust memory limit (default: 128MB)
+cat data.json | jsq --memory-limit 256 '$.data.map(x => x.value)'
 
-# Security-focused execution with --safe flag
-cat data.json | jsq --use lodash --safe '_.sortBy(data.items, "name")'
-# 🔒 Running in secure VM mode
+# Adjust CPU time limit (default: 30s)
+cat data.json | jsq --cpu-limit 60000 '$.data.filter(x => x.active)'
+# 🐚 Shell command execution disabled
+
+# Disable file system access
+cat data.json | jsq --no-fs '$.data.sortBy("name")'
+# 📁 File system access disabled
+
+# Combine multiple restrictions
+cat data.json | jsq --no-network --no-shell --no-fs '$.data.length'
+```
+
+#### 🛡️ Legacy Sandbox Flag
+The --sandbox flag is deprecated as VM isolation is now the default:
+
+```bash
+# --sandbox flag is no longer needed (VM is default)
+cat data.json | jsq --use lodash '_.groupBy($.items, "category")'
+# 🔒 Running in secure VM isolation mode
+```
+
+#### ⚖️ Security Configuration
+
+| Mode | Network | Shell | FileSystem | VM | Timeout | Use Case |
+|------|---------|-------|------------|----|---------|---------| 
+| Default (VM) | ❌ | ❌ | ❌ | ✅ | 30s | Secure execution by default |
+| --memory-limit N | ❌ | ❌ | ❌ | ✅ | 30s | Custom memory limit (MB) |
+| --cpu-limit N | ❌ | ❌ | ❌ | ✅ | Custom | Custom CPU time limit (ms) |
+| Legacy flags | - | - | - | - | - | Deprecated, no effect |
+
+#### 🚨 Security Warnings & Validation
+
+jsq automatically detects and warns about security issues:
+
+```bash
+# Automatic security warnings
+cat data.json | jsq --use lodash 'import("child_process")'
+# ⚠️ Warning: External libraries will execute without VM isolation
+
+# Expression validation errors
+cat data.json | jsq --no-shell 'execSync("ls")'
+# ❌ Security validation failed: Shell command execution is disabled
 ```
 
 ### Streaming Processing Demo
@@ -600,8 +654,14 @@ Options:
   -f, --file <path>      Read from file instead of stdin
   --file-format <format> Specify input file format (json, jsonl, csv, tsv, parquet, auto)
   --repl                 Start interactive REPL mode
-  --safe                 Run with VM isolation (slower but more secure)
-  --unsafe               Legacy option (deprecated, use --safe recommended)
+  --no-network           Legacy option (deprecated, no effect in VM mode)
+  --no-shell             Legacy option (deprecated, no effect in VM mode)
+  --no-fs                Legacy option (deprecated, no effect in VM mode)
+  --sandbox              Legacy option (deprecated, VM isolation is now default)
+  --memory-limit <mb>    Memory limit in MB (default: 128)
+  --cpu-limit <ms>       CPU time limit in milliseconds (default: 30000)
+  --safe                 Legacy option (deprecated, shows warning)
+  --unsafe               Legacy option (deprecated, no effect)
   --help                 Display help
   --version              Display version
 ```

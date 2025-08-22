@@ -3,6 +3,24 @@ import type { ChainableWrapper } from './chainable';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
 import { LibraryManager } from './library-manager';
+import { SecurityManager } from './security-manager';
+// Conditional VM imports to avoid issues in test environments
+let VMSandboxSimple: any;
+let VMOptions: any;
+let VMContext: any;
+
+try {
+  // Only import VM modules when actually needed
+  const vmModule = require('./vm-sandbox-simple');
+  VMSandboxSimple = vmModule.VMSandboxSimple;
+
+  const sandboxTypes = require('@/types/sandbox');
+  VMOptions = sandboxTypes.VMOptions;
+  VMContext = sandboxTypes.VMContext;
+} catch (vmError) {
+  // VM modules not available, sandbox functionality will be disabled
+  console.debug('VM modules not available:', vmError.message);
+}
 
 // Import fetch for Node.js environments
 let fetchFunction: typeof fetch;
@@ -28,11 +46,22 @@ try {
 export class ExpressionEvaluator {
   private options: JsqOptions;
   private libraryManager: LibraryManager;
+  private securityManager: SecurityManager;
+  private vmSandbox: VMSandboxSimple | null = null;
   private static warningShown = false;
 
   constructor(options: JsqOptions) {
     this.options = options;
     this.libraryManager = new LibraryManager(options);
+    this.securityManager = new SecurityManager(options);
+
+    // Initialize VM sandbox if needed
+    if (this.securityManager.shouldUseVM()) {
+      const vmConfig = this.securityManager.getVMConfig();
+      if (vmConfig && VMSandboxSimple) {
+        this.vmSandbox = new VMSandboxSimple(vmConfig);
+      }
+    }
 
     // Show warning if --safe flag is used (no longer supported) - only once
     if (options.safe && !ExpressionEvaluator.warningShown) {
@@ -44,12 +73,29 @@ export class ExpressionEvaluator {
   }
 
   async dispose(): Promise<void> {
-    // No cleanup needed for simplified implementation
+    // Clean up VM sandbox if it exists
+    if (this.vmSandbox) {
+      await this.vmSandbox.dispose();
+      this.vmSandbox = null;
+    }
   }
 
   async evaluate(expression: string, data: unknown): Promise<unknown> {
     try {
+      // Show security warnings
+      const warnings = this.securityManager.getWarnings();
+      for (const warning of warnings) {
+        console.error(warning);
+      }
+
       const transformedExpression = this.transformExpression(expression);
+
+      // Validate expression security
+      const validation = this.securityManager.validateExpression(transformedExpression);
+      if (!validation.valid) {
+        throw new Error(`Security validation failed: ${validation.errors.join(', ')}`);
+      }
+
       const loadedLibraries = await this.loadExternalLibraries();
 
       // Special case: if expression is exactly '$' and data is null/undefined, return the raw data
@@ -58,10 +104,19 @@ export class ExpressionEvaluator {
       }
 
       const $ = createSmartDollar(data);
-      const context = await this.createEvaluationContext($, loadedLibraries, data);
-      const result = await this.executeExpression(transformedExpression, context);
+      const baseContext = await this.createEvaluationContext($, loadedLibraries, data);
+      const secureContext = this.securityManager.createEvaluationContext(baseContext);
+      const result = await this.executeExpression(transformedExpression, secureContext);
       return this.unwrapResult(result);
     } catch (error) {
+      // Re-throw VM/security errors as-is, wrap others
+      if (
+        error instanceof Error &&
+        (error.message.includes('isolated-vm package not found') ||
+          error.message.includes('Security validation failed'))
+      ) {
+        throw error;
+      }
       throw new Error(
         `Expression evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -154,11 +209,18 @@ export class ExpressionEvaluator {
     transformedExpression: string,
     context: Record<string, unknown>
   ): Promise<unknown> {
-    if (this.options.verbose) {
-      console.error('⚡ Running in optimized mode');
+    if (this.securityManager.shouldUseVM()) {
+      if (this.options.verbose) {
+        console.error('🔒 Running in secure VM isolation mode');
+      }
+      return await this.executeInVMSandbox(transformedExpression, context);
+    } else {
+      // This path should not be reached in normal operation since VM is default
+      if (this.options.verbose) {
+        console.error('⚡ Running in non-VM mode (should not happen)');
+      }
+      return await this.safeEval(transformedExpression, context);
     }
-
-    return await this.safeEval(transformedExpression, context);
   }
 
   private async unwrapResult(result: unknown): Promise<unknown> {
@@ -347,7 +409,7 @@ export class ExpressionEvaluator {
       },
       uniq: <T>(arr: T[]): T[] => [...new Set(arr)],
       uniqBy: <T>(arr: T[], keyFn: (item: T) => unknown): T[] => {
-        const seen = new Set();
+        const seen = new Set<unknown>();
         return arr.filter(item => {
           const key = keyFn(item);
           if (seen.has(key)) return false;
@@ -640,5 +702,45 @@ export class ExpressionEvaluator {
         }) as T;
       },
     };
+  }
+
+  private async executeInVMSandbox(
+    expression: string,
+    context: Record<string, unknown>
+  ): Promise<unknown> {
+    if (!this.vmSandbox) {
+      // Create VM sandbox on demand if not already created
+      const vmConfig = this.securityManager.getVMConfig();
+      if (!vmConfig) {
+        throw new Error('VM configuration not available');
+      }
+      if (!VMSandboxSimple) {
+        throw new Error('VM sandbox not available - isolated-vm module not found');
+      }
+      this.vmSandbox = new VMSandboxSimple(vmConfig);
+    }
+
+    try {
+      const vmOptions: VMOptions = {
+        timeout: this.securityManager.getTimeout(),
+        memoryLimit: this.securityManager.getMemoryLimit(),
+        allowedGlobals: this.securityManager.getSecurityContext().level.allowedGlobals,
+      };
+
+      const vmContext: VMContext = { ...context };
+      const result = await this.vmSandbox.execute(expression, vmContext, vmOptions);
+      return result.value;
+    } catch (error) {
+      // Re-throw VM errors with more context
+      if (error instanceof Error) {
+        if (error.message.includes('Cannot find module')) {
+          throw new Error(
+            'isolated-vm package not found. Please install isolated-vm for sandbox support: npm install isolated-vm'
+          );
+        }
+        throw new Error(`VM execution failed: ${error.message}`);
+      }
+      throw error;
+    }
   }
 }

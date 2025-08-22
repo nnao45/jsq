@@ -25,11 +25,20 @@ export class JsqProcessor {
     const startTime = Date.now();
 
     try {
-      // Check if expression starts with array literal and has no input data
+      // Check for no input scenarios
       let data: unknown;
       if (
+        !input ||
+        input === null ||
+        (typeof input === 'string' && (input.trim() === '' || input === 'null'))
+      ) {
+        // No input available - expressions should work with $ as null
+        data = null; // Will be handled by the expression evaluator
+      } else if (
         this.isArrayLiteralExpression(expression) &&
-        (!input || input.trim() === '' || input === 'null')
+        (!input ||
+          input === null ||
+          (typeof input === 'string' && (input.trim() === '' || input === 'null')))
       ) {
         // For expressions like "[1,2,3].method()", treat the array as the data
         data = null; // Will be handled by the expression evaluator
@@ -45,8 +54,8 @@ export class JsqProcessor {
 
       const metadata: ProcessingResult['metadata'] = {
         processingTime,
-        inputSize: input.length,
-        outputSize: JSON.stringify(result).length,
+        inputSize: input ? input.length : 0,
+        outputSize: result !== undefined ? JSON.stringify(result).length : 0,
       };
 
       // Add debug steps if in debug mode

@@ -16,6 +16,12 @@ export interface JsqOptions {
   file?: string;
   fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'auto';
   repl?: boolean;
+  noNetwork?: boolean;
+  noShell?: boolean;
+  noFs?: boolean;
+  sandbox?: boolean;
+  memoryLimit?: string | number;
+  cpuLimit?: string | number;
 }
 
 export interface JsqConfig {
