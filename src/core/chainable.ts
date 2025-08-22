@@ -136,7 +136,7 @@ export class ChainableWrapper {
   // Advanced array methods
   uniqBy(keyFn: (item: unknown) => unknown): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const seen = new Set();
+      const seen = new Set<unknown>();
       const result = this.data.filter(item => {
         const key = keyFn(item);
         if (seen.has(key)) return false;
@@ -722,12 +722,13 @@ export class ChainableWrapper {
    */
   distinctBy(keyFn: (item: unknown) => unknown): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const seen = new Set();
+      // Use array-based deduplication instead of Set to avoid VM issues
+      const seen: unknown[] = [];
       const result: unknown[] = [];
       for (const item of this.data) {
         const key = keyFn(item);
-        if (!seen.has(key)) {
-          seen.add(key);
+        if (!seen.includes(key)) {
+          seen.push(key);
           result.push(item);
         }
       }
@@ -741,8 +742,9 @@ export class ChainableWrapper {
    */
   intersectBy(other: unknown[], keyFn: (item: unknown) => unknown): ChainableWrapper {
     if (Array.isArray(this.data)) {
-      const otherKeys = new Set(other.map(keyFn));
-      const result = this.data.filter(item => otherKeys.has(keyFn(item)));
+      // Use array-based intersection instead of Set to avoid VM issues
+      const otherKeys = other.map(keyFn);
+      const result = this.data.filter(item => otherKeys.includes(keyFn(item)));
       return new ChainableWrapper(result);
     }
     return new ChainableWrapper([]);

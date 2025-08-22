@@ -73,6 +73,12 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
+  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
+  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
+  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     try {
@@ -118,6 +124,12 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
+  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
+  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
+  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('bun', expression, options);
@@ -146,6 +158,12 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
+  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
+  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
+  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
+  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('deno', expression, options);
@@ -194,6 +212,9 @@ async function runWithRuntime(
     if (options.file) args.push('--file', options.file);
     if (options.fileFormat && options.fileFormat !== 'auto')
       args.push('--file-format', options.fileFormat);
+    if (options.sandbox) args.push('--sandbox');
+    if (options.memoryLimit) args.push('--memory-limit', String(options.memoryLimit));
+    if (options.cpuLimit) args.push('--cpu-limit', String(options.cpuLimit));
 
     const child = spawn(args[0], args.slice(1), {
       stdio: 'inherit',
@@ -257,10 +278,42 @@ function prepareOptions(options: JsqOptions): void {
     options.stream = true;
   }
 
-  if (options.use && options.use.length > 0 && !options.safe) {
+  // Show warning for deprecated sandbox flag
+  if (options.sandbox) {
     console.error(
-      '⚠️  Warning: Running without --safe flag. External libraries will execute without VM isolation. Consider using --safe for better security.'
+      '⚠️  Warning: --sandbox flag is deprecated. VM isolation is now the default mode.'
     );
+  }
+
+  // Show warnings for deprecated security options
+  if (options.noNetwork || options.noShell || options.noFs) {
+    console.error(
+      '⚠️  Warning: Individual security flags (--no-network, --no-shell, --no-fs) are deprecated and have no effect in VM isolation mode.'
+    );
+  }
+
+  // Process memory limit
+  if (options.memoryLimit) {
+    const memoryLimit =
+      typeof options.memoryLimit === 'string'
+        ? parseInt(options.memoryLimit, 10)
+        : options.memoryLimit;
+    if (Number.isNaN(memoryLimit) || memoryLimit <= 0) {
+      console.error('Error: Memory limit must be a positive number (in MB)');
+      process.exit(1);
+    }
+    options.memoryLimit = memoryLimit;
+  }
+
+  // Process CPU limit
+  if (options.cpuLimit) {
+    const cpuLimit =
+      typeof options.cpuLimit === 'string' ? parseInt(options.cpuLimit, 10) : options.cpuLimit;
+    if (Number.isNaN(cpuLimit) || cpuLimit <= 0) {
+      console.error('Error: CPU limit must be a positive number (in milliseconds)');
+      process.exit(1);
+    }
+    options.cpuLimit = cpuLimit;
   }
 }
 
@@ -430,7 +483,7 @@ async function getInputData(
     return await readFileByFormat(filePath, detectedFormat);
   }
   if (inputSource === 'none') {
-    return 'null';
+    return null;
   }
 
   return await readStdin();

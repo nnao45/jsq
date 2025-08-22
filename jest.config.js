@@ -29,6 +29,8 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // Enable manual mocks
+  clearMocks: true,
   testTimeout: 10000,
   verbose: true,
 };
