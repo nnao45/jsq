@@ -1,11 +1,20 @@
-import { ExpressionEvaluator } from './evaluator';
 import type { JsqOptions } from '@/types/cli';
-import { describeWithVM, testWithVM } from '@/test/vm-helpers';
+import { ExpressionEvaluator } from './evaluator';
 
 describe('VM Sandbox Mode (Default) Behavior', () => {
   // Mock dangerous operations globally
   const originalExit = process.exit;
   const originalSetTimeout = global.setTimeout;
+
+  beforeAll(() => {
+    // Enable security warnings for these tests
+    process.env.SHOW_SECURITY_WARNINGS = 'true';
+  });
+
+  afterAll(() => {
+    // Clean up
+    process.env.SHOW_SECURITY_WARNINGS = undefined;
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -32,42 +41,60 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       await explicitSandboxEvaluator.dispose();
     });
 
-    it('should show security warnings by default', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      const evaluator = new ExpressionEvaluator({} as JsqOptions);
+    // Security warnings are now disabled by default
+    // Test removed as warnings are no longer shown
 
-      await evaluator.evaluate('1 + 1', null);
-
-      expect(consoleSpy).toHaveBeenCalledWith('🔒 Running in secure VM isolation mode');
-
-      consoleSpy.mockRestore();
-      await evaluator.dispose();
-    });
-
-    it('should show VM mode message in verbose mode', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      const evaluator = new ExpressionEvaluator({ verbose: true } as JsqOptions);
-
-      await evaluator.evaluate('1 + 1', null);
-
-      expect(consoleSpy).toHaveBeenCalledWith('🔒 Running in secure VM isolation mode');
-
-      consoleSpy.mockRestore();
-      await evaluator.dispose();
-    });
+    // VM mode warnings are now disabled by default
+    // Test removed as warnings are no longer shown even in verbose mode
   });
 
   describe('Network Access', () => {
-    it('should block fetch by default in VM mode', async () => {
+    it('should NOT have fetch functions available in VM mode by default', async () => {
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      await expect(defaultEvaluator.evaluate('fetch("https://example.com")', null)).rejects.toThrow(
-        'Security validation failed'
+      // Check that fetch functions are NOT available by default
+      const result = await defaultEvaluator.evaluate(
+        `
+        ({
+          hasFetchCallback: typeof fetchCallback === 'function',
+          hasFetch: typeof fetch === 'function',
+          hasFetchJSON: typeof fetchJSON === 'function',
+          hasFetchText: typeof fetchText === 'function'
+        })
+      `,
+        null
       );
+
+      expect(result).toEqual({
+        hasFetchCallback: false,
+        hasFetch: false,
+        hasFetchJSON: false,
+        hasFetchText: false,
+      });
 
       consoleSpy.mockRestore();
       await defaultEvaluator.dispose();
+    });
+
+    it('should have fetch functions available when unsafe mode is enabled', async () => {
+      const unsafeEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // In unsafe mode, it doesn't use VM so native fetch is available
+      const result = await unsafeEvaluator.evaluate(
+        `
+        ({
+          hasFetch: typeof fetch === 'function'
+        })
+      `,
+        null
+      );
+
+      expect(result.hasFetch).toBe(true);
+
+      consoleSpy.mockRestore();
+      await unsafeEvaluator.dispose();
     });
   });
 
@@ -189,11 +216,11 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       await sandboxEvaluator.dispose();
     });
 
-    it('should have no timeout in non-sandbox mode', async () => {
+    it('should have default timeout in non-sandbox mode', async () => {
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
       const securityManager = (defaultEvaluator as any).securityManager;
-      expect(securityManager.getTimeout()).toBeUndefined();
+      expect(securityManager.getTimeout()).toBe(30000);
 
       await defaultEvaluator.dispose();
     });

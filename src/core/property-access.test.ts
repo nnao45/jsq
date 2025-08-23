@@ -1,5 +1,5 @@
+import { describeWithVM, isIsolatedVMAvailable, testWithVM } from '@/test/vm-helpers';
 import { VMSandboxSimple } from './vm-sandbox-simple';
-import { describeWithVM, testWithVM, isIsolatedVMAvailable } from '@/test/vm-helpers';
 
 describeWithVM('Property Access Tests', () => {
   beforeAll(() => {

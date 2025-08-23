@@ -4,7 +4,6 @@ export interface JsqOptions {
   stream?: boolean;
   batch?: string | number;
   parallel?: boolean | string | number;
-  use?: string | string[];
   types?: string;
   schema?: string;
   output?: string;
@@ -16,9 +15,6 @@ export interface JsqOptions {
   file?: string;
   fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'auto';
   repl?: boolean;
-  noNetwork?: boolean;
-  noShell?: boolean;
-  noFs?: boolean;
   sandbox?: boolean;
   memoryLimit?: string | number;
   cpuLimit?: string | number;
@@ -42,12 +38,6 @@ export interface ProcessingResult {
   };
 }
 
-export interface LibraryConfig {
-  name: string;
-  version?: string;
-  exports?: string[];
-}
-
 export interface ValidationResult {
   valid: boolean;
   errors?: Array<{
@@ -55,18 +45,4 @@ export interface ValidationResult {
     message: string;
     value?: unknown;
   }>;
-}
-
-export interface LibraryInfo {
-  name: string;
-  version: string;
-  path: string;
-  exports: Record<string, unknown>;
-  cached: boolean;
-  installedAt: Date;
-}
-
-export interface LibraryCache {
-  libraries: Map<string, LibraryInfo>;
-  cacheDir: string;
 }

@@ -20,7 +20,6 @@ program
     '-p, --parallel [workers]',
     'Enable parallel processing (optionally specify number of workers)'
   )
-  .option('-u, --use <libraries...>', 'Load npm libraries')
   .option('-t, --types <file>', 'TypeScript definition file')
   .option('--schema <file>', 'Schema file for validation')
   .option('-o, --output <file>', 'Output file (default: stdout)')

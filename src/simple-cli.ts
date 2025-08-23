@@ -57,7 +57,6 @@ program
   .argument('[expression]', 'JavaScript expression to evaluate')
   .option('-d, --debug', 'Enable debug mode')
   .option('-v, --verbose', 'Verbose output')
-  .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
   .option(
@@ -73,9 +72,6 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
@@ -108,7 +104,6 @@ program
   .argument('[expression]', 'JavaScript expression to evaluate')
   .option('-d, --debug', 'Enable debug mode')
   .option('-v, --verbose', 'Verbose output')
-  .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
   .option(
@@ -124,9 +119,6 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
@@ -142,7 +134,6 @@ program
   .argument('[expression]', 'JavaScript expression to evaluate')
   .option('-d, --debug', 'Enable debug mode')
   .option('-v, --verbose', 'Verbose output')
-  .option('-u, --use <libraries...>', 'Load npm libraries (comma-separated)')
   .option('-s, --stream', 'Enable streaming mode for large datasets')
   .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
   .option(
@@ -158,9 +149,6 @@ program
   )
   .option('--unsafe', 'Legacy option (deprecated, no effect)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--no-network', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-shell', 'Legacy option (deprecated, no effect in VM mode)')
-  .option('--no-fs', 'Legacy option (deprecated, no effect in VM mode)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
@@ -204,10 +192,6 @@ async function runWithRuntime(
     if (options.unsafe) args.push('--unsafe');
     if (options.safe) args.push('--safe');
     if (options.repl) args.push('--repl');
-    if (options.use) {
-      const useLibs = Array.isArray(options.use) ? options.use.join(',') : options.use;
-      args.push('--use', useLibs);
-    }
     if (options.batch) args.push('--batch', String(options.batch));
     if (options.file) args.push('--file', options.file);
     if (options.fileFormat && options.fileFormat !== 'auto')
@@ -263,10 +247,6 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 }
 
 function prepareOptions(options: JsqOptions): void {
-  if (typeof options.use === 'string') {
-    options.use = options.use.split(',').map(lib => lib.trim());
-  }
-
   if (options.batch) {
     const batchSize =
       typeof options.batch === 'string' ? parseInt(options.batch, 10) : options.batch;
@@ -282,13 +262,6 @@ function prepareOptions(options: JsqOptions): void {
   if (options.sandbox) {
     console.error(
       '⚠️  Warning: --sandbox flag is deprecated. VM isolation is now the default mode.'
-    );
-  }
-
-  // Show warnings for deprecated security options
-  if (options.noNetwork || options.noShell || options.noFs) {
-    console.error(
-      '⚠️  Warning: Individual security flags (--no-network, --no-shell, --no-fs) are deprecated and have no effect in VM isolation mode.'
     );
   }
 

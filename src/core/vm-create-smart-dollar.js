@@ -31,6 +31,11 @@ globalThis.createSmartDollar = function(data) {
         const concatenated = Array.prototype.concat.apply(target, args);
         return globalThis.createSmartDollar(concatenated);
       },
+      find: function(target, ...args) {
+        const found = Array.prototype.find.apply(target, args);
+        // find returns a single element, not an array, so don't wrap it
+        return found;
+      },
       
       // Custom methods
       chunk: function(target, size) {
@@ -363,10 +368,11 @@ globalThis.createSmartDollar = function(data) {
           };
         }
         
-        // Check for value property to get the raw object
-        if (prop === 'value') {
-          return target;
-        }
+        // Special handling for 'value' property - commented out to allow normal access
+        // This was causing $.value to return the entire object instead of the property
+        // if (prop === 'value') {
+        //   return target;
+        // }
         
         // For property access, return the value directly (don't wrap primitives)
         if (prop in target) {

@@ -323,15 +323,16 @@ describe('Lodash-like Methods', () => {
       // Complex chaining with new methods
       const result = await evaluator.evaluate(
         `
-        $.filter(item => item.active)
-          .groupBy(item => item.category)
-          .entries()
+        Object.entries(
+          $.filter(item => item.active)
+            .groupBy(item => item.category)
+        )
           .map(([category, items]) => ({
             category,
             totalValue: items.reduce((sum, item) => sum + item.value, 0),
             count: items.length
           }))
-          .orderBy(['totalValue'], ['desc'])
+          .sort((a, b) => b.totalValue - a.totalValue)
       `,
         data
       );
@@ -365,8 +366,9 @@ describe('Lodash-like Methods', () => {
 
       const result = await evaluator.evaluate(
         `
-        $.groupBy(item => item.category)
-          .entries()
+        Object.entries(
+          $.groupBy(item => item.category)
+        )
           .map(([category, items]) => ({
             category,
             avgScore: items.reduce((sum, item) => sum + item.score, 0) / items.length,

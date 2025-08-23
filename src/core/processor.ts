@@ -34,14 +34,6 @@ export class JsqProcessor {
       ) {
         // No input available - expressions should work with $ as null
         data = null; // Will be handled by the expression evaluator
-      } else if (
-        this.isArrayLiteralExpression(expression) &&
-        (!input ||
-          input === null ||
-          (typeof input === 'string' && (input.trim() === '' || input === 'null')))
-      ) {
-        // For expressions like "[1,2,3].method()", treat the array as the data
-        data = null; // Will be handled by the expression evaluator
       } else {
         // Parse the input JSON
         data = this.parser.parse(input);
@@ -72,11 +64,6 @@ export class JsqProcessor {
         `Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
-  }
-
-  private isArrayLiteralExpression(expression: string): boolean {
-    const trimmed = expression.trim();
-    return trimmed.startsWith('[') && trimmed.includes('].') && !trimmed.startsWith('$');
   }
 
   async processStream(

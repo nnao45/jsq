@@ -1,10 +1,11 @@
 const ivm = require('isolated-vm');
+
 import type {
-  VMOptions,
+  SandboxError,
   VMContext,
+  VMOptions,
   VMResult,
   VMSandboxConfig,
-  SandboxError,
 } from '@/types/sandbox';
 
 /**
@@ -58,7 +59,7 @@ export class VMSandboxSimple {
       const jail = vmContext.global;
 
       // Set up basic environment (console, Math, JSON, etc.)
-      await this.setupBasicEnvironment(jail, vmContext, context);
+      await this.setupBasicEnvironment(jail, vmContext, context, options);
 
       // Inject ivm for result transfer
       try {
@@ -82,7 +83,7 @@ export class VMSandboxSimple {
         } else {
           dataToSerialize = $value;
         }
-        
+
         // For null/undefined data, pass it directly without serialization
         if (dataToSerialize === null || dataToSerialize === undefined) {
           await jail.set('$_data', dataToSerialize);
@@ -98,7 +99,7 @@ export class VMSandboxSimple {
             serializedData instanceof ivm.ExternalCopy ? serializedData.copyInto() : serializedData
           );
         }
-        
+
         // Create $ with createSmartDollar in the VM
         await vmContext.eval(`
           globalThis.$ = createSmartDollar(globalThis.$_data);
@@ -125,48 +126,45 @@ export class VMSandboxSimple {
               'Map',
               'Symbol',
               'Reflect',
-              'fetch',
             ].includes(key)
           ) {
             continue;
           }
-          
-          // Skip fetch - it typically has unclonable closures
-          if (key === 'fetch') {
-            continue;
-          }
+
+          // Don't skip fetch anymore - we want to support it
+          // if (key === 'fetch') {
+          //   continue;
+          // }
 
           // Skip $ as it's already handled
           if (key === '$') {
-            continue;
           } else if (
             key === 'createSmartDollar' ||
-            (typeof value === 'function' && (
-              value.toString().includes('ChainableWrapper') ||
-              value.toString().includes('createSmartDollar') ||
-              value.name === '$'
-            ))
+            (typeof value === 'function' &&
+              (value.toString().includes('ChainableWrapper') ||
+                value.toString().includes('createSmartDollar') ||
+                value.name === '$'))
           ) {
             // Skip functions that reference ChainableWrapper or are $ functions
             console.debug(`Skipping ${key} - it's a smart dollar or related function`);
-            continue;
           } else if (key === '_') {
             // Handle lodash utilities - create them directly in the VM
             await this.setupLodashUtilities(jail, vmContext);
-            continue;
           } else if (typeof value === 'function') {
             // Special handling for simple functions
             const func = value as Function;
             const funcStr = func.toString();
-            
+
             // Check if this is a smart dollar-like function
-            if (funcStr.includes('args.length === 0') && funcStr.includes('return data') ||
-                funcStr.includes('ChainableWrapper') ||
-                funcStr.includes('createSmartDollar')) {
+            if (
+              (funcStr.includes('args.length === 0') && funcStr.includes('return data')) ||
+              funcStr.includes('ChainableWrapper') ||
+              funcStr.includes('createSmartDollar')
+            ) {
               console.debug(`Skipping function ${key} - detected as smart dollar function`);
               continue;
             }
-            
+
             try {
               await vmContext.eval(`
                 globalThis.${key} = function(...args) {
@@ -177,7 +175,6 @@ export class VMSandboxSimple {
             } catch (funcError) {
               // If the function can't be cloned, skip it
               console.debug(`Skipping function ${key} - cannot be cloned: ${funcError.message}`);
-              continue;
             }
           } else {
             try {
@@ -201,7 +198,9 @@ export class VMSandboxSimple {
                   // Check if object contains functions
                   for (const [k, v] of Object.entries(value)) {
                     if (typeof v === 'function') {
-                      console.error(`  Contains function at key "${k}": ${v.toString().substring(0, 100)}...`);
+                      console.error(
+                        `  Contains function at key "${k}": ${v.toString().substring(0, 100)}...`
+                      );
                     }
                   }
                 }
@@ -214,7 +213,6 @@ export class VMSandboxSimple {
         } catch (error) {
           // Don't throw on individual context setting failures, just skip
           console.debug(`Skipping context key ${key}:`, error);
-          continue;
         }
       }
 
@@ -252,7 +250,7 @@ export class VMSandboxSimple {
       };
     } catch (error) {
       const executionTime = Math.max(1, Date.now() - startTime); // Ensure non-zero time
-      
+
       // Check if this is a cloning error from isolated-vm
       if (error instanceof Error && error.message.includes('could not be cloned')) {
         console.error('Original cloning error:', error.message);
@@ -261,7 +259,7 @@ export class VMSandboxSimple {
         // Try to provide a more helpful error message
         throw new Error(`VM execution failed: ${error.message}`);
       }
-      
+
       throw this.createSandboxError(error, executionTime);
     } finally {
       // Cleanup
@@ -285,7 +283,8 @@ export class VMSandboxSimple {
   private async setupBasicEnvironment(
     jail: ivm.Reference,
     vmContext: ivm.Context,
-    context: VMContext
+    context: VMContext,
+    options: VMOptions = {}
   ): Promise<void> {
     try {
       // Set up console using eval to create it inside the VM
@@ -406,29 +405,31 @@ export class VMSandboxSimple {
         log: new ivm.Reference((x: number) => Math.log(x)),
         max: new ivm.Reference((...args: number[]) => Math.max(...args)),
         min: new ivm.Reference((...args: number[]) => Math.min(...args)),
-        pow: new ivm.Reference((x: number, y: number) => Math.pow(x, y)),
+        pow: new ivm.Reference((x: number, y: number) => x ** y),
         random: new ivm.Reference(() => Math.random()),
         round: new ivm.Reference((x: number) => Math.round(x)),
         sin: new ivm.Reference((x: number) => Math.sin(x)),
         sqrt: new ivm.Reference((x: number) => Math.sqrt(x)),
-        tan: new ivm.Reference((x: number) => Math.tan(x))
+        tan: new ivm.Reference((x: number) => Math.tan(x)),
       });
 
       // Set up JSON functions
       await jail.set('JSON', {
-        stringify: new ivm.Reference((obj: any, replacer?: any, space?: any) => JSON.stringify(obj, replacer, space)),
+        stringify: new ivm.Reference((obj: any, replacer?: any, space?: any) =>
+          JSON.stringify(obj, replacer, space)
+        ),
         parse: new ivm.Reference((str: string, reviver?: any) => JSON.parse(str, reviver)),
       });
 
       // Set up Date constructor with proper handling
-      const dateImpl = new ivm.Reference(function(...args: any[]) {
+      const dateImpl = new ivm.Reference((...args: any[]) => {
         if (args.length === 0) {
           return new Date();
         }
         return new Date(...args);
       });
       await jail.set('_DateImpl', dateImpl);
-      
+
       await vmContext.eval(`
         globalThis.Date = function(...args) {
           const result = globalThis._DateImpl.applySync(undefined, args);
@@ -457,6 +458,121 @@ export class VMSandboxSimple {
     // Load the implementation from separate file to keep it clean
     const createSmartDollarCode = require('./vm-create-smart-dollar.js');
     await vmContext.eval(createSmartDollarCode);
+
+    // Set up fetch in the VM with callback-based approach (only if network is allowed)
+    if (options.allowNetwork) {
+      try {
+        // コールバックベースのfetch実装
+        await jail.set(
+          '_fetchCallback',
+          new ivm.Reference(async (url: string, options: any, callbackRef: ivm.Reference) => {
+            try {
+              const response = await fetch(url, options);
+              const text = await response.text();
+
+              // コールバックに結果を渡す
+              await callbackRef.apply(undefined, [
+                null, // error
+                new ivm.ExternalCopy({
+                  ok: response.ok,
+                  status: response.status,
+                  statusText: response.statusText,
+                  url: response.url,
+                  text: text,
+                  headers: Object.fromEntries(response.headers.entries()),
+                }).copyInto(),
+              ]);
+            } catch (error) {
+              // エラーの場合
+              await callbackRef.apply(undefined, [
+                new ivm.ExternalCopy({
+                  message: error instanceof Error ? error.message : String(error),
+                  name: error instanceof Error ? error.name : 'FetchError',
+                }).copyInto(),
+                null, // result
+              ]);
+            }
+          })
+        );
+
+        await vmContext.eval(`
+        // コールバックベースのfetch
+        globalThis.fetchCallback = function(url, options, callback) {
+          if (typeof options === 'function') {
+            callback = options;
+            options = {};
+          }
+          
+          if (!callback || typeof callback !== 'function') {
+            throw new Error('Callback function is required');
+          }
+          
+          // コールバックの参照を作成
+          const callbackRef = new $ivm.Reference(callback);
+          
+          // 外部のfetch関数を呼び出す
+          globalThis._fetchCallback.applyIgnored(undefined, [url, options || {}, callbackRef]);
+        };
+        
+        // Promise版のfetch（内部でコールバックを使用）
+        globalThis.fetch = function(url, options) {
+          return new Promise((resolve, reject) => {
+            globalThis.fetchCallback(url, options, (error, response) => {
+              if (error) {
+                reject(new Error(error.message));
+              } else {
+                // Response風のオブジェクトを作成
+                const responseObj = {
+                  ok: response.ok,
+                  status: response.status,
+                  statusText: response.statusText,
+                  url: response.url,
+                  headers: response.headers,
+                  text: () => Promise.resolve(response.text),
+                  json: () => Promise.resolve(JSON.parse(response.text)),
+                  blob: () => Promise.reject(new Error('Blob not supported in VM')),
+                  arrayBuffer: () => Promise.reject(new Error('ArrayBuffer not supported in VM')),
+                };
+                resolve(responseObj);
+              }
+            });
+          });
+        };
+        
+        // 便利な関数たち
+        globalThis.fetchJSON = function(url, options) {
+          return new Promise((resolve, reject) => {
+            globalThis.fetchCallback(url, options, (error, response) => {
+              if (error) {
+                reject(new Error(error.message));
+              } else {
+                try {
+                  const data = JSON.parse(response.text);
+                  resolve(data);
+                } catch (e) {
+                  reject(new Error('Failed to parse JSON: ' + e.message));
+                }
+              }
+            });
+          });
+        };
+        
+        globalThis.fetchText = function(url, options) {
+          return new Promise((resolve, reject) => {
+            globalThis.fetchCallback(url, options, (error, response) => {
+              if (error) {
+                reject(new Error(error.message));
+              } else {
+                resolve(response.text);
+              }
+            });
+          });
+        };
+      `);
+      } catch (e) {
+        console.warn('Failed to set up fetch in VM:', e);
+      }
+    }
   }
 
   private async setupLodashUtilities(jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
@@ -843,12 +959,12 @@ export class VMSandboxSimple {
       // Special handling for smart $ functions
       // Check multiple indicators that this is a $ function
       const funcStr = value.toString();
-      const isSmartDollar = value.name === '$' || 
-                           funcStr.includes('ChainableWrapper') || 
-                           funcStr.includes('createSmartDollar') ||
-                           (funcStr.includes('args.length === 0') && funcStr.includes('return data'));
-      
-                           
+      const isSmartDollar =
+        value.name === '$' ||
+        funcStr.includes('ChainableWrapper') ||
+        funcStr.includes('createSmartDollar') ||
+        (funcStr.includes('args.length === 0') && funcStr.includes('return data'));
+
       if (isSmartDollar) {
         // For smart $ functions, we need to get the actual data
         try {
@@ -898,7 +1014,7 @@ export class VMSandboxSimple {
       // Create a function reference that can be called from VM
       const func = value as Function;
       try {
-        return new ivm.Reference(function (...args: any[]) {
+        return new ivm.Reference((...args: any[]) => {
           try {
             return func.apply(null, args);
           } catch (error) {
@@ -906,7 +1022,7 @@ export class VMSandboxSimple {
           }
         });
       } catch (refError) {
-        // If we can't create a reference (e.g., function has unclonable closures), 
+        // If we can't create a reference (e.g., function has unclonable closures),
         // return a placeholder
         console.debug('Cannot create reference for function:', func.name || 'anonymous');
         return null;
@@ -931,11 +1047,11 @@ export class VMSandboxSimple {
     let depth = 0;
     let inString = false;
     let stringChar = '';
-    
+
     for (let i = 0; i < code.length; i++) {
       const char = code[i];
       const prevChar = i > 0 ? code[i - 1] : '';
-      
+
       // Handle string state
       if (!inString && (char === '"' || char === "'" || char === '`')) {
         inString = true;
@@ -943,12 +1059,12 @@ export class VMSandboxSimple {
       } else if (inString && char === stringChar && prevChar !== '\\') {
         inString = false;
       }
-      
+
       if (!inString) {
         // Track depth of braces, brackets, parentheses
         if (char === '{' || char === '[' || char === '(') depth++;
         if (char === '}' || char === ']' || char === ')') depth--;
-        
+
         // Split at semicolon only at depth 0
         if (char === ';' && depth === 0) {
           if (current.trim()) {
@@ -958,15 +1074,15 @@ export class VMSandboxSimple {
           continue;
         }
       }
-      
+
       current += char;
     }
-    
+
     // Add the last statement
     if (current.trim()) {
       statements.push(current.trim());
     }
-    
+
     return statements;
   }
 
@@ -976,68 +1092,90 @@ export class VMSandboxSimple {
     const needsAsync =
       code.includes('await') || code.includes('async') || code.includes('Promise.');
     const trimmedCode = code.trim();
-    
+
+    // Helper function to handle result unwrapping - injected into wrapped code
+    const unwrapResultHelper = `
+      function __unwrapResult(__result) {
+        // Return primitives directly
+        if (__result === null || __result === undefined) {
+          return __result;
+        }
+        if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
+          return __result;
+        }
+        // For functions (like the $ function), try to get their value
+        if (typeof __result === 'function') {
+          // Check if it's a smart dollar function that has valueOf
+          if (__result.valueOf && typeof __result.valueOf === 'function') {
+            const value = __result.valueOf();
+            // Return the unwrapped value
+            if (value === null || value === undefined) {
+              return value;
+            }
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              return value;
+            }
+            if (Array.isArray(value)) {
+              return new $ivm.ExternalCopy([...value]).copyInto();
+            }
+            if (typeof value === 'object') {
+              return new $ivm.ExternalCopy(value).copyInto();
+            }
+          }
+          // For other functions, we can't return them, so return undefined
+          return undefined;
+        }
+        // For arrays and objects, clone them before returning
+        if (Array.isArray(__result)) {
+          // For arrays, we need to get the raw array data without methods
+          // Use Array.from to create a clean array
+          const rawArray = Array.from(__result);
+          return new $ivm.ExternalCopy(rawArray).copyInto();
+        }
+        // For objects
+        if (typeof __result === 'object') {
+          // Check if it's a ChainableWrapper (has a value property)
+          if ('value' in __result && __result.constructor && 
+              (__result.constructor.name === 'ChainableWrapper' || 
+               __result.constructor.name.includes('ChainableWrapper'))) {
+            const value = __result.value;
+            // Return the unwrapped value
+            if (value === null || value === undefined) {
+              return value;
+            }
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              return value;
+            }
+            return new $ivm.ExternalCopy(value).copyInto();
+          }
+          // If it has a valueOf method (chainable), get the value
+          if (__result.valueOf && typeof __result.valueOf === 'function') {
+            const value = __result.valueOf();
+            if (value !== __result) {
+              return new $ivm.ExternalCopy(value).copyInto();
+            }
+          }
+          // Otherwise, copy the object as-is
+          return new $ivm.ExternalCopy(__result).copyInto();
+        }
+        // Default case
+        return new $ivm.ExternalCopy(__result).copyInto();
+      }
+    `;
+
     // Check if the code is already wrapped in an IIFE
-    const isAlreadyWrapped = 
+    const isAlreadyWrapped =
       (trimmedCode.startsWith('(') && trimmedCode.endsWith(')()')) ||
       (trimmedCode.startsWith('(async') && trimmedCode.endsWith(')()'));
-    
+
     // If already wrapped, just return the code with result handling
     if (isAlreadyWrapped) {
       return `
         (function() {
+          ${unwrapResultHelper}
           try {
             const __result = ${code};
-            // Return primitives directly
-            if (__result === null || __result === undefined) {
-              return __result;
-            }
-            if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
-              return __result;
-            }
-            // For functions (like the $ function), try to get their value
-            if (typeof __result === 'function') {
-              // Check if it's a smart dollar function that has valueOf
-              if (__result.valueOf && typeof __result.valueOf === 'function') {
-                const value = __result.valueOf();
-                // Return the unwrapped value
-                if (value === null || value === undefined) {
-                  return value;
-                }
-                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                  return value;
-                }
-                if (Array.isArray(value)) {
-                  return new $ivm.ExternalCopy([...value]).copyInto();
-                }
-                if (typeof value === 'object') {
-                  return new $ivm.ExternalCopy(value).copyInto();
-                }
-              }
-              // For other functions, we can't return them, so return undefined
-              return undefined;
-            }
-            // For arrays and objects, clone them before returning
-            if (Array.isArray(__result)) {
-              // For arrays, we need to get the raw array data without methods
-              // Use Array.from to create a clean array
-              const rawArray = Array.from(__result);
-              return new $ivm.ExternalCopy(rawArray).copyInto();
-            }
-            // For objects
-            if (typeof __result === 'object') {
-              // If it has a valueOf method (chainable), get the value
-              if (__result.valueOf && typeof __result.valueOf === 'function') {
-                const value = __result.valueOf();
-                if (value !== __result) {
-                  return new $ivm.ExternalCopy(value).copyInto();
-                }
-              }
-              // Otherwise, copy the object as-is
-              return new $ivm.ExternalCopy(__result).copyInto();
-            }
-            // Default case
-            return new $ivm.ExternalCopy(__result).copyInto();
+            return __unwrapResult(__result);
           } catch (error) {
             if (error instanceof Error) {
               throw new Error(error.message);
@@ -1053,7 +1191,7 @@ export class VMSandboxSimple {
       trimmedCode.startsWith('while(') ||
       trimmedCode.startsWith('for(') ||
       trimmedCode.startsWith('if(') ||
-      (trimmedCode.match(/^\s*(while|for|if|switch|try)\s*[\(\{]/) && !trimmedCode.includes(';'));
+      (trimmedCode.match(/^\s*(while|for|if|switch|try)\s*[({]/) && !trimmedCode.includes(';'));
 
     // Check if this is a block of statements that can't be wrapped in parentheses
     const isStatementBlock =
@@ -1071,49 +1209,35 @@ export class VMSandboxSimple {
       if (isStatementBlock && !isCompleteStatement) {
         // For multi-line async statements, we need to be more careful about splitting
         // We can't just split by lines if there are control structures
-        const hasControlStructures = /\b(while|for|if|switch|do)\s*[\(\{]/.test(code);
-        
+        const hasControlStructures = /\b(while|for|if|switch|do)\s*[({]/.test(code);
+
         if (hasControlStructures) {
           // If the code has control structures, we need to handle it differently
           // Check if the last line is a simple expression we can return
           const lines = code.trim().split('\n');
           const lastLine = lines[lines.length - 1].trim();
-          
+
           // If the last line is just a variable or simple expression (not a statement)
           const lastLineWithoutSemi = lastLine.replace(/;$/, '');
-          if (lastLineWithoutSemi && !lastLineWithoutSemi.includes('{') && 
-              !lastLineWithoutSemi.startsWith('while') && !lastLineWithoutSemi.startsWith('for') && 
-              !lastLineWithoutSemi.startsWith('if') && !lastLineWithoutSemi.startsWith('const') && 
-              !lastLineWithoutSemi.startsWith('let') && !lastLineWithoutSemi.startsWith('var')) {
+          if (
+            lastLineWithoutSemi &&
+            !lastLineWithoutSemi.includes('{') &&
+            !lastLineWithoutSemi.startsWith('while') &&
+            !lastLineWithoutSemi.startsWith('for') &&
+            !lastLineWithoutSemi.startsWith('if') &&
+            !lastLineWithoutSemi.startsWith('const') &&
+            !lastLineWithoutSemi.startsWith('let') &&
+            !lastLineWithoutSemi.startsWith('var')
+          ) {
             // Execute all the code except the last line, then return the last line as an expression
             const codeWithoutLastLine = lines.slice(0, -1).join('\n');
             return `
               (async function() {
+                ${unwrapResultHelper}
                 try {
                   ${codeWithoutLastLine}
                   const __result = ${lastLineWithoutSemi};
-                  // Handle async results properly
-                  if (__result === null || __result === undefined) {
-                    return __result;
-                  }
-                  if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
-                    return __result;
-                  }
-                  // For arrays and objects, clone them before returning
-                  if (Array.isArray(__result)) {
-                    const rawArray = [...__result];
-                    return new $ivm.ExternalCopy(rawArray).copyInto();
-                  }
-                  if (typeof __result === 'object') {
-                    if (__result.valueOf && typeof __result.valueOf === 'function') {
-                      const value = __result.valueOf();
-                      if (value !== __result) {
-                        return new $ivm.ExternalCopy(value).copyInto();
-                      }
-                    }
-                    return new $ivm.ExternalCopy(__result).copyInto();
-                  }
-                  return new $ivm.ExternalCopy(__result).copyInto();
+                  return __unwrapResult(__result);
                 } catch (error) {
                   if (error instanceof Error) {
                     throw new Error(error.message);
@@ -1141,38 +1265,18 @@ export class VMSandboxSimple {
           // For code with semicolons, we need to handle it differently
           // Split by semicolon but be careful about function bodies
           const statements = this.splitStatements(code);
-          
+
           if (statements.length > 1) {
             const lastStatement = statements[statements.length - 1].trim();
             const otherStatements = statements.slice(0, -1);
-            
+
             return `
               (async function() {
+                ${unwrapResultHelper}
                 try {
                   ${otherStatements.join(';\n')};
                   const __result = ${lastStatement};
-                  // Handle async results properly
-                  if (__result === null || __result === undefined) {
-                    return __result;
-                  }
-                  if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
-                    return __result;
-                  }
-                  // For arrays and objects, clone them before returning
-                  if (Array.isArray(__result)) {
-                    const rawArray = [...__result];
-                    return new $ivm.ExternalCopy(rawArray).copyInto();
-                  }
-                  if (typeof __result === 'object') {
-                    if (__result.valueOf && typeof __result.valueOf === 'function') {
-                      const value = __result.valueOf();
-                      if (value !== __result) {
-                        return new $ivm.ExternalCopy(value).copyInto();
-                      }
-                    }
-                    return new $ivm.ExternalCopy(__result).copyInto();
-                  }
-                  return new $ivm.ExternalCopy(__result).copyInto();
+                  return __unwrapResult(__result);
                 } catch (error) {
                   if (error instanceof Error) {
                     throw new Error(error.message);
@@ -1218,35 +1322,10 @@ export class VMSandboxSimple {
         const hasAwait = code.includes('await');
         return `
           (async function() {
+            ${unwrapResultHelper}
             try {
               const __result = ${hasAwait ? code : `await (${code})`};
-              // Return primitives directly
-              if (__result === null || __result === undefined) {
-                return __result;
-              }
-              if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
-                return __result;
-              }
-              // For arrays and objects, clone them before returning
-              if (Array.isArray(__result)) {
-                // For arrays, we need to get the raw array data without methods
-                const rawArray = [...__result];
-                return new $ivm.ExternalCopy(rawArray).copyInto();
-              }
-              // For objects
-              if (typeof __result === 'object') {
-                // If it has a valueOf method (chainable), get the value
-                if (__result.valueOf && typeof __result.valueOf === 'function') {
-                  const value = __result.valueOf();
-                  if (value !== __result) {
-                    return new $ivm.ExternalCopy(value).copyInto();
-                  }
-                }
-                // Otherwise, copy the object as-is
-                return new $ivm.ExternalCopy(__result).copyInto();
-              }
-              // Default case
-              return new $ivm.ExternalCopy(__result).copyInto();
+              return __unwrapResult(__result);
             } catch (error) {
               if (error instanceof Error) {
                 throw new Error(error.message);
@@ -1272,20 +1351,26 @@ export class VMSandboxSimple {
 
         // For multi-line sync statements, we need to be more careful about splitting
         // We can't just split by lines if there are control structures
-        const hasControlStructures = /\b(while|for|if|switch|do)\s*[\(\{]/.test(code);
-        
+        const hasControlStructures = /\b(while|for|if|switch|do)\s*[({]/.test(code);
+
         if (hasControlStructures) {
           // If the code has control structures, we need to handle it differently
           // Check if the last line is a simple expression we can return
           const lines = code.trim().split('\n');
           const lastLine = lines[lines.length - 1].trim();
-          
+
           // If the last line is just a variable or simple expression (not a statement)
           const lastLineWithoutSemi = lastLine.replace(/;$/, '');
-          if (lastLineWithoutSemi && !lastLineWithoutSemi.includes('{') && 
-              !lastLineWithoutSemi.startsWith('while') && !lastLineWithoutSemi.startsWith('for') && 
-              !lastLineWithoutSemi.startsWith('if') && !lastLineWithoutSemi.startsWith('const') && 
-              !lastLineWithoutSemi.startsWith('let') && !lastLineWithoutSemi.startsWith('var')) {
+          if (
+            lastLineWithoutSemi &&
+            !lastLineWithoutSemi.includes('{') &&
+            !lastLineWithoutSemi.startsWith('while') &&
+            !lastLineWithoutSemi.startsWith('for') &&
+            !lastLineWithoutSemi.startsWith('if') &&
+            !lastLineWithoutSemi.startsWith('const') &&
+            !lastLineWithoutSemi.startsWith('let') &&
+            !lastLineWithoutSemi.startsWith('var')
+          ) {
             // Execute all the code except the last line, then return the last line as an expression
             const codeWithoutLastLine = lines.slice(0, -1).join('\n');
             return `
@@ -1325,7 +1410,6 @@ export class VMSandboxSimple {
             .filter(line => line);
           const lastLine = lines[lines.length - 1];
           const codeLines = lines.slice(0, -1);
-          
 
           return `
             (function() {
@@ -1360,35 +1444,10 @@ export class VMSandboxSimple {
         // For sync expressions
         return `
           (function() {
+            ${unwrapResultHelper}
             try {
               const __result = (${code});
-              // Handle result transfer
-              if (__result === null || __result === undefined) {
-                return __result;
-              }
-              if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
-                return __result;
-              }
-              // For arrays and objects, clone them before returning
-              if (Array.isArray(__result)) {
-                // For arrays, we need to get the raw array data without methods
-                const rawArray = [...__result];
-                return new $ivm.ExternalCopy(rawArray).copyInto();
-              }
-              // For objects
-              if (typeof __result === 'object') {
-                // If it has a valueOf method (chainable), get the value
-                if (__result.valueOf && typeof __result.valueOf === 'function') {
-                  const value = __result.valueOf();
-                  if (value !== __result) {
-                    return new $ivm.ExternalCopy(value).copyInto();
-                  }
-                }
-                // Otherwise, copy the object as-is
-                return new $ivm.ExternalCopy(__result).copyInto();
-              }
-              // Default case
-              return new $ivm.ExternalCopy(__result).copyInto();
+              return __unwrapResult(__result);
             } catch (error) {
               if (error instanceof Error) {
                 throw new Error(error.message);
@@ -1576,7 +1635,7 @@ export class VMSandboxSimple {
         return value.toString().length * 2;
       case 'function':
         return value.toString().length * 2;
-      case 'object':
+      case 'object': {
         if (visited.has(value)) return 8;
         visited.add(value);
 
@@ -1609,6 +1668,7 @@ export class VMSandboxSimple {
 
         visited.delete(value);
         return size;
+      }
       default:
         return 8; // Default size for unknown types
     }

@@ -64,7 +64,7 @@ describe('JsqProcessor', () => {
       });
 
       const expression = `
-        Object.values($.company.departments.value)
+        Object.values($.company.departments)
           .map(dept => dept.teams)
           .map(teams => teams.reduce((sum, team) => sum + team.members, 0))
       `;
@@ -110,7 +110,7 @@ describe('JsqProcessor', () => {
       const input = JSON.stringify(
         Array.from({ length: 1000 }, (_, i) => ({ id: i, value: Math.random() }))
       );
-      const expression = '$.filter(item => item.value > 0.5).length()';
+      const expression = '$.filter(item => item.value > 0.5).length';
 
       const startTime = Date.now();
       const result = await processor.process(expression, input);
@@ -240,7 +240,7 @@ describe('JsqProcessor', () => {
       };
 
       const expression = `
-        $.sales.value
+        $.sales
           .map(sale => ({ 
             product: sale.product, 
             revenue: sale.quantity * sale.price,
@@ -273,7 +273,7 @@ describe('JsqProcessor', () => {
       };
 
       const expression = `
-        Object.entries($.environments.value)
+        Object.entries($.environments)
           .map(([env, config]) => ({
             environment: env,
             hasCache: config.features.cache,
@@ -321,7 +321,7 @@ describe('JsqProcessor', () => {
     it('should provide accurate size measurements', async () => {
       const testData = { message: 'Hello, World!', numbers: [1, 2, 3, 4, 5] };
       const input = JSON.stringify(testData);
-      const expression = '$.message.value.length';
+      const expression = '$.message.length';
 
       const result = await processor.process(expression, input);
 
@@ -371,7 +371,7 @@ describe('JsqProcessor', () => {
     it('should work correctly with debug metadata', async () => {
       const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true });
       const input = '{"array": [1, 2, 3]}';
-      const expression = '$.array.length()';
+      const expression = '$.array.length';
 
       const result = await debugProcessor.process(expression, input);
 

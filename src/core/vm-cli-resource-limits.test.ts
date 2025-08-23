@@ -1,7 +1,7 @@
 import { describe, expect } from '@jest/globals';
-import { ExpressionEvaluator } from './evaluator';
-import type { JsqOptions } from '@/types/cli';
 import { describeWithVM, testWithVM } from '@/test/vm-helpers';
+import type { JsqOptions } from '@/types/cli';
+import { ExpressionEvaluator } from './evaluator';
 
 describeWithVM('VM CLI Resource Limits', () => {
   describe('Memory Limits via CLI options', () => {

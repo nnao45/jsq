@@ -7,12 +7,16 @@ export function transformExpression(expression: string): string {
 
   // Skip transformation for multi-line code blocks with control structures
   // These should be handled by the VM wrapper instead
-  if (trimmed.includes('\n') && /\b(while|for|if|switch|do)\s*[(\{]/.test(trimmed)) {
+  if (trimmed.includes('\n') && /\b(while|for|if|switch|do)\s*[({]/.test(trimmed)) {
     return expression;
   }
-  
+
   // Also skip transformation for multi-line variable declarations that don't use semicolon as separator
-  if (trimmed.includes('\n') && /^\s*(const|let|var)\s+/.test(trimmed) && !isUsingSemicolonAsSeparator(trimmed)) {
+  if (
+    trimmed.includes('\n') &&
+    /^\s*(const|let|var)\s+/.test(trimmed) &&
+    !isUsingSemicolonAsSeparator(trimmed)
+  ) {
     return expression;
   }
 
@@ -479,7 +483,10 @@ function transformSingleVariableDeclaration(expression: string): string {
 function isUsingSemicolonAsSeparator(expression: string): boolean {
   // If it's a multi-line block with declarations, semicolons are likely statement terminators
   if (expression.includes('\n')) {
-    const lines = expression.split('\n').map(l => l.trim()).filter(l => l);
+    const lines = expression
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l);
     // Check if semicolons are at the end of lines (statement terminators)
     const hasSemicolonAtLineEnd = lines.some(line => line.endsWith(';'));
     // Check if there are multiple expressions on one line separated by semicolon
@@ -487,10 +494,10 @@ function isUsingSemicolonAsSeparator(expression: string): boolean {
       const semicolonCount = (line.match(/;/g) || []).length;
       return semicolonCount > 1 || (semicolonCount === 1 && !line.endsWith(';'));
     });
-    
+
     return hasMultipleExpressionsPerLine && !hasSemicolonAtLineEnd;
   }
-  
+
   return hasSemicolonOperator(expression);
 }
 

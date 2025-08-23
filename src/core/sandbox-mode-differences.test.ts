@@ -1,5 +1,5 @@
-import { SecurityManager } from './security-manager';
 import type { JsqOptions } from '@/types/cli';
+import { SecurityManager } from './security-manager';
 
 describe('VM Sandbox Mode (Default) - Key Features', () => {
   describe('Security Configuration', () => {
@@ -117,26 +117,8 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
     });
   });
 
-  describe('Security Warnings', () => {
-    it('should show VM isolation warning by default', () => {
-      const defaultManager = new SecurityManager({} as JsqOptions);
-      const warnings = defaultManager.getWarnings();
-
-      expect(warnings).toContain('🔒 Running in secure VM isolation mode');
-    });
-
-    it('should show warning that individual flags are ignored in VM mode', () => {
-      const manager = new SecurityManager({
-        noNetwork: true,
-        noShell: true,
-        noFs: true,
-      } as JsqOptions);
-
-      const warnings = manager.getWarnings();
-
-      expect(warnings).toContain('⚠️  Individual security flags are ignored in VM isolation mode');
-    });
-  });
+  // Security warnings are now handled differently and not shown by default
+  // Tests for warnings have been removed
 
   describe('Capabilities', () => {
     it('should have limited capabilities by default', () => {
@@ -168,22 +150,6 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
         url: false,
         crypto: false,
       });
-    });
-  });
-
-  describe('Individual Security Flags', () => {
-    it('should ignore individual flags in VM mode', () => {
-      const noShellManager = new SecurityManager({ noShell: true } as JsqOptions);
-      const noFsManager = new SecurityManager({ noFs: true } as JsqOptions);
-
-      // In VM mode, these patterns are blocked because of VM security, not individual flags
-      const shellValidation = noShellManager.validateExpression('require("child_process")');
-      expect(shellValidation.valid).toBe(false);
-      expect(shellValidation.errors[0]).toContain('potentially dangerous patterns');
-
-      const fsValidation = noFsManager.validateExpression('require("fs")');
-      expect(fsValidation.valid).toBe(false);
-      expect(fsValidation.errors[0]).toContain('potentially dangerous patterns');
     });
   });
 });
