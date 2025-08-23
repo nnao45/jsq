@@ -1,4 +1,5 @@
 const ivm = require('isolated-vm');
+
 import type { VMContext } from '@/types/sandbox';
 
 export class VMAdvancedFeatures {
@@ -390,43 +391,43 @@ export class VMAdvancedFeatures {
     }
   ): Promise<void> {
     if (capabilities.enableAsync) {
-      await this.setupAsyncSupport(jail, isolate);
+      await VMAdvancedFeatures.setupAsyncSupport(jail, isolate);
     }
 
     if (capabilities.enableGenerators) {
-      await this.setupGeneratorSupport(jail, isolate);
+      await VMAdvancedFeatures.setupGeneratorSupport(jail, isolate);
     }
 
     if (capabilities.enableProxies) {
-      await this.setupProxySupport(jail, isolate);
+      await VMAdvancedFeatures.setupProxySupport(jail, isolate);
     }
 
     if (capabilities.enableSymbols) {
-      await this.setupSymbolSupport(jail, isolate);
+      await VMAdvancedFeatures.setupSymbolSupport(jail, isolate);
     }
 
     if (capabilities.enableWeakCollections) {
-      await this.setupWeakCollections(jail, isolate);
+      await VMAdvancedFeatures.setupWeakCollections(jail, isolate);
     }
 
     if (capabilities.enableTypedArrays) {
-      await this.setupTypedArrays(jail, isolate);
+      await VMAdvancedFeatures.setupTypedArrays(jail, isolate);
     }
 
     if (capabilities.enableIntl) {
-      await this.setupIntlSupport(jail, isolate);
+      await VMAdvancedFeatures.setupIntlSupport(jail, isolate);
     }
 
     if (capabilities.enableBigInt) {
-      await this.setupBigIntSupport(jail, isolate);
+      await VMAdvancedFeatures.setupBigIntSupport(jail, isolate);
     }
 
     if (capabilities.enableIterators) {
-      await this.setupIterationProtocols(jail, isolate);
+      await VMAdvancedFeatures.setupIterationProtocols(jail, isolate);
     }
 
     if (capabilities.enableErrorHandling) {
-      await this.setupErrorHandling(jail, isolate);
+      await VMAdvancedFeatures.setupErrorHandling(jail, isolate);
     }
   }
 }

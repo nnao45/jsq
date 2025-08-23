@@ -2,8 +2,8 @@ import type { JsqOptions } from '@/types/cli';
 import type { ChainableWrapper } from './chainable';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
-import { LibraryManager } from './library-manager';
 import { SecurityManager } from './security-manager';
+
 // Conditional VM imports to avoid issues in test environments
 let VMSandboxSimple: any;
 let VMOptions: any;
@@ -22,37 +22,14 @@ try {
   console.debug('VM modules not available:', vmError.message);
 }
 
-// Import fetch for Node.js environments
-let fetchFunction: typeof fetch;
-try {
-  // Try to use built-in fetch (Node.js 18+)
-  fetchFunction = globalThis.fetch;
-  if (!fetchFunction) {
-    throw new Error('No built-in fetch');
-  }
-} catch {
-  try {
-    // Fallback to node-fetch for older Node.js versions
-    const nodeFetch = require('node-fetch');
-    fetchFunction = nodeFetch.default || nodeFetch;
-  } catch {
-    // If neither is available, provide a stub function
-    fetchFunction = (() => {
-      throw new Error('fetch is not available. Please use Node.js 18+ or install node-fetch');
-    }) as typeof fetch;
-  }
-}
-
 export class ExpressionEvaluator {
   private options: JsqOptions;
-  private libraryManager: LibraryManager;
   private securityManager: SecurityManager;
   private vmSandbox: VMSandboxSimple | null = null;
   private static warningShown = false;
 
   constructor(options: JsqOptions) {
     this.options = options;
-    this.libraryManager = new LibraryManager(options);
     this.securityManager = new SecurityManager(options);
 
     // Initialize VM sandbox if needed
@@ -80,13 +57,20 @@ export class ExpressionEvaluator {
     }
   }
 
-  async evaluate(expression: string, data: unknown): Promise<unknown> {
-    try {
-      // Show security warnings
-      const warnings = this.securityManager.getWarnings();
+  private showSecurityWarnings(): void {
+    const warnings = this.securityManager.getWarnings();
+    const shouldShowWarnings =
+      process.env.NODE_ENV !== 'test' || process.env.SHOW_SECURITY_WARNINGS === 'true';
+    if (shouldShowWarnings) {
       for (const warning of warnings) {
         console.error(warning);
       }
+    }
+  }
+
+  async evaluate(expression: string, data: unknown): Promise<unknown> {
+    try {
+      this.showSecurityWarnings();
 
       const transformedExpression = this.transformExpression(expression);
 
@@ -96,7 +80,7 @@ export class ExpressionEvaluator {
         throw new Error(`Security validation failed: ${validation.errors.join(', ')}`);
       }
 
-      const loadedLibraries = await this.loadExternalLibraries();
+      const loadedLibraries = {};
 
       // Special case: if expression is exactly '$' and data is null/undefined, return the raw data
       if (transformedExpression.trim() === '$' && (data === null || data === undefined)) {
@@ -105,7 +89,7 @@ export class ExpressionEvaluator {
 
       // For VM mode, don't create the smart dollar - just use data
       const $ = this.securityManager.shouldUseVM() ? data : createSmartDollar(data);
-      const baseContext = await this.createEvaluationContext($, loadedLibraries, data);
+      const baseContext = await this.createEvaluationContext($, data);
       const secureContext = this.securityManager.createEvaluationContext(baseContext);
       const result = await this.executeExpression(transformedExpression, secureContext);
       return this.unwrapResult(result);
@@ -134,13 +118,8 @@ export class ExpressionEvaluator {
     return transformedExpression;
   }
 
-  private async loadExternalLibraries(): Promise<Record<string, unknown>> {
-    return this.options.use ? await this.libraryManager.loadLibraries(this.options.use) : {};
-  }
-
   private async createEvaluationContext(
     $: unknown,
-    loadedLibraries: Record<string, unknown>,
     data: unknown
   ): Promise<Record<string, unknown>> {
     // For VM mode, only pass minimal context - VM will set up the rest
@@ -148,7 +127,6 @@ export class ExpressionEvaluator {
       const vmContext: Record<string, unknown> = {
         // Don't pass console - VM will set up its own
         // VM sandbox will set up its own native constructors and objects
-        ...loadedLibraries,
         data,
         // Pass the raw data or the $ passed in (which should be data in VM mode)
         // $ is already set to data in VM mode from line 107
@@ -156,10 +134,9 @@ export class ExpressionEvaluator {
         // Pass a marker for _ to trigger setupLodashUtilities in VM
         _: {}, // Empty object as a marker to trigger lodash utilities setup
       };
-      this.setupLibraryAliases(vmContext, loadedLibraries);
       return vmContext;
     }
-    
+
     // For non-VM mode, pass full context
     const context: Record<string, unknown> = {
       $,
@@ -176,13 +153,10 @@ export class ExpressionEvaluator {
       Map,
       Reflect,
       Symbol,
-      fetch: fetchFunction,
       _: await this.loadUtilities(),
-      ...loadedLibraries,
       data,
     };
 
-    this.setupLibraryAliases(context, loadedLibraries);
     return context;
   }
 
@@ -206,21 +180,6 @@ export class ExpressionEvaluator {
       assert: console.assert,
       dir: console.dir,
     };
-  }
-
-  private setupLibraryAliases(
-    context: Record<string, unknown>,
-    loadedLibraries: Record<string, unknown>
-  ): void {
-    if (loadedLibraries.lodash) {
-      context._ = loadedLibraries.lodash;
-    }
-    if (loadedLibraries.moment) {
-      context.moment = loadedLibraries.moment;
-    }
-    if (loadedLibraries.dayjs) {
-      context.dayjs = loadedLibraries.dayjs;
-    }
   }
 
   private async executeExpression(
@@ -702,16 +661,16 @@ export class ExpressionEvaluator {
       // Chain method for lodash-style chaining
       chain: (value: unknown) => {
         const ChainableWrapper = {
-          value,
-          map: function(fn: (item: any) => any) {
+          value: value,
+          map: function (fn: (item: any) => any) {
             this.value = Array.isArray(this.value) ? this.value.map(fn) : this.value;
             return this;
           },
-          filter: function(fn: (item: any) => boolean) {
+          filter: function (fn: (item: any) => boolean) {
             this.value = Array.isArray(this.value) ? this.value.filter(fn) : this.value;
             return this;
           },
-          sortBy: function(keyFn: (item: any) => any) {
+          sortBy: function (keyFn: (item: any) => any) {
             if (Array.isArray(this.value)) {
               this.value = [...this.value].sort((a, b) => {
                 const aKey = keyFn(a);
@@ -721,36 +680,39 @@ export class ExpressionEvaluator {
             }
             return this;
           },
-          groupBy: function(keyFn: (item: any) => string) {
+          groupBy: function (keyFn: (item: any) => string) {
             if (Array.isArray(this.value)) {
-              this.value = this.value.reduce((groups, item) => {
-                const key = keyFn(item);
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(item);
-                return groups;
-              }, {} as Record<string, any[]>);
+              this.value = this.value.reduce(
+                (groups, item) => {
+                  const key = keyFn(item);
+                  if (!groups[key]) groups[key] = [];
+                  groups[key].push(item);
+                  return groups;
+                },
+                {} as Record<string, any[]>
+              );
             }
             return this;
           },
-          take: function(n: number) {
+          take: function (n: number) {
             this.value = Array.isArray(this.value) ? this.value.slice(0, n) : this.value;
             return this;
           },
-          flatten: function() {
+          flatten: function () {
             this.value = Array.isArray(this.value) ? this.value.flat() : this.value;
             return this;
           },
-          uniq: function() {
+          uniq: function () {
             this.value = Array.isArray(this.value) ? [...new Set(this.value)] : this.value;
             return this;
           },
-          compact: function() {
+          compact: function () {
             this.value = Array.isArray(this.value) ? this.value.filter(Boolean) : this.value;
             return this;
           },
-          value: function() {
+          value: function () {
             return this.value;
-          }
+          },
         };
         return ChainableWrapper;
       },
@@ -799,13 +761,16 @@ export class ExpressionEvaluator {
         timeout: this.securityManager.getTimeout(),
         memoryLimit: this.securityManager.getMemoryLimit(),
         allowedGlobals: this.securityManager.getSecurityContext().level.allowedGlobals,
+        allowNetwork: this.securityManager.getSecurityContext().level.allowNetwork,
       };
 
       // Debug: Log context keys and types
       if (this.options.verbose) {
         console.error('VM Context keys:', Object.keys(context));
         for (const [key, value] of Object.entries(context)) {
-          console.error(`  ${key}: ${typeof value}${typeof value === 'function' ? ` (${value.name || 'anonymous'})` : ''}`);
+          console.error(
+            `  ${key}: ${typeof value}${typeof value === 'function' ? ` (${value.name || 'anonymous'})` : ''}`
+          );
         }
       }
 
@@ -820,7 +785,7 @@ export class ExpressionEvaluator {
           vmContext[key] = value;
         }
       }
-      
+
       const result = await this.vmSandbox.execute(expression, vmContext, vmOptions);
       return result.value;
     } catch (error) {

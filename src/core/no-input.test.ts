@@ -166,10 +166,7 @@ describe('No Input Execution Tests', () => {
 
   describe('Error handling for expressions requiring input', () => {
     it('should handle $ when null gracefully', async () => {
-      const result = await processor.process(
-        '$ === null ? "default" : $',
-        'null'
-      );
+      const result = await processor.process('$ === null ? "default" : $', 'null');
       expect(result.data).toBe('default');
     });
 

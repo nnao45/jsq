@@ -1,5 +1,6 @@
 const isolatedVM = require('isolated-vm');
 const ivm = isolatedVM;
+
 import type { ExecutionMetrics } from '@/types/sandbox';
 
 export interface ResourceLimits {
@@ -31,11 +32,6 @@ export class VMResourceManager {
       executionId: string;
     }
   >();
-  private stats: Array<{
-    memoryUsed: number;
-    wallTime: number;
-    timestamp: number;
-  }> = [];
 
   constructor(limits: Partial<ResourceLimits> = {}) {
     this.limits = {
@@ -277,7 +273,7 @@ export class VMResourceManager {
     if (typeof value === 'string') {
       // Truncate strings that are too long
       if (value.length > this.limits.maxStringLength) {
-        const truncated = value.substring(0, this.limits.maxStringLength - 3) + '...';
+        const truncated = `${value.substring(0, this.limits.maxStringLength - 3)}...`;
         console.warn(`String truncated from ${value.length} to ${truncated.length} characters`);
         return truncated as T;
       }
@@ -319,7 +315,7 @@ export class VMResourceManager {
     setTimeout(() => clearInterval(monitor), this.limits.wallTimeLimit + 5000);
   }
 
-  private async getHeapStatistics(isolate: ivm.Isolate): Promise<any> {
+  private async getHeapStatistics(_isolate: ivm.Isolate): Promise<any> {
     try {
       // Try to get heap statistics from the isolate
       // This is a simplified version - real implementation would use V8 APIs
@@ -332,7 +328,7 @@ export class VMResourceManager {
     }
   }
 
-  private calculateValueSize(value: unknown, seen: Set<unknown>): number {
+  private calculatePrimitiveSize(value: unknown): number | null {
     if (value === null || value === undefined) {
       return 8; // Rough estimate
     }
@@ -349,34 +345,47 @@ export class VMResourceManager {
       return value.length * 2; // UTF-16 encoding
     }
 
-    if (typeof value === 'object') {
-      // Prevent circular reference infinite loop
-      if (seen.has(value)) {
-        return 16; // Reference size
+    return null;
+  }
+
+  private calculateObjectSize(value: object, seen: Set<unknown>): number {
+    // Prevent circular reference infinite loop
+    if (seen.has(value)) {
+      return 16; // Reference size
+    }
+    seen.add(value);
+
+    let size = 32; // Object overhead
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        size += this.calculateValueSize(item, seen);
       }
-      seen.add(value);
-
-      let size = 32; // Object overhead
-
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          size += this.calculateValueSize(item, seen);
-        }
-      } else {
-        for (const [key, val] of Object.entries(value)) {
-          size += key.length * 2; // Key size
-          size += this.calculateValueSize(val, seen);
-        }
+    } else {
+      for (const [key, val] of Object.entries(value)) {
+        size += key.length * 2; // Key size
+        size += this.calculateValueSize(val, seen);
       }
+    }
 
-      seen.delete(value);
-      return size;
+    seen.delete(value);
+    return size;
+  }
+
+  private calculateValueSize(value: unknown, seen: Set<unknown>): number {
+    const primitiveSize = this.calculatePrimitiveSize(value);
+    if (primitiveSize !== null) {
+      return primitiveSize;
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return this.calculateObjectSize(value, seen);
     }
 
     return 16; // Default size for unknown types
   }
 
-  private estimateContextSize(isolate: ivm.Isolate): number {
+  private estimateContextSize(_isolate: ivm.Isolate): number {
     // This is a simplified estimation
     // In a real implementation, you'd use V8 APIs to get actual context size
     return process.memoryUsage().heapUsed;
@@ -391,7 +400,7 @@ export class VMResourceManager {
    */
   dispose(): void {
     // Clean up all active executions
-    for (const [id, execution] of this.activeExecutions.entries()) {
+    for (const [_id, execution] of this.activeExecutions.entries()) {
       try {
         execution.isolate.dispose();
       } catch {

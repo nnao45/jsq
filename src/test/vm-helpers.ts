@@ -12,7 +12,7 @@ export function isIsolatedVMAvailable(): boolean {
     const test = new ivm.Isolate();
     test.dispose();
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

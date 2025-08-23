@@ -106,10 +106,7 @@ describe('Semicolon Sequential Execution Tests', () => {
     it('should handle errors in intermediate expressions gracefully', async () => {
       const data = '{"value": 42}';
       // Even if first expression has an issue, the second should work
-      const result = await processor.process(
-        'const temp = "ignored"; 42',
-        data
-      );
+      const result = await processor.process('const temp = "ignored"; 42', data);
       expect(result.data).toBe(42);
     });
   });

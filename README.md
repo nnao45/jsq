@@ -40,16 +40,10 @@ cat users.json | jsq "const names = $.users.map(u => u.name) | names.join(', ')"
 jsq "let numbers = [1,2,3,4,5] | numbers.filter(x => x > 3)" # [4, 5]
 ```
 
-### 3. 🔗 npm Library Integration
-Dynamically load and use any npm library
+### 3. 📁 Direct File Reading and REPL
+Process files directly and explore data interactively
 
 ```bash
-# Advanced data processing with Lodash
-cat data.json | jsq --use lodash '_.orderBy($.users, ["age"], ["desc"])'
-
-# Multiple libraries simultaneously
-cat data.json | jsq --use lodash,moment '_.map($.events, e => ({...e, formatted: moment(e.date).format("YYYY-MM-DD")}))'
-
 # Direct file reading
 jsq '$.users.length' --file data.json
 jsq '$.name' --file users.jsonl --stream
@@ -66,12 +60,8 @@ jsq prioritizes security with mandatory VM isolation for all code execution. Unl
 cat data.json | jsq '$.users.filter(u => u.active)'
 # 🔒 VM isolation enabled: No filesystem/network/shell access
 
-# Using external libraries still maintains VM isolation
-cat data.json | jsq --use lodash '_.uniq(data.tags)'
-# 🔒 Running in secure VM isolation mode
-
 # Configure resource limits for additional security
-cat data.json | jsq --memory-limit 256 --cpu-limit 60000 '_.uniq(data.tags)'
+cat data.json | jsq --memory-limit 256 --cpu-limit 60000 '$.map(x => x.value).uniq()'
 # 🔒 VM with custom resource limits: 256MB memory, 60s CPU time
 ```
 
@@ -93,8 +83,8 @@ time cat million-records.jsonl | jsq --parallel '$.process()'  # ~2 seconds
 time cat million-records.jsonl | jq '.process()'               # ~40 seconds
 ```
 
-### 6. 📈 Intelligent Caching
-Automatically cache installed libraries for fast subsequent use
+### 6. 🚀 Optimized Performance
+Lightweight and fast with minimal dependencies
 
 ### 7. 🌐 Built-in Fetch & Async/Await Support ✨ NEW
 Native fetch API and async/await support for seamless HTTP requests and asynchronous operations

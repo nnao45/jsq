@@ -1,5 +1,5 @@
 import type { JsqOptions } from '@/types/cli';
-import type { VMSandboxConfig, SandboxCapabilities } from '@/types/sandbox';
+import type { SandboxCapabilities, VMSandboxConfig } from '@/types/sandbox';
 
 export interface SecurityLevel {
   allowNetwork: boolean;
@@ -39,7 +39,7 @@ export class SecurityManager {
 
     // Remove network capabilities if disabled
     if (!level.allowNetwork) {
-      delete secureContext.fetch;
+      secureContext.fetch = undefined;
       this.addWarning('Network access disabled - fetch API unavailable');
     }
 
@@ -59,7 +59,6 @@ export class SecurityManager {
 
   validateExpression(expression: string): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-    const { level } = this.context;
 
     // Skip validation in unsafe mode
     if (this.context.options.unsafe) {
@@ -79,7 +78,6 @@ export class SecurityManager {
         /this\.constructor/,
         /constructor\.constructor/,
         /arguments\.callee/,
-        /fetch\s*\(/,
         /Buffer\./,
         /while\s*\(\s*true\s*\)/,
         /for\s*\(\s*;;\s*\)/,
@@ -91,17 +89,16 @@ export class SecurityManager {
         /\[\s*['"`]eval['"`]\s*\]/, // this["eval"]
         /\(\s*\d+\s*,\s*eval\s*\)/, // (1, eval)
         /\[\s*['"`]Function['"`]\s*\]/, // this["Function"]
-        /require\s*\(/,  // All require calls are dangerous in VM
-        /import\s*\(/,   // All dynamic imports are dangerous in VM
-        /execSync|exec|spawn|fork/,  // Child process functions
-        /readFile|writeFile|readFileSync|writeFileSync|createReadStream|createWriteStream/,  // File system functions
+        /require\s*\(/, // All require calls are dangerous in VM
+        /import\s*\(/, // All dynamic imports are dangerous in VM
+        /execSync|exec|spawn|fork/, // Child process functions
+        /readFile|writeFile|readFileSync|writeFileSync|createReadStream|createWriteStream/, // File system functions
+        /fetch\s*\(/, // Network access function
       ];
 
       for (const pattern of dangerousPatterns) {
         if (pattern.test(expression)) {
-          errors.push(
-            `Expression contains potentially dangerous patterns`
-          );
+          errors.push(`Expression contains potentially dangerous patterns`);
           break;
         }
       }
@@ -148,18 +145,13 @@ export class SecurityManager {
     // Check if unsafe mode is requested
     if (options.unsafe) {
       level = this.createUnsafeLevel(options);
-      warnings.push('⚠️  Running in unsafe mode - dangerous operations are allowed');
+      // warnings.push('⚠️  Running in unsafe mode - dangerous operations are allowed');
     } else {
       // Always use sandbox mode by default
       level = this.createSandboxLevel(options);
       vmConfig = this.createSandboxVMConfig(options);
       capabilities = this.createSandboxCapabilities();
-      warnings.push('🔒 Running in secure VM isolation mode');
-    }
-
-    // Add warnings for disabled features (these don't apply in sandbox mode)
-    if (options.noNetwork || options.noShell || options.noFs) {
-      warnings.push('⚠️  Individual security flags are ignored in VM isolation mode');
+      // warnings.push('🔒 Running in secure VM isolation mode');
     }
 
     return {
@@ -173,7 +165,7 @@ export class SecurityManager {
 
   private createSandboxLevel(options: JsqOptions): SecurityLevel {
     return {
-      allowNetwork: false,
+      allowNetwork: false, // Network access disabled by default in sandbox mode
       allowShell: false,
       allowFileSystem: false,
       allowDynamicImports: false,
@@ -186,19 +178,7 @@ export class SecurityManager {
     };
   }
 
-  private createDefaultLevel(options: JsqOptions): SecurityLevel {
-    return {
-      allowNetwork: !options.noNetwork,
-      allowShell: !options.noShell,
-      allowFileSystem: !options.noFs,
-      allowDynamicImports: !options.noShell, // Link to shell for now
-      allowedGlobals: [], // Allow all globals in default mode
-      timeout: undefined, // No timeout in default mode
-      useVM: false,
-    };
-  }
-
-  private createUnsafeLevel(options: JsqOptions): SecurityLevel {
+  private createUnsafeLevel(_options: JsqOptions): SecurityLevel {
     return {
       allowNetwork: true,
       allowShell: true,
@@ -231,20 +211,6 @@ export class SecurityManager {
     };
   }
 
-  private createDefaultVMConfig(options: JsqOptions): VMSandboxConfig {
-    return {
-      memoryLimit: 256,
-      timeout: 60000,
-      enableAsync: true,
-      enableGenerators: true,
-      enableProxies: true,
-      enableSymbols: true,
-      maxContextSize: 50 * 1024 * 1024,
-      recycleIsolates: true,
-      isolatePoolSize: 5,
-    };
-  }
-
   private createSandboxCapabilities(): SandboxCapabilities {
     return {
       console: true,
@@ -269,36 +235,6 @@ export class SecurityManager {
       symbol: true,
       bigint: true,
       intl: false,
-      buffer: false,
-      url: false,
-      crypto: false,
-    };
-  }
-
-  private createDefaultCapabilities(): SandboxCapabilities {
-    return {
-      console: true,
-      timers: true,
-      promises: true,
-      json: true,
-      math: true,
-      date: true,
-      array: true,
-      object: true,
-      string: true,
-      number: true,
-      boolean: true,
-      regexp: true,
-      error: true,
-      map: true,
-      set: true,
-      weakmap: true,
-      weakset: true,
-      proxy: true,
-      reflect: true,
-      symbol: true,
-      bigint: true,
-      intl: true,
       buffer: false,
       url: false,
       crypto: false,
