@@ -61,6 +61,11 @@ export class SecurityManager {
     const errors: string[] = [];
     const { level } = this.context;
 
+    // Skip validation in unsafe mode
+    if (this.context.options.unsafe) {
+      return { valid: true, errors: [] };
+    }
+
     // In VM mode (which is the default), perform additional validation first
     if (this.shouldUseVM()) {
       // Check for potentially dangerous patterns
@@ -140,11 +145,17 @@ export class SecurityManager {
     let vmConfig: VMSandboxConfig | undefined;
     let capabilities: SandboxCapabilities | undefined;
 
-    // Always use sandbox mode by default
-    level = this.createSandboxLevel(options);
-    vmConfig = this.createSandboxVMConfig(options);
-    capabilities = this.createSandboxCapabilities();
-    warnings.push('🔒 Running in secure VM isolation mode');
+    // Check if unsafe mode is requested
+    if (options.unsafe) {
+      level = this.createUnsafeLevel(options);
+      warnings.push('⚠️  Running in unsafe mode - dangerous operations are allowed');
+    } else {
+      // Always use sandbox mode by default
+      level = this.createSandboxLevel(options);
+      vmConfig = this.createSandboxVMConfig(options);
+      capabilities = this.createSandboxCapabilities();
+      warnings.push('🔒 Running in secure VM isolation mode');
+    }
 
     // Add warnings for disabled features (these don't apply in sandbox mode)
     if (options.noNetwork || options.noShell || options.noFs) {
@@ -184,6 +195,18 @@ export class SecurityManager {
       allowedGlobals: [], // Allow all globals in default mode
       timeout: undefined, // No timeout in default mode
       useVM: false,
+    };
+  }
+
+  private createUnsafeLevel(options: JsqOptions): SecurityLevel {
+    return {
+      allowNetwork: true,
+      allowShell: true,
+      allowFileSystem: true,
+      allowDynamicImports: true,
+      allowedGlobals: [], // Allow all globals in unsafe mode
+      timeout: undefined, // No timeout in unsafe mode
+      useVM: false, // Don't use VM in unsafe mode
     };
   }
 

@@ -103,7 +103,8 @@ export class ExpressionEvaluator {
         return data;
       }
 
-      const $ = createSmartDollar(data);
+      // For VM mode, don't create the smart dollar - just use data
+      const $ = this.securityManager.shouldUseVM() ? data : createSmartDollar(data);
       const baseContext = await this.createEvaluationContext($, loadedLibraries, data);
       const secureContext = this.securityManager.createEvaluationContext(baseContext);
       const result = await this.executeExpression(transformedExpression, secureContext);
@@ -142,7 +143,25 @@ export class ExpressionEvaluator {
     loadedLibraries: Record<string, unknown>,
     data: unknown
   ): Promise<Record<string, unknown>> {
-    const context = {
+    // For VM mode, only pass minimal context - VM will set up the rest
+    if (this.securityManager.shouldUseVM()) {
+      const vmContext: Record<string, unknown> = {
+        // Don't pass console - VM will set up its own
+        // VM sandbox will set up its own native constructors and objects
+        ...loadedLibraries,
+        data,
+        // Pass the raw data or the $ passed in (which should be data in VM mode)
+        // $ is already set to data in VM mode from line 107
+        $: $,
+        // Pass a marker for _ to trigger setupLodashUtilities in VM
+        _: {}, // Empty object as a marker to trigger lodash utilities setup
+      };
+      this.setupLibraryAliases(vmContext, loadedLibraries);
+      return vmContext;
+    }
+    
+    // For non-VM mode, pass full context
+    const context: Record<string, unknown> = {
       $,
       console: this.createConsoleObject(),
       JSON,
@@ -158,7 +177,6 @@ export class ExpressionEvaluator {
       Reflect,
       Symbol,
       fetch: fetchFunction,
-      createSmartDollar,
       _: await this.loadUtilities(),
       ...loadedLibraries,
       data,
@@ -341,6 +359,7 @@ export class ExpressionEvaluator {
 
   private async loadUtilities(): Promise<Record<string, unknown>> {
     // Load utility functions similar to lodash
+    const unwrapValue = this.unwrapValue.bind(this);
     return {
       // Array manipulation methods
       map: <T, U>(arr: T[], fn: (item: T, index: number) => U): U[] => arr.map(fn),
@@ -628,10 +647,9 @@ export class ExpressionEvaluator {
         const unwrapped = this.unwrapValue(str) as string;
         return unwrapped
           .replace(/([a-z])([A-Z])/g, '$1 $2')
-          .replace(/[-_\s]+/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
+          .replace(/[_-]+/g, ' ')
+          .replace(/\b\w/g, letter => letter.toUpperCase())
+          .trim();
       },
       upperFirst: (str: unknown): string => {
         const unwrapped = this.unwrapValue(str) as string;
@@ -681,6 +699,62 @@ export class ExpressionEvaluator {
       clamp: (num: number, min: number, max: number): number => Math.max(min, Math.min(max, num)),
       random: (min = 0, max = 1): number => Math.random() * (max - min) + min,
 
+      // Chain method for lodash-style chaining
+      chain: (value: unknown) => {
+        const ChainableWrapper = {
+          value,
+          map: function(fn: (item: any) => any) {
+            this.value = Array.isArray(this.value) ? this.value.map(fn) : this.value;
+            return this;
+          },
+          filter: function(fn: (item: any) => boolean) {
+            this.value = Array.isArray(this.value) ? this.value.filter(fn) : this.value;
+            return this;
+          },
+          sortBy: function(keyFn: (item: any) => any) {
+            if (Array.isArray(this.value)) {
+              this.value = [...this.value].sort((a, b) => {
+                const aKey = keyFn(a);
+                const bKey = keyFn(b);
+                return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+              });
+            }
+            return this;
+          },
+          groupBy: function(keyFn: (item: any) => string) {
+            if (Array.isArray(this.value)) {
+              this.value = this.value.reduce((groups, item) => {
+                const key = keyFn(item);
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(item);
+                return groups;
+              }, {} as Record<string, any[]>);
+            }
+            return this;
+          },
+          take: function(n: number) {
+            this.value = Array.isArray(this.value) ? this.value.slice(0, n) : this.value;
+            return this;
+          },
+          flatten: function() {
+            this.value = Array.isArray(this.value) ? this.value.flat() : this.value;
+            return this;
+          },
+          uniq: function() {
+            this.value = Array.isArray(this.value) ? [...new Set(this.value)] : this.value;
+            return this;
+          },
+          compact: function() {
+            this.value = Array.isArray(this.value) ? this.value.filter(Boolean) : this.value;
+            return this;
+          },
+          value: function() {
+            return this.value;
+          }
+        };
+        return ChainableWrapper;
+      },
+
       // Function utilities
       debounce: <T extends (...args: unknown[]) => unknown>(fn: T, wait: number): T => {
         let timeout: NodeJS.Timeout;
@@ -727,7 +801,26 @@ export class ExpressionEvaluator {
         allowedGlobals: this.securityManager.getSecurityContext().level.allowedGlobals,
       };
 
-      const vmContext: VMContext = { ...context };
+      // Debug: Log context keys and types
+      if (this.options.verbose) {
+        console.error('VM Context keys:', Object.keys(context));
+        for (const [key, value] of Object.entries(context)) {
+          console.error(`  ${key}: ${typeof value}${typeof value === 'function' ? ` (${value.name || 'anonymous'})` : ''}`);
+        }
+      }
+
+      // Create a copy of context but handle $ specially
+      const vmContext: VMContext = {};
+      for (const [key, value] of Object.entries(context)) {
+        if (key === '$') {
+          // The VM sandbox will handle $ specially, extracting data and recreating it
+          // We still need to pass it, but the VM knows how to handle it
+          vmContext[key] = value;
+        } else {
+          vmContext[key] = value;
+        }
+      }
+      
       const result = await this.vmSandbox.execute(expression, vmContext, vmOptions);
       return result.value;
     } catch (error) {

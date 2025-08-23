@@ -61,30 +61,34 @@ export class VMSandboxSimple {
       await this.setupBasicEnvironment(jail, vmContext, context);
 
       // Inject ivm for result transfer
-      await jail.set('$ivm', ivm);
+      try {
+        await jail.set('$ivm', ivm);
+      } catch (ivmError) {
+        console.error('Error setting $ivm:', ivmError);
+        throw ivmError;
+      }
 
       // Set up $ first before other context variables
       if ('$' in context) {
         const $value = context.$;
-        if (typeof $value === 'function') {
+        let dataToSerialize;
+        if (Array.isArray($value)) {
+          // If $ is already an array (smart array), strip any methods
+          dataToSerialize = [...$value];
+        } else if (typeof $value === 'function') {
           // Get the actual data from the $ function
-          const actualData = ($value as any).valueOf ? ($value as any).valueOf() : $value;
-          const serializedData = await this.serializeValue(actualData);
-          await jail.set(
-            '$_data',
-            serializedData instanceof ivm.ExternalCopy ? serializedData.copyInto() : serializedData
-          );
-          await jail.set(
-            'data',
-            serializedData instanceof ivm.ExternalCopy ? serializedData.copyInto() : serializedData
-          );
-          // Create $ with createSmartDollar in the VM
-          await vmContext.eval(`
-            globalThis.$ = createSmartDollar(globalThis.$_data);
-            delete globalThis.$_data;
-          `);
+          const actualData = ($value as any).valueOf ? ($value as any).valueOf() : $value();
+          dataToSerialize = actualData;
         } else {
-          const serializedData = await this.serializeValue($value);
+          dataToSerialize = $value;
+        }
+        
+        // For null/undefined data, pass it directly without serialization
+        if (dataToSerialize === null || dataToSerialize === undefined) {
+          await jail.set('$_data', dataToSerialize);
+          await jail.set('data', dataToSerialize);
+        } else {
+          const serializedData = await this.serializeValue(dataToSerialize);
           await jail.set(
             '$_data',
             serializedData instanceof ivm.ExternalCopy ? serializedData.copyInto() : serializedData
@@ -93,12 +97,13 @@ export class VMSandboxSimple {
             'data',
             serializedData instanceof ivm.ExternalCopy ? serializedData.copyInto() : serializedData
           );
-          // Create $ with createSmartDollar in the VM
-          await vmContext.eval(`
-            globalThis.$ = createSmartDollar(globalThis.$_data);
-            delete globalThis.$_data;
-          `);
         }
+        
+        // Create $ with createSmartDollar in the VM
+        await vmContext.eval(`
+          globalThis.$ = createSmartDollar(globalThis.$_data);
+          delete globalThis.$_data;
+        `);
       }
 
       // Add user context
@@ -125,15 +130,25 @@ export class VMSandboxSimple {
           ) {
             continue;
           }
+          
+          // Skip fetch - it typically has unclonable closures
+          if (key === 'fetch') {
+            continue;
+          }
 
           // Skip $ as it's already handled
           if (key === '$') {
             continue;
           } else if (
             key === 'createSmartDollar' ||
-            (typeof value === 'function' && value.toString().includes('ChainableWrapper'))
+            (typeof value === 'function' && (
+              value.toString().includes('ChainableWrapper') ||
+              value.toString().includes('createSmartDollar') ||
+              value.name === '$'
+            ))
           ) {
-            // Skip functions that reference ChainableWrapper
+            // Skip functions that reference ChainableWrapper or are $ functions
+            console.debug(`Skipping ${key} - it's a smart dollar or related function`);
             continue;
           } else if (key === '_') {
             // Handle lodash utilities - create them directly in the VM
@@ -142,21 +157,63 @@ export class VMSandboxSimple {
           } else if (typeof value === 'function') {
             // Special handling for simple functions
             const func = value as Function;
-            await vmContext.eval(`
-              globalThis.${key} = function(...args) {
-                return globalThis._${key}_impl.applySync(undefined, args);
-              };
-            `);
-            await jail.set(`_${key}_impl`, new ivm.Reference(func));
+            const funcStr = func.toString();
+            
+            // Check if this is a smart dollar-like function
+            if (funcStr.includes('args.length === 0') && funcStr.includes('return data') ||
+                funcStr.includes('ChainableWrapper') ||
+                funcStr.includes('createSmartDollar')) {
+              console.debug(`Skipping function ${key} - detected as smart dollar function`);
+              continue;
+            }
+            
+            try {
+              await vmContext.eval(`
+                globalThis.${key} = function(...args) {
+                  return globalThis._${key}_impl.applySync(undefined, args);
+                };
+              `);
+              await jail.set(`_${key}_impl`, new ivm.Reference(func));
+            } catch (funcError) {
+              // If the function can't be cloned, skip it
+              console.debug(`Skipping function ${key} - cannot be cloned: ${funcError.message}`);
+              continue;
+            }
           } else {
-            const serialized = await this.serializeValue(value);
-            await jail.set(
-              key,
-              serialized instanceof ivm.ExternalCopy ? serialized.copyInto() : serialized
-            );
+            try {
+              const serialized = await this.serializeValue(value);
+              await jail.set(
+                key,
+                serialized instanceof ivm.ExternalCopy ? serialized.copyInto() : serialized
+              );
+            } catch (serError) {
+              console.error(`Error serializing/setting key ${key}:`, serError.message);
+              // Check if it's the specific cloning error
+              if (serError instanceof Error && serError.message.includes('could not be cloned')) {
+                console.error(`\n=== CLONING ERROR DETAILS ===`);
+                console.error(`Key: "${key}"`);
+                console.error(`Type: ${typeof value}`);
+                if (typeof value === 'function') {
+                  console.error(`Function string: ${value.toString().substring(0, 200)}...`);
+                  console.error(`Function name: ${value.name}`);
+                } else if (typeof value === 'object' && value !== null) {
+                  console.error(`Object keys: ${Object.keys(value).slice(0, 10).join(', ')}...`);
+                  // Check if object contains functions
+                  for (const [k, v] of Object.entries(value)) {
+                    if (typeof v === 'function') {
+                      console.error(`  Contains function at key "${k}": ${v.toString().substring(0, 100)}...`);
+                    }
+                  }
+                }
+                console.error(`===========================\n`);
+                throw serError; // Re-throw to identify the problematic key
+              }
+              throw serError;
+            }
           }
         } catch (error) {
           // Don't throw on individual context setting failures, just skip
+          console.debug(`Skipping context key ${key}:`, error);
           continue;
         }
       }
@@ -175,10 +232,16 @@ export class VMSandboxSimple {
         wrappedCode.includes('await') ||
         wrappedCode.includes('async') ||
         wrappedCode.includes('Promise.');
-      const result = await script.run(vmContext, {
-        timeout,
-        ...(needsAsync ? { promise: true } : {}),
-      });
+      let result;
+      try {
+        result = await script.run(vmContext, {
+          timeout,
+          ...(needsAsync ? { promise: true } : {}),
+        });
+      } catch (runError) {
+        console.error('Script run error:', runError);
+        throw runError;
+      }
 
       const executionTime = Math.max(1, Date.now() - startTime); // Ensure non-zero time
 
@@ -189,6 +252,16 @@ export class VMSandboxSimple {
       };
     } catch (error) {
       const executionTime = Math.max(1, Date.now() - startTime); // Ensure non-zero time
+      
+      // Check if this is a cloning error from isolated-vm
+      if (error instanceof Error && error.message.includes('could not be cloned')) {
+        console.error('Original cloning error:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Error occurred at execution time:', executionTime, 'ms');
+        // Try to provide a more helpful error message
+        throw new Error(`VM execution failed: ${error.message}`);
+      }
+      
       throw this.createSandboxError(error, executionTime);
     } finally {
       // Cleanup
@@ -380,216 +453,10 @@ export class VMSandboxSimple {
       `);
     }
 
-    // Set up a simple createSmartDollar function for the VM
-    // This adds chainable methods to arrays
-    await vmContext.eval(`
-      globalThis.createSmartDollar = function(data) {
-        // For arrays, add chainable methods
-        if (Array.isArray(data)) {
-          // Create a new array with chainable methods
-          const result = [...data];
-          
-          // Override native methods to return chainable results
-          result.filter = function(...args) {
-            const filtered = Array.prototype.filter.apply(this, args);
-            return createSmartDollar(filtered);
-          };
-          
-          result.map = function(...args) {
-            const mapped = Array.prototype.map.apply(this, args);
-            return createSmartDollar(mapped);
-          };
-          
-          result.slice = function(...args) {
-            const sliced = Array.prototype.slice.apply(this, args);
-            return createSmartDollar(sliced);
-          };
-          
-          result.concat = function(...args) {
-            const concatenated = Array.prototype.concat.apply(this, args);
-            return createSmartDollar(concatenated);
-          };
-          
-          // Add pluck method
-          result.pluck = function(key) {
-            return createSmartDollar(this.map(item => item && item[key]));
-          };
-          
-          // Add where method
-          result.where = function(key, value) {
-            return createSmartDollar(this.filter(item => item && item[key] === value));
-          };
-          
-          // Add sortBy method
-          result.sortBy = function(key) {
-            return createSmartDollar([...this].sort((a, b) => {
-              const aVal = a && a[key];
-              const bVal = b && b[key];
-              if (aVal < bVal) return -1;
-              if (aVal > bVal) return 1;
-              return 0;
-            }));
-          };
-          
-          // Add take method
-          result.take = function(n) {
-            return createSmartDollar(this.slice(0, n));
-          };
-          
-          // Add skip method
-          result.skip = function(n) {
-            return createSmartDollar(this.slice(n));
-          };
-          
-          // Add sum method
-          result.sum = function(key) {
-            return this.reduce((sum, item) => {
-              const value = key ? (item && item[key]) : item;
-              return sum + (typeof value === 'number' ? value : 0);
-            }, 0);
-          };
-          
-          // Add size method
-          result.size = function() {
-            return this.length;
-          };
-          
-          // Add isEmpty method
-          result.isEmpty = function() {
-            return this.length === 0;
-          };
-          
-          // Add compact method
-          result.compact = function() {
-            return createSmartDollar(this.filter(item => item));
-          };
-          
-          // Add uniq method
-          result.uniq = function() {
-            return createSmartDollar([...new Set(this)]);
-          };
-          
-          // Add flatten method
-          result.flatten = function() {
-            return createSmartDollar(this.flat());
-          };
-          
-          // Add reverse method
-          result.reverse = function() {
-            return createSmartDollar([...this].reverse());
-          };
-          
-          // Add sample method
-          result.sample = function() {
-            return this[Math.floor(Math.random() * this.length)];
-          };
-          
-          // Add groupBy method
-          result.groupBy = function(keyFn) {
-            const grouped = {};
-            this.forEach(item => {
-              const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-              if (!grouped[key]) grouped[key] = [];
-              grouped[key].push(item);
-            });
-            return grouped;
-          };
-          
-          // Add async methods
-          result.forEachAsync = async function(asyncFn) {
-            await Promise.all(this.map(item => asyncFn(item)));
-          };
-          
-          result.mapAsync = async function(asyncFn) {
-            const results = await Promise.all(this.map(item => asyncFn(item)));
-            return createSmartDollar(results);
-          };
-          
-          result.forEachAsyncSeq = async function(asyncFn) {
-            for (const item of this) {
-              await asyncFn(item);
-            }
-          };
-          
-          result.mapAsyncSeq = async function(asyncFn) {
-            const results = [];
-            for (const item of this) {
-              results.push(await asyncFn(item));
-            }
-            return createSmartDollar(results);
-          };
-          
-          return result;
-        }
-        
-        // For objects, add object methods
-        if (typeof data === 'object' && data !== null) {
-          const result = {...data};
-          
-          // Add keys method
-          result.keys = function() {
-            return createSmartDollar(Object.keys(this));
-          };
-          
-          // Add values method
-          result.values = function() {
-            return createSmartDollar(Object.values(this));
-          };
-          
-          // Add entries method
-          result.entries = function() {
-            return createSmartDollar(Object.entries(this));
-          };
-          
-          // Add pick method
-          result.pick = function(keys) {
-            const picked = {};
-            keys.forEach(key => {
-              if (key in this) picked[key] = this[key];
-            });
-            return createSmartDollar(picked);
-          };
-          
-          // Add omit method
-          result.omit = function(keys) {
-            const omitted = {...this};
-            keys.forEach(key => delete omitted[key]);
-            return createSmartDollar(omitted);
-          };
-          
-          return result;
-        }
-        
-        // For other types (strings, numbers, etc), create a wrapper with chainable methods
-        const wrapper = function(...args) {
-          if (args.length === 0) {
-            return data;
-          }
-          return createSmartDollar(args[0]);
-        };
-        
-        // Add common chainable methods for primitives
-        wrapper.toString = function() { return String(data); };
-        wrapper.valueOf = function() { return data; };
-        wrapper.toJSON = function() { return data; };
-        
-        // Add async methods that work on single values
-        wrapper.mapAsync = async function(asyncFn) {
-          const result = await asyncFn(data);
-          return createSmartDollar([result]);
-        };
-        
-        wrapper.forEachAsync = async function(asyncFn) {
-          await asyncFn(data);
-          return wrapper;
-        };
-        
-        wrapper.mapAsyncSeq = wrapper.mapAsync;
-        wrapper.forEachAsyncSeq = wrapper.forEachAsync;
-        
-        return wrapper;
-      };
-    `);
+    // Set up the createSmartDollar function for the VM
+    // Load the implementation from separate file to keep it clean
+    const createSmartDollarCode = require('./vm-create-smart-dollar.js');
+    await vmContext.eval(createSmartDollarCode);
   }
 
   private async setupLodashUtilities(jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
@@ -604,17 +471,23 @@ export class VMSandboxSimple {
           }
           return chunks;
         },
+        filter: function(arr, predicate) {
+          return arr.filter(predicate);
+        },
         uniqBy: function(arr, keyFn) {
           const seen = new Set();
           const result = [];
           for (const item of arr) {
-            const key = keyFn(item);
+            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             if (!seen.has(key)) {
               seen.add(key);
               result.push(item);
             }
           }
           return result;
+        },
+        uniq: function(arr) {
+          return [...new Set(arr)];
         },
         orderBy: function(arr, keys, orders) {
           if (!Array.isArray(keys)) keys = [keys];
@@ -633,9 +506,18 @@ export class VMSandboxSimple {
             return 0;
           });
         },
+        sortBy: function(arr, keyFn) {
+          return [...arr].sort((a, b) => {
+            const aVal = typeof keyFn === 'function' ? keyFn(a) : a[keyFn];
+            const bVal = typeof keyFn === 'function' ? keyFn(b) : b[keyFn];
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
+            return 0;
+          });
+        },
         groupBy: function(arr, keyFn) {
           return arr.reduce((groups, item) => {
-            const key = keyFn(item);
+            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             if (!groups[key]) groups[key] = [];
             groups[key].push(item);
             return groups;
@@ -645,8 +527,304 @@ export class VMSandboxSimple {
           return arr.reduce((acc, val) => 
             acc.concat(Array.isArray(val) ? val : [val]), []);
         },
+        flattenDeep: function flatten(arr) {
+          return arr.reduce((acc, val) => 
+            Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
+        },
         compact: function(arr) {
           return arr.filter(Boolean);
+        },
+        sum: function(arr) {
+          return arr.reduce((sum, n) => sum + (typeof n === 'number' ? n : 0), 0);
+        },
+        mean: function(arr) {
+          const nums = arr.filter(n => typeof n === 'number');
+          return nums.length ? nums.reduce((sum, n) => sum + n, 0) / nums.length : NaN;
+        },
+        min: function(arr) {
+          return Math.min(...arr.filter(n => typeof n === 'number'));
+        },
+        max: function(arr) {
+          return Math.max(...arr.filter(n => typeof n === 'number'));
+        },
+        minBy: function(arr, keyFn) {
+          if (!arr || arr.length === 0) return undefined;
+          return arr.reduce((min, item) => {
+            const minVal = typeof keyFn === 'function' ? keyFn(min) : min[keyFn];
+            const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+            return itemVal < minVal ? item : min;
+          });
+        },
+        maxBy: function(arr, keyFn) {
+          if (!arr || arr.length === 0) return undefined;
+          return arr.reduce((max, item) => {
+            const maxVal = typeof keyFn === 'function' ? keyFn(max) : max[keyFn];
+            const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+            return itemVal > maxVal ? item : max;
+          });
+        },
+        countBy: function(arr, keyFn) {
+          return arr.reduce((counts, item) => {
+            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+            counts[key] = (counts[key] || 0) + 1;
+            return counts;
+          }, {});
+        },
+        keyBy: function(arr, keyFn) {
+          return arr.reduce((obj, item) => {
+            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+            obj[key] = item;
+            return obj;
+          }, {});
+        },
+        takeWhile: function(arr, predicate) {
+          const result = [];
+          for (const item of arr) {
+            if (!predicate(item)) break;
+            result.push(item);
+          }
+          return result;
+        },
+        dropWhile: function(arr, predicate) {
+          let i = 0;
+          while (i < arr.length && predicate(arr[i])) i++;
+          return arr.slice(i);
+        },
+        shuffle: function(arr) {
+          const result = [...arr];
+          for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+          }
+          return result;
+        },
+        sample: function(arr) {
+          return arr[Math.floor(Math.random() * arr.length)];
+        },
+        sampleSize: function(arr, n) {
+          const shuffled = this.shuffle(arr);
+          return shuffled.slice(0, Math.min(n, arr.length));
+        },
+        // Object methods
+        pick: function(obj, keys) {
+          const result = {};
+          for (const key of keys) {
+            if (key in obj) result[key] = obj[key];
+          }
+          return result;
+        },
+        omit: function(obj, keys) {
+          const result = {...obj};
+          for (const key of keys) {
+            delete result[key];
+          }
+          return result;
+        },
+        invert: function(obj) {
+          const result = {};
+          for (const [key, value] of Object.entries(obj)) {
+            result[value] = key;
+          }
+          return result;
+        },
+        merge: function(...objects) {
+          const result = {};
+          for (const obj of objects) {
+            if (obj && typeof obj === 'object') {
+              Object.assign(result, obj);
+            }
+          }
+          return result;
+        },
+        defaults: function(obj, ...sources) {
+          const result = {...obj};
+          for (const source of sources) {
+            if (source && typeof source === 'object') {
+              for (const [key, value] of Object.entries(source)) {
+                if (!(key in result)) {
+                  result[key] = value;
+                }
+              }
+            }
+          }
+          return result;
+        },
+        fromPairs: function(pairs) {
+          const result = {};
+          for (const [key, value] of pairs) {
+            result[key] = value;
+          }
+          return result;
+        },
+        // Collection methods
+        size: function(collection) {
+          if (Array.isArray(collection) || typeof collection === 'string') {
+            return collection.length;
+          }
+          if (collection && typeof collection === 'object') {
+            return Object.keys(collection).length;
+          }
+          return 0;
+        },
+        isEmpty: function(value) {
+          if (value == null) return true;
+          if (Array.isArray(value) || typeof value === 'string') {
+            return value.length === 0;
+          }
+          if (typeof value === 'object') {
+            return Object.keys(value).length === 0;
+          }
+          return true;
+        },
+        includes: function(collection, value) {
+          if (Array.isArray(collection) || typeof collection === 'string') {
+            return collection.includes(value);
+          }
+          if (collection && typeof collection === 'object') {
+            return Object.values(collection).includes(value);
+          }
+          return false;
+        },
+        // String methods
+        camelCase: function(str) {
+          return str
+            .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
+            .replace(/^[A-Z]/, chr => chr.toLowerCase());
+        },
+        kebabCase: function(str) {
+          return str
+            .replace(/[A-Z]/g, function(letter) { return '-' + letter.toLowerCase(); })
+            .replace(/[^a-zA-Z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase();
+        },
+        snakeCase: function(str) {
+          return str
+            .replace(/[A-Z]/g, function(letter) { return '_' + letter.toLowerCase(); })
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase();
+        },
+        startCase: function(str) {
+          return str
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/[_-]+/g, ' ')
+            .replace(/\\b\\w/g, function(letter) { return letter.toUpperCase(); })
+            .trim();
+        },
+        capitalize: function(str) {
+          return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        },
+        // Utility methods
+        times: function(n, iteratee) {
+          const result = [];
+          const fn = iteratee || (i => i);
+          for (let i = 0; i < n; i++) {
+            result.push(fn(i));
+          }
+          return result;
+        },
+        range: function(...args) {
+          let start = 0, end = 0, step = 1;
+          if (args.length === 1) {
+            end = args[0];
+          } else if (args.length === 2) {
+            [start, end] = args;
+          } else if (args.length >= 3) {
+            [start, end, step] = args;
+          }
+          
+          const result = [];
+          if (step > 0) {
+            for (let i = start; i < end; i += step) {
+              result.push(i);
+            }
+          } else if (step < 0) {
+            for (let i = start; i > end; i += step) {
+              result.push(i);
+            }
+          }
+          return result;
+        },
+        keys: function(obj) {
+          return Object.keys(obj);
+        },
+        values: function(obj) {
+          return Object.values(obj);
+        },
+        identity: function(value) {
+          return value;
+        },
+        // Chain method for lodash-style chaining
+        chain: function(value) {
+          const ChainableWrapper = {
+            value: value,
+            map: function(fn) {
+              this.value = Array.isArray(this.value) ? this.value.map(fn) : this.value;
+              return this;
+            },
+            filter: function(fn) {
+              this.value = Array.isArray(this.value) ? this.value.filter(fn) : this.value;
+              return this;
+            },
+            sortBy: function(keyFn) {
+              if (Array.isArray(this.value)) {
+                this.value = [...this.value].sort((a, b) => {
+                  const aKey = typeof keyFn === 'function' ? keyFn(a) : a[keyFn];
+                  const bKey = typeof keyFn === 'function' ? keyFn(b) : b[keyFn];
+                  return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+                });
+              }
+              return this;
+            },
+            groupBy: function(keyFn) {
+              if (Array.isArray(this.value)) {
+                this.value = this.value.reduce((groups, item) => {
+                  const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+                  if (!groups[key]) groups[key] = [];
+                  groups[key].push(item);
+                  return groups;
+                }, {});
+              }
+              return this;
+            },
+            take: function(n) {
+              this.value = Array.isArray(this.value) ? this.value.slice(0, n) : this.value;
+              return this;
+            },
+            flatten: function() {
+              this.value = Array.isArray(this.value) ? this.value.flat() : this.value;
+              return this;
+            },
+            uniq: function() {
+              this.value = Array.isArray(this.value) ? [...new Set(this.value)] : this.value;
+              return this;
+            },
+            compact: function() {
+              this.value = Array.isArray(this.value) ? this.value.filter(Boolean) : this.value;
+              return this;
+            },
+            value: function() {
+              return this.value;
+            }
+          };
+          return ChainableWrapper;
+        },
+        constant: function(value) {
+          return function() { return value; };
+        },
+        random: function(lower, upper) {
+          if (arguments.length === 0) {
+            return Math.random();
+          }
+          if (upper === undefined) {
+            upper = lower;
+            lower = 0;
+          }
+          return Math.random() * (upper - lower) + lower;
+        },
+        clamp: function(number, lower, upper) {
+          return Math.min(Math.max(number, lower), upper);
         }
       };
     `);
@@ -663,7 +841,15 @@ export class VMSandboxSimple {
 
     if (typeof value === 'function') {
       // Special handling for smart $ functions
-      if (value.toString().includes('ChainableWrapper') || value.name === '$') {
+      // Check multiple indicators that this is a $ function
+      const funcStr = value.toString();
+      const isSmartDollar = value.name === '$' || 
+                           funcStr.includes('ChainableWrapper') || 
+                           funcStr.includes('createSmartDollar') ||
+                           (funcStr.includes('args.length === 0') && funcStr.includes('return data'));
+      
+                           
+      if (isSmartDollar) {
         // For smart $ functions, we need to get the actual data
         try {
           // Try valueOf first for simpler extraction
@@ -711,16 +897,27 @@ export class VMSandboxSimple {
 
       // Create a function reference that can be called from VM
       const func = value as Function;
-      return new ivm.Reference(function (...args: any[]) {
-        try {
-          return func.apply(null, args);
-        } catch (error) {
-          throw new Error(error instanceof Error ? error.message : String(error));
-        }
-      });
+      try {
+        return new ivm.Reference(function (...args: any[]) {
+          try {
+            return func.apply(null, args);
+          } catch (error) {
+            throw new Error(error instanceof Error ? error.message : String(error));
+          }
+        });
+      } catch (refError) {
+        // If we can't create a reference (e.g., function has unclonable closures), 
+        // return a placeholder
+        console.debug('Cannot create reference for function:', func.name || 'anonymous');
+        return null;
+      }
     }
 
     try {
+      // For arrays with extra properties, strip them to make a clean array
+      if (Array.isArray(value)) {
+        return new ivm.ExternalCopy([...value]);
+      }
       return new ivm.ExternalCopy(value);
     } catch (error) {
       // If serialization fails, return a simple representation
@@ -780,7 +977,76 @@ export class VMSandboxSimple {
       code.includes('await') || code.includes('async') || code.includes('Promise.');
     const trimmedCode = code.trim();
     
+    // Check if the code is already wrapped in an IIFE
+    const isAlreadyWrapped = 
+      (trimmedCode.startsWith('(') && trimmedCode.endsWith(')()')) ||
+      (trimmedCode.startsWith('(async') && trimmedCode.endsWith(')()'));
     
+    // If already wrapped, just return the code with result handling
+    if (isAlreadyWrapped) {
+      return `
+        (function() {
+          try {
+            const __result = ${code};
+            // Return primitives directly
+            if (__result === null || __result === undefined) {
+              return __result;
+            }
+            if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
+              return __result;
+            }
+            // For functions (like the $ function), try to get their value
+            if (typeof __result === 'function') {
+              // Check if it's a smart dollar function that has valueOf
+              if (__result.valueOf && typeof __result.valueOf === 'function') {
+                const value = __result.valueOf();
+                // Return the unwrapped value
+                if (value === null || value === undefined) {
+                  return value;
+                }
+                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                  return value;
+                }
+                if (Array.isArray(value)) {
+                  return new $ivm.ExternalCopy([...value]).copyInto();
+                }
+                if (typeof value === 'object') {
+                  return new $ivm.ExternalCopy(value).copyInto();
+                }
+              }
+              // For other functions, we can't return them, so return undefined
+              return undefined;
+            }
+            // For arrays and objects, clone them before returning
+            if (Array.isArray(__result)) {
+              // For arrays, we need to get the raw array data without methods
+              // Use Array.from to create a clean array
+              const rawArray = Array.from(__result);
+              return new $ivm.ExternalCopy(rawArray).copyInto();
+            }
+            // For objects
+            if (typeof __result === 'object') {
+              // If it has a valueOf method (chainable), get the value
+              if (__result.valueOf && typeof __result.valueOf === 'function') {
+                const value = __result.valueOf();
+                if (value !== __result) {
+                  return new $ivm.ExternalCopy(value).copyInto();
+                }
+              }
+              // Otherwise, copy the object as-is
+              return new $ivm.ExternalCopy(__result).copyInto();
+            }
+            // Default case
+            return new $ivm.ExternalCopy(__result).copyInto();
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+      `;
+    }
 
     // Check if this is a complete statement that doesn't need return wrapping
     const isCompleteStatement =
@@ -825,7 +1091,29 @@ export class VMSandboxSimple {
               (async function() {
                 try {
                   ${codeWithoutLastLine}
-                  return ${lastLineWithoutSemi};
+                  const __result = ${lastLineWithoutSemi};
+                  // Handle async results properly
+                  if (__result === null || __result === undefined) {
+                    return __result;
+                  }
+                  if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
+                    return __result;
+                  }
+                  // For arrays and objects, clone them before returning
+                  if (Array.isArray(__result)) {
+                    const rawArray = [...__result];
+                    return new $ivm.ExternalCopy(rawArray).copyInto();
+                  }
+                  if (typeof __result === 'object') {
+                    if (__result.valueOf && typeof __result.valueOf === 'function') {
+                      const value = __result.valueOf();
+                      if (value !== __result) {
+                        return new $ivm.ExternalCopy(value).copyInto();
+                      }
+                    }
+                    return new $ivm.ExternalCopy(__result).copyInto();
+                  }
+                  return new $ivm.ExternalCopy(__result).copyInto();
                 } catch (error) {
                   if (error instanceof Error) {
                     throw new Error(error.message);
@@ -862,7 +1150,29 @@ export class VMSandboxSimple {
               (async function() {
                 try {
                   ${otherStatements.join(';\n')};
-                  return ${lastStatement};
+                  const __result = ${lastStatement};
+                  // Handle async results properly
+                  if (__result === null || __result === undefined) {
+                    return __result;
+                  }
+                  if (typeof __result === 'string' || typeof __result === 'number' || typeof __result === 'boolean') {
+                    return __result;
+                  }
+                  // For arrays and objects, clone them before returning
+                  if (Array.isArray(__result)) {
+                    const rawArray = [...__result];
+                    return new $ivm.ExternalCopy(rawArray).copyInto();
+                  }
+                  if (typeof __result === 'object') {
+                    if (__result.valueOf && typeof __result.valueOf === 'function') {
+                      const value = __result.valueOf();
+                      if (value !== __result) {
+                        return new $ivm.ExternalCopy(value).copyInto();
+                      }
+                    }
+                    return new $ivm.ExternalCopy(__result).copyInto();
+                  }
+                  return new $ivm.ExternalCopy(__result).copyInto();
                 } catch (error) {
                   if (error instanceof Error) {
                     throw new Error(error.message);
@@ -904,10 +1214,12 @@ export class VMSandboxSimple {
         `;
       } else {
         // For async expressions
+        // Check if the code already has await
+        const hasAwait = code.includes('await');
         return `
           (async function() {
             try {
-              const __result = await (${code});
+              const __result = ${hasAwait ? code : `await (${code})`};
               // Return primitives directly
               if (__result === null || __result === undefined) {
                 return __result;

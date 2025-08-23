@@ -30,7 +30,7 @@ describe('Performance Tests', () => {
 
       const startTime = Date.now();
       const result = await evaluator.evaluate(
-        '$.filter(item => item.value > 500).value.length',
+        '$.filter(item => item.value > 500).length()',
         largeArray
       );
       const endTime = Date.now();
@@ -75,7 +75,7 @@ describe('Performance Tests', () => {
       };
 
       const expression = `
-        $.users.value
+        $.users
           .filter(user => user.orders.length > 0)
           .map(user => ({
             name: user.name,
@@ -210,7 +210,7 @@ describe('Performance Tests', () => {
       };
 
       const complexExpression = `
-        $.sales.value
+        $.sales
           .filter(sale => sale.amount > 100)
           .map(sale => ({ category: sale.category, amount: sale.amount }))
       `;
@@ -232,7 +232,7 @@ describe('Performance Tests', () => {
       }));
 
       const pipeExpression = `
-        $.value.filter(item => item.active).filter(item => item.score > 50)
+        $.filter(item => item.active).filter(item => item.score > 50)
       `;
 
       const startTime = Date.now();

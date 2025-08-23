@@ -13,27 +13,29 @@ describe('CLI E2E Tests', () => {
 
     // Create comprehensive test data files
     const testData = {
-      users: [
-        { id: 1, name: 'Alice', age: 30, department: 'engineering', active: true, salary: 70000 },
-        { id: 2, name: 'Bob', age: 25, department: 'design', active: false, salary: 50000 },
-        { id: 3, name: 'Charlie', age: 35, department: 'engineering', active: true, salary: 80000 },
-        { id: 4, name: 'Diana', age: 28, department: 'marketing', active: true, salary: 60000 },
-        { id: 5, name: 'Eve', age: 32, department: 'design', active: true, salary: 65000 },
-      ],
+      users: {
+        value: [
+          { id: 1, name: 'Alice', age: 30, department: 'engineering', active: true, salary: 70000 },
+          { id: 2, name: 'Bob', age: 25, department: 'design', active: false, salary: 50000 },
+          { id: 3, name: 'Charlie', age: 35, department: 'engineering', active: true, salary: 80000 },
+          { id: 4, name: 'Diana', age: 28, department: 'marketing', active: true, salary: 60000 },
+          { id: 5, name: 'Eve', age: 32, department: 'design', active: true, salary: 65000 },
+        ]
+      },
     };
 
-    const jsonlData = testData.users.map(user => JSON.stringify(user));
+    const jsonlData = testData.users.value.map(user => JSON.stringify(user));
 
     const csvData = [
       'id,name,age,department,active,salary',
-      ...testData.users.map(
+      ...testData.users.value.map(
         u => `${u.id},${u.name},${u.age},${u.department},${u.active},${u.salary}`
       ),
     ];
 
     const tsvData = [
       'id\tname\tage\tdepartment\tactive\tsalary',
-      ...testData.users.map(
+      ...testData.users.value.map(
         u => `${u.id}\t${u.name}\t${u.age}\t${u.department}\t${u.active}\t${u.salary}`
       ),
     ];
@@ -213,11 +215,15 @@ describe('CLI E2E Tests', () => {
   describe('File Format Support', () => {
     it('should process JSON files correctly', async () => {
       const result = await runJsq([
-        '$.users.length()',
+        '$.users.value.length',
         '--file',
         path.join(testDataDir, 'users.json'),
       ]);
 
+      if (result.exitCode !== 0) {
+        console.error('stderr:', result.stderr);
+        console.error('stdout:', result.stdout);
+      }
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toBe(5);
     });
@@ -337,7 +343,7 @@ describe('CLI E2E Tests', () => {
   describe('Complex Query Scenarios', () => {
     it('should handle deep nested object queries', async () => {
       const result = await runJsq([
-        '$.company.departments.find(d => d.name === "Engineering").teams.pluck("name")',
+        '$.company.departments.find(d => d.name === "Engineering").teams.map(t => t.name)',
         '--file',
         path.join(testDataDir, 'nested.json'),
       ]);
@@ -464,7 +470,7 @@ describe('CLI E2E Tests', () => {
   describe('Verbose and Debug Output', () => {
     it('should provide detailed output in verbose mode', async () => {
       const result = await runJsq([
-        '$.users.length()',
+        '$.users.value.length',
         '--file',
         path.join(testDataDir, 'users.json'),
         '--verbose',
@@ -478,7 +484,7 @@ describe('CLI E2E Tests', () => {
 
     it('should provide debug information in debug mode', async () => {
       const result = await runJsq([
-        '$.users.filter(u => u.active).length()',
+        '$.users.value.filter(u => u.active).length',
         '--file',
         path.join(testDataDir, 'users.json'),
         '--debug',

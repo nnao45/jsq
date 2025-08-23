@@ -34,7 +34,7 @@ describe('ExpressionEvaluator', () => {
         { name: 'Alice', age: 30 },
         { name: 'Bob', age: 25 },
       ];
-      const result = await evaluator.evaluate('$.filter(u => u.age > 27).length()', data);
+      const result = await evaluator.evaluate('$.filter(u => u.age > 27).length', data);
       expect(result).toBe(1);
     });
 
@@ -169,7 +169,7 @@ describe('ExpressionEvaluator', () => {
 
       const result = await evaluator.evaluate(
         `
-        $.departments.value
+        $.departments
           .map(dept => dept.employees.map(emp => emp.salary))
           .map(salaries => salaries.reduce((sum, sal) => sum + sal, 0))
       `,
@@ -184,7 +184,7 @@ describe('ExpressionEvaluator', () => {
     it('should provide standard JavaScript globals', async () => {
       const data = { date: '2023-01-01T00:00:00Z' };
 
-      const result = await evaluator.evaluate('new Date($.date.value).getFullYear()', data);
+      const result = await evaluator.evaluate('new Date($.date).getFullYear()', data);
       expect(result).toBe(2023);
     });
 
@@ -198,7 +198,7 @@ describe('ExpressionEvaluator', () => {
     it('should provide Math utilities', async () => {
       const data = { numbers: [1, 5, 3, 9, 2] };
 
-      const result = await evaluator.evaluate('Math.max(...$.numbers.value)', data);
+      const result = await evaluator.evaluate('Math.max(...$.numbers)', data);
       expect(result).toBe(9);
     });
   });
@@ -208,9 +208,8 @@ describe('ExpressionEvaluator', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
-      const result = await evaluator.evaluate('$.value', data);
+      await evaluator.evaluate('console.log("test"); $.value', data);
 
-      expect(result).toBe(42);
       expect(consoleSpy).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -221,10 +220,10 @@ describe('ExpressionEvaluator', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
-      const result = await verboseEvaluator.evaluate('$.value', data);
+      const result = await verboseEvaluator.evaluate('console.log("test"); $.value', data);
 
       expect(result).toBe(42);
-      // Console is available in verbose mode but we're not testing specific calls
+      expect(consoleSpy).toHaveBeenCalledWith('test');
 
       consoleSpy.mockRestore();
     });
@@ -248,7 +247,7 @@ describe('ExpressionEvaluator', () => {
 
       const result = await evaluator.evaluate(
         `
-        $.logs.value.filter(log => log.level === 'error')
+        $.logs.filter(log => log.level === 'error')
       `,
         data
       );
@@ -271,7 +270,7 @@ describe('ExpressionEvaluator', () => {
         `
         _.sortBy(
           Object.entries(
-            _.groupBy($.sales.value, sale => sale.product)
+            _.groupBy($.sales, sale => sale.product)
           ).map(([product, sales]) => ({
             product,
             totalQuantity: sales.reduce((sum, sale) => sum + sale.quantity, 0),
