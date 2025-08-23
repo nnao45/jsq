@@ -1,31 +1,30 @@
 import type { JsqOptions } from '@/types/cli';
+import type { VMContext, VMOptions } from '@/types/sandbox';
 import type { ChainableWrapper } from './chainable';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
 import { SecurityManager } from './security-manager';
 
 // Conditional VM imports to avoid issues in test environments
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let VMSandboxSimple: any;
-let VMOptions: any;
-let VMContext: any;
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
+let VMSandboxSimpleClass: any;
 
 try {
   // Only import VM modules when actually needed
   const vmModule = require('./vm-sandbox-simple');
-  VMSandboxSimple = vmModule.VMSandboxSimple;
-
-  const sandboxTypes = require('@/types/sandbox');
-  VMOptions = sandboxTypes.VMOptions;
-  VMContext = sandboxTypes.VMContext;
+  VMSandboxSimpleClass = vmModule.VMSandboxSimple;
+  VMSandboxSimple = VMSandboxSimpleClass;
 } catch (vmError) {
   // VM modules not available, sandbox functionality will be disabled
-  console.debug('VM modules not available:', vmError.message);
+  console.debug('VM modules not available:', (vmError as Error).message);
 }
 
 export class ExpressionEvaluator {
   private options: JsqOptions;
   private securityManager: SecurityManager;
-  private vmSandbox: VMSandboxSimple | null = null;
+  private vmSandbox: typeof VMSandboxSimple | null = null;
   private static warningShown = false;
 
   constructor(options: JsqOptions) {
@@ -79,8 +78,6 @@ export class ExpressionEvaluator {
       if (!validation.valid) {
         throw new Error(`Security validation failed: ${validation.errors.join(', ')}`);
       }
-
-      const loadedLibraries = {};
 
       // Special case: if expression is exactly '$' and data is null/undefined, return the raw data
       if (transformedExpression.trim() === '$' && (data === null || data === undefined)) {
@@ -318,7 +315,6 @@ export class ExpressionEvaluator {
 
   private async loadUtilities(): Promise<Record<string, unknown>> {
     // Load utility functions similar to lodash
-    const unwrapValue = this.unwrapValue.bind(this);
     return {
       // Array manipulation methods
       map: <T, U>(arr: T[], fn: (item: T, index: number) => U): U[] => arr.map(fn),
@@ -355,10 +351,10 @@ export class ExpressionEvaluator {
       ): T[] => {
         const createComparator =
           (keys: string[] | ((item: T) => unknown)[], orders: ('asc' | 'desc')[]) =>
-          // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex sorting logic required for multi-key orderBy
           (a: T, b: T): number => {
             for (let i = 0; i < keys.length; i++) {
               const key = keys[i];
+              if (!key) continue;
               const order = orders[i] || 'asc';
 
               let aVal: unknown, bVal: unknown;
@@ -432,7 +428,7 @@ export class ExpressionEvaluator {
       drop: <T>(arr: T[], count: number): T[] => arr.slice(count),
       dropWhile: <T>(arr: T[], predicate: (item: T) => boolean): T[] => {
         let index = 0;
-        while (index < arr.length && predicate(arr[index])) {
+        while (index < arr.length && arr[index] !== undefined && predicate(arr[index])) {
           index++;
         }
         return arr.slice(index);
@@ -442,7 +438,10 @@ export class ExpressionEvaluator {
         const result = [...arr];
         for (let i = result.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [result[i], result[j]] = [result[j], result[i]];
+          const temp = result[i];
+          if (temp !== undefined && result[j] !== undefined) {
+            [result[i], result[j]] = [result[j], temp];
+          }
         }
         return result;
       },
@@ -662,14 +661,17 @@ export class ExpressionEvaluator {
       chain: (value: unknown) => {
         const ChainableWrapper = {
           value: value,
+          // biome-ignore lint/suspicious/noExplicitAny: Generic chainable methods need any type
           map: function (fn: (item: any) => any) {
             this.value = Array.isArray(this.value) ? this.value.map(fn) : this.value;
             return this;
           },
+          // biome-ignore lint/suspicious/noExplicitAny: Generic chainable methods need any type
           filter: function (fn: (item: any) => boolean) {
             this.value = Array.isArray(this.value) ? this.value.filter(fn) : this.value;
             return this;
           },
+          // biome-ignore lint/suspicious/noExplicitAny: Generic chainable methods need any type
           sortBy: function (keyFn: (item: any) => any) {
             if (Array.isArray(this.value)) {
               this.value = [...this.value].sort((a, b) => {
@@ -680,6 +682,7 @@ export class ExpressionEvaluator {
             }
             return this;
           },
+          // biome-ignore lint/suspicious/noExplicitAny: Generic chainable methods need any type
           groupBy: function (keyFn: (item: any) => string) {
             if (Array.isArray(this.value)) {
               this.value = this.value.reduce(
@@ -689,6 +692,7 @@ export class ExpressionEvaluator {
                   groups[key].push(item);
                   return groups;
                 },
+                // biome-ignore lint/suspicious/noExplicitAny: Generic array type needed
                 {} as Record<string, any[]>
               );
             }
@@ -710,7 +714,7 @@ export class ExpressionEvaluator {
             this.value = Array.isArray(this.value) ? this.value.filter(Boolean) : this.value;
             return this;
           },
-          value: function () {
+          getValue: function () {
             return this.value;
           },
         };

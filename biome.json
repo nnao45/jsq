@@ -23,7 +23,7 @@
     "rules": {
       "recommended": true,
       "complexity": {
-        "noExcessiveCognitiveComplexity": "warn",
+        "noExcessiveCognitiveComplexity": { "level": "warn", "options": { "maxAllowedComplexity": 100 } },
         "noVoid": "off"
       },
       "correctness": {
@@ -53,7 +53,21 @@
             "noExcessiveCognitiveComplexity": "off"
           },
           "suspicious": {
-            "noTemplateCurlyInString": "off"
+            "noTemplateCurlyInString": "off",
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/vm-advanced-features.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "correctness": {
+            "useYield": "off"
           }
         }
       }

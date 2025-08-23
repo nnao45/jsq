@@ -49,7 +49,7 @@ export class VMSandboxSimple {
             { code: 'undefined' }, // Minimal snapshot
           ]),
         });
-      } catch (snapshotError) {
+      } catch (_snapshotError) {
         // Fallback to basic isolate if snapshot fails
         isolate = new ivm.Isolate({ memoryLimit });
       }
@@ -72,13 +72,15 @@ export class VMSandboxSimple {
       // Set up $ first before other context variables
       if ('$' in context) {
         const $value = context.$;
-        let dataToSerialize;
+        let dataToSerialize: unknown;
         if (Array.isArray($value)) {
           // If $ is already an array (smart array), strip any methods
           dataToSerialize = [...$value];
         } else if (typeof $value === 'function') {
           // Get the actual data from the $ function
-          const actualData = ($value as any).valueOf ? ($value as any).valueOf() : $value();
+          const actualData = ($value as { valueOf?: () => unknown }).valueOf
+            ? ($value as { valueOf: () => unknown }).valueOf()
+            : ($value as () => unknown)();
           dataToSerialize = actualData;
         } else {
           dataToSerialize = $value;
@@ -152,7 +154,7 @@ export class VMSandboxSimple {
             await this.setupLodashUtilities(jail, vmContext);
           } else if (typeof value === 'function') {
             // Special handling for simple functions
-            const func = value as Function;
+            const func = value as (...args: unknown[]) => unknown;
             const funcStr = func.toString();
 
             // Check if this is a smart dollar-like function
@@ -230,7 +232,7 @@ export class VMSandboxSimple {
         wrappedCode.includes('await') ||
         wrappedCode.includes('async') ||
         wrappedCode.includes('Promise.');
-      let result;
+      let result: unknown;
       try {
         result = await script.run(vmContext, {
           timeout,
@@ -283,7 +285,7 @@ export class VMSandboxSimple {
   private async setupBasicEnvironment(
     jail: ivm.Reference,
     vmContext: ivm.Context,
-    context: VMContext,
+    _context: VMContext,
     options: VMOptions = {}
   ): Promise<void> {
     try {
@@ -379,7 +381,7 @@ export class VMSandboxSimple {
           globalThis.Math[prop] = MathObj[prop];
         });
       `);
-    } catch (e) {
+    } catch (_e) {
       // If that doesn't work, try a more comprehensive fallback
       console.warn('Failed to set up VM globals via eval, using reference approach');
 
@@ -415,14 +417,21 @@ export class VMSandboxSimple {
 
       // Set up JSON functions
       await jail.set('JSON', {
-        stringify: new ivm.Reference((obj: any, replacer?: any, space?: any) =>
-          JSON.stringify(obj, replacer, space)
+        stringify: new ivm.Reference(
+          (
+            obj: unknown,
+            replacer?: (key: string, value: unknown) => unknown | string[],
+            space?: string | number
+          ) => JSON.stringify(obj, replacer, space)
         ),
-        parse: new ivm.Reference((str: string, reviver?: any) => JSON.parse(str, reviver)),
+        parse: new ivm.Reference(
+          (str: string, reviver?: (key: string, value: unknown) => unknown) =>
+            JSON.parse(str, reviver)
+        ),
       });
 
       // Set up Date constructor with proper handling
-      const dateImpl = new ivm.Reference((...args: any[]) => {
+      const dateImpl = new ivm.Reference((...args: unknown[]) => {
         if (args.length === 0) {
           return new Date();
         }
@@ -465,34 +474,36 @@ export class VMSandboxSimple {
         // コールバックベースのfetch実装
         await jail.set(
           '_fetchCallback',
-          new ivm.Reference(async (url: string, options: any, callbackRef: ivm.Reference) => {
-            try {
-              const response = await fetch(url, options);
-              const text = await response.text();
+          new ivm.Reference(
+            async (url: string, options: RequestInit | undefined, callbackRef: ivm.Reference) => {
+              try {
+                const response = await fetch(url, options);
+                const text = await response.text();
 
-              // コールバックに結果を渡す
-              await callbackRef.apply(undefined, [
-                null, // error
-                new ivm.ExternalCopy({
-                  ok: response.ok,
-                  status: response.status,
-                  statusText: response.statusText,
-                  url: response.url,
-                  text: text,
-                  headers: Object.fromEntries(response.headers.entries()),
-                }).copyInto(),
-              ]);
-            } catch (error) {
-              // エラーの場合
-              await callbackRef.apply(undefined, [
-                new ivm.ExternalCopy({
-                  message: error instanceof Error ? error.message : String(error),
-                  name: error instanceof Error ? error.name : 'FetchError',
-                }).copyInto(),
-                null, // result
-              ]);
+                // コールバックに結果を渡す
+                await callbackRef.apply(undefined, [
+                  null, // error
+                  new ivm.ExternalCopy({
+                    ok: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    text: text,
+                    headers: Object.fromEntries(response.headers.entries()),
+                  }).copyInto(),
+                ]);
+              } catch (error) {
+                // エラーの場合
+                await callbackRef.apply(undefined, [
+                  new ivm.ExternalCopy({
+                    message: error instanceof Error ? error.message : String(error),
+                    name: error instanceof Error ? error.name : 'FetchError',
+                  }).copyInto(),
+                  null, // result
+                ]);
+              }
             }
-          })
+          )
         );
 
         await vmContext.eval(`
@@ -575,7 +586,7 @@ export class VMSandboxSimple {
     }
   }
 
-  private async setupLodashUtilities(jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
+  private async setupLodashUtilities(_jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
     // Set up lodash-like utilities in the VM
     await vmContext.eval(`
       globalThis._ = {
@@ -946,7 +957,7 @@ export class VMSandboxSimple {
     `);
   }
 
-  private async serializeValue(value: unknown): Promise<any> {
+  private async serializeValue(value: unknown): Promise<unknown> {
     if (value === null || value === undefined) {
       return value;
     }
@@ -970,30 +981,30 @@ export class VMSandboxSimple {
         try {
           // Try valueOf first for simpler extraction
           if ('valueOf' in value) {
-            const valueOf = (value as any).valueOf();
+            const valueOfResult = (value as { valueOf: () => unknown }).valueOf();
             // Only serialize primitive values and plain objects via ExternalCopy
             if (
-              valueOf === null ||
-              typeof valueOf === 'string' ||
-              typeof valueOf === 'number' ||
-              typeof valueOf === 'boolean'
+              valueOfResult === null ||
+              typeof valueOfResult === 'string' ||
+              typeof valueOfResult === 'number' ||
+              typeof valueOfResult === 'boolean'
             ) {
-              return valueOf;
-            } else if (typeof valueOf === 'object' && valueOf !== null) {
+              return valueOfResult;
+            } else if (typeof valueOfResult === 'object' && valueOfResult !== null) {
               // Try ExternalCopy first for better performance, fallback to JSON
               try {
-                return new ivm.ExternalCopy(valueOf);
+                return new ivm.ExternalCopy(valueOfResult);
               } catch {
-                return JSON.parse(JSON.stringify(valueOf)); // Deep copy via JSON for plain objects
+                return JSON.parse(JSON.stringify(valueOfResult)); // Deep copy via JSON for plain objects
               }
             }
           }
 
           // Fallback: call the function with no args
-          const result = (value as Function)(); // Call with no args to get the data
+          const result = (value as () => unknown)(); // Call with no args to get the data
           if (result && typeof result === 'object' && 'data' in result) {
             // It's a ChainableWrapper, get the data
-            const data = (result as any).data;
+            const data = (result as { data: unknown }).data;
             try {
               return new ivm.ExternalCopy(data);
             } catch {
@@ -1006,22 +1017,22 @@ export class VMSandboxSimple {
               return JSON.parse(JSON.stringify(result));
             }
           }
-        } catch (error) {
+        } catch (_error) {
           return null; // Fallback to null
         }
       }
 
       // Create a function reference that can be called from VM
-      const func = value as Function;
+      const func = value as (...args: unknown[]) => unknown;
       try {
-        return new ivm.Reference((...args: any[]) => {
+        return new ivm.Reference((...args: unknown[]) => {
           try {
             return func.apply(null, args);
           } catch (error) {
             throw new Error(error instanceof Error ? error.message : String(error));
           }
         });
-      } catch (refError) {
+      } catch (_refError) {
         // If we can't create a reference (e.g., function has unclonable closures),
         // return a placeholder
         console.debug('Cannot create reference for function:', func.name || 'anonymous');
@@ -1035,7 +1046,7 @@ export class VMSandboxSimple {
         return new ivm.ExternalCopy([...value]);
       }
       return new ivm.ExternalCopy(value);
-    } catch (error) {
+    } catch (_error) {
       // If serialization fails, return a simple representation
       return '[Object]';
     }
@@ -1678,7 +1689,7 @@ export class VMSandboxSimple {
    * Validate that a number is positive, return default if invalid
    */
   private validatePositiveNumber(value: number | undefined, defaultValue: number): number {
-    if (typeof value === 'number' && value > 0 && !isNaN(value)) {
+    if (typeof value === 'number' && value > 0 && !Number.isNaN(value)) {
       return value;
     }
     return defaultValue;

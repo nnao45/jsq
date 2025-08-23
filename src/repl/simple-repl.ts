@@ -269,7 +269,6 @@ function setupKeyboardHandlers(rl: ReadlineInterface, session: REPLSession): voi
   let isProcessingEnter = false;
 
   // Handle process.stdin keypress events for additional functionality
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex REPL key handling logic required
   process.stdin.on('keypress', (str, key) => {
     if (!key) return;
 

@@ -1,5 +1,6 @@
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
+import type { SecurityManager } from './security-manager';
 
 describe('VM Sandbox Mode (Default) Behavior', () => {
   // Mock dangerous operations globally
@@ -150,7 +151,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const defaultEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
 
         // Mock process.exit
-        process.exit = jest.fn() as any;
+        process.exit = jest.fn() as unknown as (code?: number) => never;
 
         await defaultEvaluator.evaluate('process.exit(0)', null);
         expect(process.exit).toHaveBeenCalledWith(0);
@@ -210,7 +211,8 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
     it('should enforce timeout in sandbox mode', async () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
-      const securityManager = (sandboxEvaluator as any).securityManager;
+      const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
+        .securityManager;
       expect(securityManager.getTimeout()).toBe(30000);
 
       await sandboxEvaluator.dispose();
@@ -219,7 +221,8 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
     it('should have default timeout in non-sandbox mode', async () => {
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
-      const securityManager = (defaultEvaluator as any).securityManager;
+      const securityManager = (defaultEvaluator as { securityManager: SecurityManager })
+        .securityManager;
       expect(securityManager.getTimeout()).toBe(30000);
 
       await defaultEvaluator.dispose();
@@ -228,7 +231,8 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
     it('should enforce memory limit in sandbox mode', async () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
-      const securityManager = (sandboxEvaluator as any).securityManager;
+      const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
+        .securityManager;
       expect(securityManager.getMemoryLimit()).toBe(128);
 
       await sandboxEvaluator.dispose();
@@ -465,7 +469,8 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
   describe('VM Configuration', () => {
     it('should have VM configuration in sandbox mode', async () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const securityManager = (sandboxEvaluator as any).securityManager;
+      const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
+        .securityManager;
 
       const vmConfig = securityManager.getVMConfig();
       expect(vmConfig).toMatchObject({

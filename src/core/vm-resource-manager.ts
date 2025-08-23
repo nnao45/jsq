@@ -49,6 +49,7 @@ export class VMResourceManager {
    * Create a monitored isolate with resource limits
    */
   createManagedIsolate(): ivm.Isolate {
+    // biome-ignore lint/suspicious/noExplicitAny: isolateOptions type varies by isolated-vm version
     const isolateOptions: any = {
       memoryLimit: this.limits.memoryLimit,
       inspector: false, // Never enable inspector for security
@@ -315,6 +316,7 @@ export class VMResourceManager {
     setTimeout(() => clearInterval(monitor), this.limits.wallTimeLimit + 5000);
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: Heap statistics structure varies
   private async getHeapStatistics(_isolate: ivm.Isolate): Promise<any> {
     try {
       // Try to get heap statistics from the isolate

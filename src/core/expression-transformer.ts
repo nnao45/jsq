@@ -96,7 +96,7 @@ export function isArrayLiteralWithMethods(expression: string): boolean {
 function findArrayEndIndex(expression: string): number {
   let bracketCount = 0;
   let inString = false;
-  let stringChar = '';
+  let stringChar: string | undefined = '';
 
   for (let i = 0; i < expression.length; i++) {
     const char = expression[i];
@@ -129,9 +129,9 @@ function findArrayEndIndex(expression: string): number {
  */
 function shouldUpdateStringState(
   char: string,
-  prevChar: string,
+  prevChar: string | undefined,
   inString: boolean,
-  stringChar: string
+  stringChar: string | undefined
 ): boolean {
   return (!inString && isQuoteChar(char)) || (inString && char === stringChar && prevChar !== '\\');
 }
@@ -141,16 +141,16 @@ function shouldUpdateStringState(
  */
 function getStringState(
   char: string,
-  prevChar: string,
+  prevChar: string | undefined,
   inString: boolean,
-  stringChar: string
-): { inString: boolean; stringChar: string } {
+  stringChar: string | undefined
+): { inString: boolean; stringChar: string | undefined } {
   if (!inString && isQuoteChar(char)) {
     return { inString: true, stringChar: char };
   }
 
   if (inString && char === stringChar && prevChar !== '\\') {
-    return { inString: false, stringChar: '' };
+    return { inString: false, stringChar: undefined };
   }
 
   return { inString, stringChar };
@@ -192,7 +192,7 @@ export function transformAsyncGeneratorExpression(expression: string): string {
 
 interface ParseState {
   inString: boolean;
-  stringChar: string;
+  stringChar: string | undefined;
   parenDepth: number;
   braceDepth: number;
   bracketDepth: number;
@@ -201,7 +201,7 @@ interface ParseState {
 function createInitialParseState(): ParseState {
   return {
     inString: false,
-    stringChar: '',
+    stringChar: undefined,
     parenDepth: 0,
     braceDepth: 0,
     bracketDepth: 0,
@@ -217,7 +217,7 @@ function updateStringState(state: ParseState, char: string, prevChar: string): v
 
   if (state.inString && char === state.stringChar && prevChar !== '\\') {
     state.inString = false;
-    state.stringChar = '';
+    state.stringChar = undefined;
   }
 }
 
