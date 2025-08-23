@@ -1,6 +1,6 @@
 export interface JsqOptions {
   debug?: boolean;
-  watch?: string;
+  watch?: boolean;
   stream?: boolean;
   batch?: string | number;
   parallel?: boolean | string | number;

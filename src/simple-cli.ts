@@ -76,6 +76,7 @@ program
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
+  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     try {
       if (options.repl) {
@@ -91,6 +92,12 @@ program
       }
 
       prepareOptions(options);
+      
+      if (options.watch && !options.file) {
+        console.error('Error: --watch requires --file option to specify the file to watch');
+        process.exit(1);
+      }
+      
       await processExpression(expression, options);
     } catch (error) {
       handleError(error, options);
@@ -123,6 +130,7 @@ program
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
+  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('bun', expression, options);
   });
@@ -153,6 +161,7 @@ program
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
+  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('deno', expression, options);
   });
@@ -198,6 +207,7 @@ async function runWithRuntime(
     if (options.sandbox) args.push('--sandbox');
     if (options.memoryLimit) args.push('--memory-limit', String(options.memoryLimit));
     if (options.cpuLimit) args.push('--cpu-limit', String(options.cpuLimit));
+    if (options.watch) args.push('--watch');
 
     const child = spawn(args[0], args.slice(1), {
       stdio: 'inherit',
@@ -290,6 +300,14 @@ function prepareOptions(options: JsqOptions): void {
 }
 
 async function processExpression(expression: string, options: JsqOptions): Promise<void> {
+  if (options.watch && options.file) {
+    await watchAndProcess(expression, options);
+  } else {
+    await processOnce(expression, options);
+  }
+}
+
+async function processOnce(expression: string, options: JsqOptions): Promise<void> {
   const { inputSource, detectedFormat } = await determineInputSource(options);
   const processor = new JsqProcessor(options);
 
@@ -302,6 +320,76 @@ async function processExpression(expression: string, options: JsqOptions): Promi
   } finally {
     await processor.dispose();
   }
+}
+
+async function watchAndProcess(expression: string, options: JsqOptions): Promise<void> {
+  const { watch } = await import('node:fs');
+  
+  if (!options.file) {
+    throw new Error('File path is required for watch mode');
+  }
+  
+  const filePath = options.file;
+  let isProcessing = false;
+  
+  const clearConsole = () => {
+    // Clear screen and move cursor to top
+    process.stdout.write('\x1B[2J\x1B[0f');
+  };
+  
+  const runProcess = async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+    
+    clearConsole();
+    console.log(`⏱️  Watching: ${filePath}`);
+    console.log(`📝 Expression: ${expression}`);
+    console.log('─'.repeat(process.stdout.columns || 80));
+    console.log();
+    
+    try {
+      await processOnce(expression, options);
+      console.log(`\n${'─'.repeat(process.stdout.columns || 80)}`);
+      console.log('Press Ctrl+C to exit watch mode');
+    } catch (error) {
+      console.error('\n❌ Error occurred:');
+      if (error instanceof Error) {
+        console.error(error.message);
+        if (options.debug && error.stack) {
+          console.error('\nStack trace:', error.stack);
+        }
+      }
+    }
+    
+    isProcessing = false;
+  };
+  
+  // Run once initially
+  await runProcess();
+  
+  // Watch for changes with debouncing
+  let debounceTimer: NodeJS.Timeout | null = null;
+  const watcher = watch(filePath, async (eventType) => {
+    if (eventType === 'change') {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(async () => {
+        await runProcess();
+      }, 100); // 100ms debounce
+    }
+  });
+  
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    clearConsole();
+    console.log('👋 Exiting watch mode...');
+    watcher.close();
+    process.exit(0);
+  });
+  
+  // Keep the process running
+  process.stdin.resume();
 }
 
 async function determineInputSource(options: JsqOptions): Promise<{

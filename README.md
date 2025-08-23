@@ -154,6 +154,27 @@ echo '["valid-url", "invalid-url"]' | jsq 'await $.mapAsync(async url => { try {
 ### 10. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
 
+### 11. 👀 Watch Mode for Real-time Data Processing ✨ NEW
+Monitor file changes and automatically re-execute expressions for live data updates
+
+```bash
+# Watch JSON file and re-run expression on changes
+jsq '$.users.filter(u => u.active).length' --file users.json --watch
+
+# Monitor CSV data with real-time updates
+jsq '$.filter(row => row.status === "pending")' --file tasks.csv --file-format csv --watch
+
+# Live dashboard for YAML configuration
+jsq '$.servers.map(s => ({name: s.name, status: s.health}))' --file config.yaml --file-format yaml --watch
+```
+
+Watch mode features:
+- 🔄 Automatic re-execution on file changes
+- 🖥️ Clear console output for each update
+- ⚡ Debounced file watching (100ms) to prevent excessive updates
+- 🎯 Works with all supported file formats (JSON, CSV, YAML, etc.)
+- 🛑 Graceful exit with Ctrl+C
+
 ## 📦 Installation
 
 ### Node.js (npm) - Primary Installation
@@ -593,6 +614,7 @@ Options:
   --json-lines           Input/output in JSON Lines format
   -f, --file <path>      Read from file instead of stdin
   --file-format <format> Specify input file format (json, jsonl, csv, tsv, parquet, auto)
+  -w, --watch            Watch input file for changes and re-execute expression ✨ NEW
   --repl                 Start interactive REPL mode
   --no-network           Legacy option (deprecated, no effect in VM mode)
   --no-shell             Legacy option (deprecated, no effect in VM mode)
