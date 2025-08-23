@@ -137,8 +137,15 @@ export class StreamProcessor {
       console.error(`Processing object ${lineNumber}`);
     }
 
-    // Process the object directly
-    const result = await this.evaluator.evaluate(transformedExpression, chunk);
+    // Special handling for $ expression to avoid VM cloning issues
+    let result: unknown;
+    if (transformedExpression === '(function() { return $; })()' || transformedExpression === '$') {
+      // For simple $ expression, just return the chunk as-is
+      result = chunk;
+    } else {
+      // Process the object normally
+      result = await this.evaluator.evaluate(transformedExpression, chunk);
+    }
 
     if (this.options.verbose) {
       console.error(`Processed object ${lineNumber}`);
