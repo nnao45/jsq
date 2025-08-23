@@ -120,7 +120,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       });
 
       it('should allow process access in non-sandbox mode', async () => {
-        const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+        const defaultEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
 
         // Mock process.exit
         process.exit = jest.fn() as any;

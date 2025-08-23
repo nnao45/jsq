@@ -5,10 +5,11 @@ jqライクなJavaScript版コマンドラインツール「jsq」について�
 基本アーキテクチャはReactで書かれており、InkによるコマンドラインUIを提供します。
 
 # AIの実装するときのルール
-
+- ライブラリのドキュメントはcode-contextツールを利用して最新のものを確認しましょう。
 - 実装が完了するたびにREADME.mdを更新してね。英語で。
 - VMによるセキュア実行がデフォルトモードです。jsqはセキュリティファーストなソフトウェアとして設計されており、すべてのコード実行は必ずVM内で行われます。
 - テストカバレッジは常に100%を目指してください
+- **テストを勝手にskipさせないこと！！**
 - テストはjestで実行できるようにしてね
 - 書いた後は `npm run format`, `npm run test`を忘れずに。
 - JSQの式で評価される`$`は特殊なオブジェクトです。`$()`として呼び出せるようにすると問題が起こるのでやめましょう。
@@ -41,41 +42,7 @@ cat users.json | jsq '$.users.where("role", "admin").sortBy("lastLogin").take(5)
 - 学習コスト最小（jqの最大の弱点を解決）
 - DOM操作の感覚でJSON操作が可能
 
-### 2. npmエコシステム完全統合
-
-既存のnpmライブラリを直接CLIから利用可能にすることで、無限の拡張性を実現：
-
-```bash
-# 日付処理ライブラリの活用
-jsq --use moment '$(data).map(item => ({...item, formatted: moment(item.date).format("YYYY-MM-DD")}))'
-
-# バリデーションライブラリの統合
-jsq --use joi --schema user.schema.js '$(data).validate().errors'
-```
-
-**差別化ポイント**：
-- 既存のnpmエコシステム資産を活用
-- 特化機能を個別開発する必要がない
-- コミュニティの力を借りた拡張性
-
-### 3. TypeScript完全対応
-
-型安全性とIntelliSenseによる開発体験の向上：
-
-```bash
-# 型定義からの推論
-jsq --types user.d.ts '$(data).users.filter(u => u.age > 18)' # age補完される
-
-# 実行時型検証
-jsq --validate user.schema.json '$(data).forEach(validateUser)'
-```
-
-**差別化ポイント**：
-- エラーの事前予防
-- 企業での採用に適した品質保証
-- 既存ツールにない型安全性
-
-### 4. ビジュアルデバッガー＆ホットリロード
+### 2. ビジュアルデバッガー＆ホットリロード
 
 開発体験を革命的に向上させるデバッグ機能：
 
@@ -93,7 +60,7 @@ jsq --watch input.json '$(data).transform()' --output result.json
 - 学習支援機能
 - 開発効率の大幅向上
 
-### 5. 高速ストリーミング最適化
+### 3. 高速ストリーミング最適化
 
 jqの弱点である大容量ファイル処理を改善：
 
@@ -101,7 +68,10 @@ jqの弱点である大容量ファイル処理を改善：
 # メモリ効率的な処理
 cat huge.json | jsq --stream '$.forEach(item => emit(transform(item)))'
 jsq --stream --batch 1000 '$.chunk().map(batch => process(batch)).flatten()'
-```**差別化ポイント**：
+```
+
+
+**差別化ポイント**：
 - jqのパフォーマンス問題を解決
 - 大規模データ処理への対応
 - 実用性の大幅向上

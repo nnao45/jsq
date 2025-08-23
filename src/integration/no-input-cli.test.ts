@@ -113,7 +113,7 @@ describe('No Input CLI Integration Tests', () => {
 
     it('should handle $ as null in conditional expressions', async () => {
       // Note: $ is a function object, so use explicit null check
-      const result = await runJsq('$.valueOf() === null ? "default" : "not null"');
+      const result = await runJsq('$ === null ? "default" : "not null"');
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toBe('default');
     });
