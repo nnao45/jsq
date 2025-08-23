@@ -1,5 +1,6 @@
 import type { JsqOptions } from '@/types/cli';
 import type { SandboxCapabilities, VMSandboxConfig } from '@/types/sandbox';
+import { ErrorFormatter } from '@/utils/error-formatter';
 
 export interface SecurityLevel {
   allowNetwork: boolean;
@@ -57,8 +58,13 @@ export class SecurityManager {
     return secureContext;
   }
 
-  validateExpression(expression: string): { valid: boolean; errors: string[] } {
+  validateExpression(expression: string): {
+    valid: boolean;
+    errors: string[];
+    formattedError?: string;
+  } {
     const errors: string[] = [];
+    let formattedError: string | undefined;
 
     // Skip validation in unsafe mode
     if (this.context.options.unsafe) {
@@ -68,45 +74,63 @@ export class SecurityManager {
     // In VM mode (which is the default), perform additional validation first
     if (this.shouldUseVM()) {
       // Check for potentially dangerous patterns
-      const dangerousPatterns = [
-        /eval\s*\(/,
-        /Function\s*\(/,
-        /setTimeout|setInterval/,
-        /global|globalThis\./,
-        /process\./,
-        /__dirname|__filename/,
-        /this\.constructor/,
-        /constructor\.constructor/,
-        /arguments\.callee/,
-        /Buffer\./,
-        /while\s*\(\s*true\s*\)/,
-        /for\s*\(\s*;;\s*\)/,
-        /performance\.now/,
-        /process\.hrtime/,
-        /\[\s*['"`]constructor['"`]\s*\]/,
-        /window\./,
-        /document\./,
-        /\[\s*['"`]eval['"`]\s*\]/, // this["eval"]
-        /\(\s*\d+\s*,\s*eval\s*\)/, // (1, eval)
-        /\[\s*['"`]Function['"`]\s*\]/, // this["Function"]
-        /require\s*\(/, // All require calls are dangerous in VM
-        /import\s*\(/, // All dynamic imports are dangerous in VM
-        /execSync|exec|spawn|fork/, // Child process functions
-        /readFile|writeFile|readFileSync|writeFileSync|createReadStream|createWriteStream/, // File system functions
-        /fetch\s*\(/, // Network access function
+      const dangerousPatterns: Array<{ pattern: RegExp; name: string }> = [
+        { pattern: /eval\s*\(/, name: 'eval' },
+        { pattern: /Function\s*\(/, name: 'Function' },
+        { pattern: /setTimeout/, name: 'setTimeout' },
+        { pattern: /setInterval/, name: 'setInterval' },
+        { pattern: /global\./, name: 'global' },
+        { pattern: /globalThis\./, name: 'globalThis' },
+        { pattern: /process\./, name: 'process' },
+        { pattern: /__dirname/, name: '__dirname' },
+        { pattern: /__filename/, name: '__filename' },
+        { pattern: /this\.constructor/, name: 'this.constructor' },
+        { pattern: /constructor\.constructor/, name: 'constructor.constructor' },
+        { pattern: /arguments\.callee/, name: 'arguments.callee' },
+        { pattern: /Buffer\./, name: 'Buffer' },
+        { pattern: /while\s*\(\s*true\s*\)/, name: 'while(true)' },
+        { pattern: /for\s*\(\s*;;\s*\)/, name: 'for(;;)' },
+        { pattern: /performance\.now/, name: 'performance.now' },
+        { pattern: /process\.hrtime/, name: 'process.hrtime' },
+        { pattern: /\[\s*['"`]constructor['"`]\s*\]/, name: '["constructor"]' },
+        { pattern: /window\./, name: 'window' },
+        { pattern: /document\./, name: 'document' },
+        { pattern: /\[\s*['"`]eval['"`]\s*\]/, name: '["eval"]' },
+        { pattern: /\(\s*\d+\s*,\s*eval\s*\)/, name: '(1, eval)' },
+        { pattern: /\[\s*['"`]Function['"`]\s*\]/, name: '["Function"]' },
+        { pattern: /require\s*\(/, name: 'require' },
+        { pattern: /import\s*\(/, name: 'import' },
+        { pattern: /execSync/, name: 'execSync' },
+        { pattern: /exec/, name: 'exec' },
+        { pattern: /spawn/, name: 'spawn' },
+        { pattern: /fork/, name: 'fork' },
+        { pattern: /readFile/, name: 'readFile' },
+        { pattern: /writeFile/, name: 'writeFile' },
+        { pattern: /readFileSync/, name: 'readFileSync' },
+        { pattern: /writeFileSync/, name: 'writeFileSync' },
+        { pattern: /createReadStream/, name: 'createReadStream' },
+        { pattern: /createWriteStream/, name: 'createWriteStream' },
+        { pattern: /fetch\s*\(/, name: 'fetch' },
       ];
 
-      for (const pattern of dangerousPatterns) {
+      const foundPatterns: string[] = [];
+      for (const { pattern, name } of dangerousPatterns) {
         if (pattern.test(expression)) {
-          errors.push(`Expression contains potentially dangerous patterns`);
-          break;
+          foundPatterns.push(name);
         }
+      }
+
+      if (foundPatterns.length > 0) {
+        errors.push(`Expression contains potentially dangerous patterns`);
+        const error = ErrorFormatter.parseSecurityError(foundPatterns, expression);
+        formattedError = ErrorFormatter.formatError(error, expression);
       }
     }
 
     return {
       valid: errors.length === 0,
       errors,
+      formattedError,
     };
   }
 

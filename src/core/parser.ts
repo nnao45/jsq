@@ -1,4 +1,5 @@
 import type { JsqOptions } from '@/types/cli';
+import { ErrorFormatter } from '@/utils/error-formatter';
 
 export class JsonParser {
   private options: JsqOptions;
@@ -8,6 +9,8 @@ export class JsonParser {
   }
 
   parse(input: string): unknown {
+    this.input = input;
+
     try {
       if (!input.trim()) {
         throw new Error('Empty input');
@@ -29,7 +32,10 @@ export class JsonParser {
         try {
           return JSON.parse(cleanedInput);
         } catch (_secondError) {
-          throw new Error(`Invalid JSON: ${error.message}`);
+          // Format the error with detailed position information
+          const formattedError = ErrorFormatter.parseJSONError(error, input);
+          const errorMessage = ErrorFormatter.formatError(formattedError, input);
+          throw new Error(errorMessage);
         }
       }
       throw error;

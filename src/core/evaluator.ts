@@ -1,5 +1,6 @@
 import type { JsqOptions } from '@/types/cli';
 import type { VMContext, VMOptions } from '@/types/sandbox';
+import { ErrorFormatter } from '@/utils/error-formatter';
 import type { ChainableWrapper } from './chainable';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
@@ -76,6 +77,9 @@ export class ExpressionEvaluator {
       // Validate expression security
       const validation = this.securityManager.validateExpression(transformedExpression);
       if (!validation.valid) {
+        if (validation.formattedError) {
+          throw new Error(validation.formattedError);
+        }
         throw new Error(`Security validation failed: ${validation.errors.join(', ')}`);
       }
 
@@ -291,9 +295,12 @@ export class ExpressionEvaluator {
 
       return await func(...contextValues);
     } catch (error) {
-      throw new Error(
-        `Invalid expression: ${error instanceof Error ? error.message : 'Syntax error'}`
-      );
+      if (error instanceof Error) {
+        const formattedError = ErrorFormatter.parseExpressionError(error, expression);
+        const errorMessage = ErrorFormatter.formatError(formattedError, expression);
+        throw new Error(errorMessage);
+      }
+      throw new Error(`Invalid expression: Syntax error`);
     }
   }
 
@@ -800,7 +807,13 @@ export class ExpressionEvaluator {
             'isolated-vm package not found. Please install isolated-vm for sandbox support: npm install isolated-vm'
           );
         }
-        throw new Error(`VM execution failed: ${error.message}`);
+        // Format VM errors with detailed position if possible
+        const formattedError = ErrorFormatter.parseExpressionError(error, expression);
+        formattedError.type = 'runtime';
+        formattedError.message = 'VM execution failed';
+        formattedError.detail = error.message;
+        const errorMessage = ErrorFormatter.formatError(formattedError, expression);
+        throw new Error(errorMessage);
       }
       throw error;
     }
