@@ -268,7 +268,6 @@ export function createSmartDollar(data: unknown) {
 
     // Create a proxy to handle chainable property access
     return new Proxy($, {
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex proxy logic required for jQuery-like API
       get(target, prop, receiver) {
         // Handle special built-in methods FIRST before checking data properties
         if (prop === 'hasOwnProperty') {

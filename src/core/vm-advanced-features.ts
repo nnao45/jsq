@@ -1,19 +1,22 @@
 const ivm = require('isolated-vm');
 
-import type { VMContext } from '@/types/sandbox';
+type IvmReference = typeof ivm.Reference & {
+  set(key: string, value: unknown, options?: { reference?: boolean }): Promise<void>;
+};
 
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class for VM features organization
 export class VMAdvancedFeatures {
   /**
    * Set up async/await support in the VM
    */
-  static async setupAsyncSupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupAsyncSupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Promise constructor is already provided by the VM
     // We need to ensure proper async function execution
 
     // Add setTimeout/setInterval support for async operations
     await jail.set(
       'setTimeout',
-      new ivm.Reference((fn: () => void, delay: number) => {
+      new ivm.Reference((fn: () => void, _delay: number) => {
         // In sandbox, we don't actually delay, just execute immediately
         // Real delay would require more complex implementation
         try {
@@ -41,15 +44,15 @@ export class VMAdvancedFeatures {
     await jail.set('PromiseHelpers', {}, { reference: true });
     const promiseHelpers = await jail.get('PromiseHelpers', { reference: true });
 
-    await (promiseHelpers as any).set(
+    await (promiseHelpers as IvmReference).set(
       'delay',
       new ivm.Reference((ms: number) => new Promise(resolve => setTimeout(resolve, ms))),
       { reference: true }
     );
 
-    await (promiseHelpers as any).set(
+    await (promiseHelpers as IvmReference).set(
       'timeout',
-      new ivm.Reference((promise: Promise<any>, ms: number) => {
+      new ivm.Reference((promise: Promise<unknown>, ms: number) => {
         return Promise.race([
           promise,
           new Promise((_, reject) =>
@@ -64,7 +67,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up generator function support
    */
-  static async setupGeneratorSupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupGeneratorSupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Generators are supported natively in modern V8
     // We just need to ensure proper iteration protocol
 
@@ -72,7 +75,7 @@ export class VMAdvancedFeatures {
     const genHelpers = await jail.get('GeneratorHelpers', { reference: true });
 
     // Helper to convert generator to array
-    await (genHelpers as any).set(
+    await (genHelpers as IvmReference).set(
       'toArray',
       new ivm.Reference(function* (generator: Generator) {
         const result = [];
@@ -85,7 +88,7 @@ export class VMAdvancedFeatures {
     );
 
     // Helper for async generators
-    await (genHelpers as any).set(
+    await (genHelpers as IvmReference).set(
       'asyncToArray',
       new ivm.Reference(async function* (generator: AsyncGenerator) {
         const result = [];
@@ -101,16 +104,16 @@ export class VMAdvancedFeatures {
   /**
    * Set up Proxy support
    */
-  static async setupProxySupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupProxySupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Proxy support requires careful handling due to security implications
     // We provide a limited, safe version
 
     await jail.set('SafeProxy', {}, { reference: true });
     const safeProxy = await jail.get('SafeProxy', { reference: true });
 
-    await (safeProxy as any).set(
+    await (safeProxy as IvmReference).set(
       'create',
-      new ivm.Reference((target: any, handler: ProxyHandler<any>) => {
+      new ivm.Reference((target: unknown, handler: ProxyHandler<unknown>) => {
         // Validate handler to ensure it doesn't contain dangerous operations
         const allowedTraps = ['get', 'set', 'has', 'deleteProperty', 'ownKeys'];
         const providedTraps = Object.keys(handler);
@@ -130,7 +133,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up Symbol support
    */
-  static async setupSymbolSupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupSymbolSupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Symbols are already supported, but we add utilities
     await jail.set('SymbolHelpers', {}, { reference: true });
     const symbolHelpers = await jail.get('SymbolHelpers', { reference: true });
@@ -162,7 +165,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up WeakMap and WeakSet support
    */
-  static async setupWeakCollections(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupWeakCollections(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // WeakMap and WeakSet are natively supported
     // We add helper utilities
 
@@ -187,7 +190,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up typed array support
    */
-  static async setupTypedArrays(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupTypedArrays(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     const typedArrays = [
       'Int8Array',
       'Uint8Array',
@@ -203,9 +206,9 @@ export class VMAdvancedFeatures {
     ];
 
     for (const arrayType of typedArrays) {
-      const constructor = global[arrayType as keyof typeof global];
-      if (typeof constructor === 'function') {
-        await jail.set(arrayType, constructor, { reference: true });
+      const ArrayConstructor = global[arrayType as keyof typeof global];
+      if (typeof ArrayConstructor === 'function') {
+        await jail.set(arrayType, ArrayConstructor, { reference: true });
       }
     }
 
@@ -217,7 +220,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up Intl (Internationalization) support
    */
-  static async setupIntlSupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupIntlSupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Create a limited Intl object with safe constructors
     await jail.set('Intl', {}, { reference: true });
     const intlObj = await jail.get('Intl', { reference: true });
@@ -248,7 +251,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up BigInt support
    */
-  static async setupBigIntSupport(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupBigIntSupport(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     await jail.set('BigInt', BigInt, { reference: true });
 
     // Add BigInt utilities
@@ -269,7 +272,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up custom iterators and iteration protocols
    */
-  static async setupIterationProtocols(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupIterationProtocols(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     await jail.set('IteratorHelpers', {}, { reference: true });
     const iterHelpers = await jail.get('IteratorHelpers', { reference: true });
 
@@ -319,7 +322,7 @@ export class VMAdvancedFeatures {
   /**
    * Set up error handling and stack trace improvements
    */
-  static async setupErrorHandling(jail: ivm.Reference, isolate: ivm.Isolate): Promise<void> {
+  static async setupErrorHandling(jail: ivm.Reference, _isolate: ivm.Isolate): Promise<void> {
     // Enhanced error constructors
     const errorTypes = [
       'Error',

@@ -57,7 +57,7 @@ export interface VMSandboxConfig {
 
 export interface IsolatePool {
   available: Array<{
-    isolate: any;
+    isolate: unknown;
     lastUsed: number;
     useCount: number;
   }>;

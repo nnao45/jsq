@@ -266,10 +266,10 @@ export class ChainableWrapper {
     keys: string[] | ((item: unknown) => unknown)[],
     orders: ('asc' | 'desc')[]
   ): (a: unknown, b: unknown) => number {
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex sorting logic required for multi-key orderBy
     return (a: unknown, b: unknown): number => {
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
+        if (!key) continue;
         const order = orders[i] || 'asc';
 
         let aVal: unknown, bVal: unknown;
@@ -845,12 +845,13 @@ export class ChainableWrapper {
    */
   peekable(): ChainableWrapper {
     if (Array.isArray(this.data)) {
+      const dataArray = this.data as unknown[];
       let index = 0;
       const peekableIterator = {
-        hasNext: () => index < this.data.length,
-        next: () => (index < this.data.length ? this.data[index++] : undefined),
-        peek: () => (index < this.data.length ? this.data[index] : undefined),
-        remaining: () => this.data.slice(index),
+        hasNext: () => index < dataArray.length,
+        next: () => (index < dataArray.length ? dataArray[index++] : undefined),
+        peek: () => (index < dataArray.length ? dataArray[index] : undefined),
+        remaining: () => dataArray.slice(index),
       };
       return new ChainableWrapper(peekableIterator);
     }

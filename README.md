@@ -150,33 +150,8 @@ echo '[1, 2, 3]' | jsq 'await $.mapAsyncSeq(async id => { await new Promise(r =>
 echo '["valid-url", "invalid-url"]' | jsq 'await $.mapAsync(async url => { try { const res = await fetch(`https://jsonplaceholder.typicode.com/${url}`); return { url, status: "success", data: await res.json() }; } catch (error) { return { url, status: "error", message: error.message }; } })'
 ```
 
-### 10. 🛠️ Shell Command Integration ✨ NEW
-Execute shell commands directly within jsq expressions using dynamic imports - powerful system integration capabilities
 
-```bash
-# Basic shell command execution
-echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("echo Hello from shell!").toString()'
-# Output: "Hello from shell!\n"
-
-# File system operations
-echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("ls -la | head -5").toString()'
-
-# Combine shell commands with data processing
-echo '{"files": ["package.json", "README.md"]}' | jsq 'const { execSync } = await import("child_process"); await $.files.mapAsync(async file => { const output = execSync(`wc -l ${file}`).toString(); return { file, lines: parseInt(output.split(" ")[0]) }; })'
-
-# System information gathering
-echo '{}' | jsq 'const { execSync } = await import("child_process"); const info = { platform: execSync("uname -s").toString().trim(), user: execSync("whoami").toString().trim(), date: execSync("date").toString().trim() }; info'
-
-# Complex pipeline: find files, process with shell, return structured data
-echo '{}' | jsq 'const { execSync } = await import("child_process"); execSync("find . -name \"*.ts\" | head -3").toString().split("\n").filter(line => line.length > 0).map(file => ({ file, size: execSync(`wc -c < "${file}"`).toString().trim() }))'
-
-# Combine with semicolon operator for complex workflows
-echo '{}' | jsq 'const { execSync } = await import("child_process"); console.log("Checking system..."); const uptime = execSync("uptime").toString(); const disk = execSync("df -h /").toString(); { uptime: uptime.trim(), disk: disk.split("\n")[1] }'
-```
-
-**⚠️ Security Note**: Shell execution is disabled by default in VM isolation mode. jsq runs in a secure VM sandbox by default, preventing access to filesystem, network, and shell commands.
-
-### 11. 🎯 Full TypeScript Support
+### 10. 🎯 Full TypeScript Support
 Provides type-safe processing and excellent developer experience
 
 ## 📦 Installation
@@ -313,30 +288,6 @@ echo '{}' | jsq deno "let items = ['a','b','c'] | items.length"                 
 
 ## 🔧 Advanced Features
 
-### Using npm Libraries
-
-#### Advanced Data Processing with Lodash
-
-```bash
-# Grouping
-cat data.json | jsq --use lodash '_.groupBy($.users, "department")'
-
-# Deep cloning
-cat data.json | jsq --use lodash '_.cloneDeep($.config)'
-
-# Complex sorting
-cat data.json | jsq --use lodash '_.orderBy($.products, ["category", "price"], ["asc", "desc"])'
-```
-
-#### Date Processing Libraries
-
-```bash
-# Date formatting with Moment.js
-cat events.json | jsq --use moment '$.events.map(e => ({...e, formatted: moment(e.timestamp).format("YYYY/MM/DD HH:mm")}))'
-
-# Date calculations with Day.js
-cat logs.json | jsq --use dayjs '$.logs.filter(log => dayjs(log.date).isAfter(dayjs().subtract(1, "week")))'
-```
 
 ### Security Features
 
@@ -345,7 +296,7 @@ jsq provides secure VM isolation by default, ensuring safe execution of JavaScri
 #### 🔒 Default Mode (VM Isolation)
 ```bash
 # Secure execution with VM isolation
-cat data.json | jsq --use lodash '_.uniq(data.tags)'
+cat data.json | jsq '_.uniq($.tags)'
 # 🔒 Running in secure VM isolation mode
 ```
 
@@ -373,7 +324,7 @@ The --sandbox flag is deprecated as VM isolation is now the default:
 
 ```bash
 # --sandbox flag is no longer needed (VM is default)
-cat data.json | jsq --use lodash '_.groupBy($.items, "category")'
+cat data.json | jsq '_.groupBy($.items, "category")'
 # 🔒 Running in secure VM isolation mode
 ```
 
@@ -636,7 +587,6 @@ jsq deno [options] <expression>     # Deno runtime
 Options:
   -v, --verbose           Display detailed execution information
   -d, --debug            Enable debug mode
-  -u, --use <libraries>  Load npm libraries (comma-separated)
   -s, --stream           Enable streaming mode for large datasets
   -b, --batch <size>     Process in batches of specified size (implies --stream)
   -p, --parallel [workers] Enable parallel processing (optionally specify worker count) ✨ NEW
@@ -651,7 +601,7 @@ Options:
   --memory-limit <mb>    Memory limit in MB (default: 128)
   --cpu-limit <ms>       CPU time limit in milliseconds (default: 30000)
   --safe                 Legacy option (deprecated, shows warning)
-  --unsafe               Legacy option (deprecated, no effect)
+  --unsafe               Run in unsafe mode without VM isolation (dangerous!)
   --help                 Display help
   --version              Display version
 ```
@@ -902,108 +852,6 @@ cat api-keys.json | jsq '
   "All API calls completed"
 '
 
-# System monitoring with shell integration
-echo '{}' | jsq '
-  const { execSync } = await import("child_process");
-  console.log("Gathering system information...");
-  
-  const diskUsage = execSync("df -h /").toString().split("\n")[1].split(/\s+/);
-  const memInfo = execSync("free -h").toString().split("\n")[1].split(/\s+/);
-  const processCount = parseInt(execSync("ps aux | wc -l").toString().trim()) - 1;
-  
-  const systemInfo = {
-    timestamp: new Date().toISOString(),
-    disk: {
-      total: diskUsage[1],
-      used: diskUsage[2], 
-      available: diskUsage[3],
-      usage: diskUsage[4]
-    },
-    memory: {
-      total: memInfo[1],
-      used: memInfo[2],
-      available: memInfo[6]
-    },
-    processes: processCount,
-    uptime: execSync("uptime -p").toString().trim()
-  };
-  
-  console.log("System monitoring complete");
-  systemInfo
-'
-
-# Log analysis with async file processing 
-cat log-files.json | jsq '
-  const { execSync } = await import("child_process");
-  console.log("Analyzing", $.logFiles.length, "log files...");
-  
-  const analysis = await $.logFiles.mapAsync(async logFile => {
-    const errorCount = parseInt(execSync(`grep -c "ERROR" ${logFile} || echo 0`).toString().trim());
-    const warningCount = parseInt(execSync(`grep -c "WARN" ${logFile} || echo 0`).toString().trim());
-    const totalLines = parseInt(execSync(`wc -l < ${logFile}`).toString().trim());
-    
-    return {
-      file: logFile,
-      totalLines,
-      errors: errorCount,
-      warnings: warningCount,
-      errorRate: (errorCount / totalLines * 100).toFixed(2) + "%"
-    };
-  });
-  
-  const summary = {
-    totalFiles: analysis.length,
-    totalErrors: _.sum(analysis.map(a => a.errors)),
-    totalWarnings: _.sum(analysis.map(a => a.warnings)),
-    mostProblematic: _.maxBy(analysis, a => a.errors + a.warnings),
-    analysis: analysis.orderBy(["errors"], ["desc"])
-  };
-  
-  console.log(`Found ${summary.totalErrors} errors and ${summary.totalWarnings} warnings across ${summary.totalFiles} files`);
-  summary
-'
-
-# DevOps pipeline status check with mixed processing
-cat services.json | jsq '
-  const { execSync } = await import("child_process");
-  console.log("Checking", $.services.length, "services...");
-  
-  const serviceStatus = await $.services.mapAsync(async service => {
-    # Check if service is running
-    const isRunning = execSync(`systemctl is-active ${service.name} || echo inactive`).toString().trim() === "active";
-    
-    # Get service logs if running
-    let recentErrors = 0;
-    if (isRunning) {
-      try {
-        recentErrors = parseInt(execSync(`journalctl -u ${service.name} --since "1 hour ago" | grep -c ERROR || echo 0`).toString().trim());
-      } catch (e) {
-        recentErrors = -1; # Could not check logs
-      }
-    }
-    
-    return {
-      name: service.name,
-      status: isRunning ? "active" : "inactive",
-      recentErrors,
-      priority: service.priority || "normal"
-    };
-  });
-  
-  const results = {
-    timestamp: new Date().toISOString(),
-    summary: {
-      total: serviceStatus.length,
-      active: serviceStatus.filter(s => s.status === "active").length,
-      inactive: serviceStatus.filter(s => s.status === "inactive").length,
-      withErrors: serviceStatus.filter(s => s.recentErrors > 0).length
-    },
-    services: serviceStatus.orderBy(["priority", "recentErrors"], ["asc", "desc"])
-  };
-  
-  console.log(`Status: ${results.summary.active}/${results.summary.total} active, ${results.summary.withErrors} with errors`);
-  results
-'
 ```
 
 ## 🎮 REPL Commands & Navigation
@@ -1089,7 +937,6 @@ deno lint
 - [x] **Pipeline Variable Declarations** ✨ NEW - Declare and use variables in expressions (`const x = value | x.method()`)
 - [x] **Sequential Execution with Semicolon Operator** ✨ NEW - Execute multiple expressions sequentially with side effects (`console.log("debug"); $.data`)
 - [x] **Advanced Async Array Methods** ✨ NEW - Parallel and sequential async processing (`forEachAsync`, `mapAsync`, `forEachAsyncSeq`, `mapAsyncSeq`)
-- [x] **Shell Command Integration** ✨ NEW - Execute shell commands within expressions using dynamic imports
 - [x] **Built-in Fetch & Async/Await Support** ✨ NEW - Native fetch API and async/await for HTTP requests and asynchronous operations
 - [x] **Multi-CPU Parallel Processing** ✨ NEW - Leverage all CPU cores for blazingly fast processing (10-20x faster than jq)
 - [x] **Streaming processing** - Large file support with real-time output
@@ -1098,7 +945,6 @@ deno lint
 - [x] **Batch processing mode** - Process large datasets in chunks
 - [x] **Direct file reading** - Built-in file input support
 - [x] **Secure execution with VM isolation** - Safe code execution environment
-- [x] **Dynamic npm library loading** - Use any npm package on-demand
 - [x] **Full TypeScript support** - Type-safe development experience
 
 ### 🚀 Multi-Runtime Support
@@ -1121,7 +967,6 @@ deno lint
 - [x] **4+ Async Array Methods** ✨ NEW - forEachAsync, forEachAsyncSeq, mapAsync, mapAsyncSeq for parallel and sequential async processing
 - [x] **20+ RxJS-style Reactive Methods** ✨ NEW - Time-based operators (delay, debounce, throttle, interval), transformation operators (concatMap, mergeMap, switchMap), filtering (distinctUntilChanged), stream combination (zip, merge), error handling (retry, catchError), and utilities (tap, startWith)
 - [x] **Sequential Execution Support** ✨ NEW - Semicolon operator for multi-expression execution with side effects
-- [x] **System Integration** ✨ NEW - Dynamic shell command execution via import("child_process")
 - [x] **Chainable API** - All methods work seamlessly with jQuery-style chaining
 
 ## 🚧 Future Plans

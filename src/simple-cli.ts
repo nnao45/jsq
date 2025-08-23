@@ -70,7 +70,7 @@ program
     'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
-  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
@@ -117,7 +117,7 @@ program
     'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
-  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
@@ -147,7 +147,7 @@ program
     'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
     'auto'
   )
-  .option('--unsafe', 'Legacy option (deprecated, no effect)')
+  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
   .option('--safe', 'Legacy option (deprecated, shows warning)')
   .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
   .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
@@ -157,7 +157,6 @@ program
     await runWithRuntime('deno', expression, options);
   });
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex runtime delegation logic required
 async function runWithRuntime(
   runtime: 'bun' | 'deno',
   expression: string | undefined,
