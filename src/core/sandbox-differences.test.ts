@@ -105,7 +105,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
         await expect(defaultEvaluator.evaluate('eval("1+1")', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await defaultEvaluator.dispose();
@@ -117,7 +117,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
         await expect(defaultEvaluator.evaluate('new Function("return 1")()', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await defaultEvaluator.dispose();
@@ -129,7 +129,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
         await expect(defaultEvaluator.evaluate('setTimeout(() => {}, 0)', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await defaultEvaluator.dispose();
@@ -141,7 +141,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
         await expect(sandboxEvaluator.evaluate('process.exit(0)', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await sandboxEvaluator.dispose();
@@ -165,7 +165,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
         await expect(sandboxEvaluator.evaluate('global.foo = 1', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await sandboxEvaluator.dispose();
@@ -177,7 +177,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
         await expect(sandboxEvaluator.evaluate('Buffer.from("test")', null)).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
 
         await sandboxEvaluator.dispose();
@@ -190,7 +190,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
       await expect(sandboxEvaluator.evaluate('require("fs")', null)).rejects.toThrow(
-        'Security validation failed'
+        'Expression evaluation failed'
       );
 
       await sandboxEvaluator.dispose();
@@ -200,7 +200,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
       await expect(sandboxEvaluator.evaluate('import("fs")', null)).rejects.toThrow(
-        'Security validation failed'
+        'Expression evaluation failed'
       );
 
       await sandboxEvaluator.dispose();
@@ -296,7 +296,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
       await expect(sandboxEvaluator.evaluate('require("child_process")', null)).rejects.toThrow(
-        'Security validation failed'
+        'Expression evaluation failed'
       );
 
       await sandboxEvaluator.dispose();
@@ -306,7 +306,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
 
       await expect(sandboxEvaluator.evaluate('require("fs")', null)).rejects.toThrow(
-        'Security validation failed'
+        'Expression evaluation failed'
       );
 
       await sandboxEvaluator.dispose();
@@ -408,7 +408,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Security validation failed');
+        expect((error as Error).message).toContain('Expression evaluation failed');
         expect((error as Error).message).toContain('potentially dangerous patterns');
       }
 

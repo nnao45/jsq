@@ -92,12 +92,12 @@ program
       }
 
       prepareOptions(options);
-      
+
       if (options.watch && !options.file) {
         console.error('Error: --watch requires --file option to specify the file to watch');
         process.exit(1);
       }
-      
+
       await processExpression(expression, options);
     } catch (error) {
       handleError(error, options);
@@ -324,29 +324,29 @@ async function processOnce(expression: string, options: JsqOptions): Promise<voi
 
 async function watchAndProcess(expression: string, options: JsqOptions): Promise<void> {
   const { watch } = await import('node:fs');
-  
+
   if (!options.file) {
     throw new Error('File path is required for watch mode');
   }
-  
+
   const filePath = options.file;
   let isProcessing = false;
-  
+
   const clearConsole = () => {
     // Clear screen and move cursor to top
     process.stdout.write('\x1B[2J\x1B[0f');
   };
-  
+
   const runProcess = async () => {
     if (isProcessing) return;
     isProcessing = true;
-    
+
     clearConsole();
     console.log(`⏱️  Watching: ${filePath}`);
     console.log(`📝 Expression: ${expression}`);
     console.log('─'.repeat(process.stdout.columns || 80));
     console.log();
-    
+
     try {
       await processOnce(expression, options);
       console.log(`\n${'─'.repeat(process.stdout.columns || 80)}`);
@@ -360,16 +360,16 @@ async function watchAndProcess(expression: string, options: JsqOptions): Promise
         }
       }
     }
-    
+
     isProcessing = false;
   };
-  
+
   // Run once initially
   await runProcess();
-  
+
   // Watch for changes with debouncing
   let debounceTimer: NodeJS.Timeout | null = null;
-  const watcher = watch(filePath, async (eventType) => {
+  const watcher = watch(filePath, async eventType => {
     if (eventType === 'change') {
       if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -379,7 +379,7 @@ async function watchAndProcess(expression: string, options: JsqOptions): Promise
       }, 100); // 100ms debounce
     }
   });
-  
+
   // Handle graceful shutdown
   process.on('SIGINT', () => {
     clearConsole();
@@ -387,7 +387,7 @@ async function watchAndProcess(expression: string, options: JsqOptions): Promise
     watcher.close();
     process.exit(0);
   });
-  
+
   // Keep the process running
   process.stdin.resume();
 }
@@ -596,7 +596,15 @@ async function processRegularData(
 
 function handleError(error: unknown, options: JsqOptions): void {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-  console.error('Error:', errorMessage);
+
+  // Check if it's already a formatted error (contains ANSI color codes)
+  if (errorMessage.includes('\x1b[')) {
+    // Already formatted, output as-is
+    console.error(errorMessage);
+  } else {
+    // Old style error, keep backward compatibility
+    console.error('Error:', errorMessage);
+  }
 
   if (options.debug && error instanceof Error && error.stack) {
     console.error('Stack trace:', error.stack);

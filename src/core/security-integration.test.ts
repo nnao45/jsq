@@ -61,7 +61,7 @@ describe('Security Integration Tests', () => {
 
       for (const expression of dangerousExpressions) {
         await expect(evaluator.evaluate(expression, {})).rejects.toThrow(
-          'Security validation failed'
+          'Expression evaluation failed'
         );
       }
     });
@@ -87,7 +87,7 @@ describe('Security Integration Tests', () => {
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Security validation failed');
+        expect((error as Error).message).toContain('Expression evaluation failed');
         expect((error as Error).message).toContain(
           'Expression contains potentially dangerous patterns'
         );
