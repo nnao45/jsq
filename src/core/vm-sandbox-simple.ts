@@ -1,4 +1,4 @@
-const ivm = require('isolated-vm');
+import ivm from "isolated-vm";
 
 import type {
   SandboxError,
@@ -460,6 +460,7 @@ export class VMSandboxSimple {
         if (args.length === 0) {
           return new Date();
         }
+        // @ts-ignore
         return new Date(...args);
       });
       await jail.set('_DateImpl', dateImpl);
