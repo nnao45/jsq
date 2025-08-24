@@ -68,7 +68,7 @@ export const App: React.FC<AppProps> = ({ expression, options }) => {
   );
 };
 
-function validateInputs(expression: string): string | null {
+function validateInputs(expression: string | undefined): string | null {
   if (!expression) {
     return 'No expression provided. Use: jsq "expression" < input.json';
   }
