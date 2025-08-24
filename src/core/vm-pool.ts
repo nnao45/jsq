@@ -2,7 +2,7 @@
  * VM Instance Pool for isolated-vm isolates
  */
 
-const ivm = require('isolated-vm');
+import ivm from "isolated-vm";
 
 interface PooledIsolate {
   isolate: unknown; // ivm.Isolate

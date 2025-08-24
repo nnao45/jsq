@@ -1,5 +1,4 @@
-const isolatedVM = require('isolated-vm');
-const ivm = isolatedVM;
+import ivm from "isolated-vm";
 
 import type { ExecutionMetrics } from '@/types/sandbox';
 
