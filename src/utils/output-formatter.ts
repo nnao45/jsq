@@ -90,7 +90,7 @@ export class OutputFormatter {
   private colorize(json: string): string {
     // Use a more careful approach to avoid coloring inside strings
     let result = '';
-    const inString = false;
+    let inString = false;
     let escapeNext = false;
 
     for (let i = 0; i < json.length; i++) {
@@ -110,10 +110,20 @@ export class OutputFormatter {
       }
 
       if (char === '"' && !escapeNext) {
-        // Start or end of string
+        // Check if this is a JSON key (followed by a colon)
+        const keyMatch = remainingText.match(/^"([^"\\]|\\.)*"\s*:/);
+        if (keyMatch && !inString) {
+          // Extract just the key part (without the colon)
+          const keyPart = keyMatch[0].substring(0, keyMatch[0].lastIndexOf(':'));
+          result += chalk.blueBright(keyPart);
+          i += keyPart.length - 1;
+          continue;
+        }
+        
+        // Otherwise, it's a string value
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
         if (stringMatch) {
-          result += chalk.blue(stringMatch[0]);
+          result += chalk.green(stringMatch[0]);
           i += stringMatch[0].length - 1;
           continue;
         }
@@ -123,7 +133,7 @@ export class OutputFormatter {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
         if (numberMatch) {
-          result += chalk.cyan(numberMatch[0]);
+          result += chalk.yellow(numberMatch[0]);
           i += numberMatch[0].length - 1;
           continue;
         }
