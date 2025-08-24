@@ -301,6 +301,29 @@ echo '{"text": "HelloWorldTest"}' | jsq '_.kebabCase($.text)'      # "hello-worl
 echo '{"text": "hello world"}' | jsq '_.startCase($.text)'        # "Hello World"
 ```
 
+#### Regular Expression Support 🎯
+
+jsq provides full regular expression support in VM mode (default) with convenient helper functions:
+
+```bash
+# Basic regex matching
+echo '["test123", "hello", "world456"]' | jsq '$.filter(s => /\d+/.test(s))'  # ["test123", "world456"]
+
+# Global replacement
+echo '"hello world hello"' | jsq '$.replace(/hello/g, "hi")'  # "hi world hi"
+
+# Extract all matches
+echo '"abc123def456"' | jsq '$.match(/\d+/g)'  # ["123", "456"]
+
+# Split by regex
+echo '"hello123world456test"' | jsq '$.split(/\d+/)'  # ["hello", "world", "test"]
+
+# Complex patterns with flags
+echo '["Test", "TEST", "test"]' | jsq '$.filter(s => /test/i.test(s))'  # All match with case-insensitive flag
+```
+
+**Note**: Regular expressions are fully supported in the default VM mode. The `--unsafe` mode is not required for regex operations.
+
 #### Mathematical Functions
 ```bash
 # Statistical operations

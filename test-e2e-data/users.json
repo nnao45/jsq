@@ -1,0 +1,46 @@
+{
+  "users": {
+    "value": [
+      {
+        "id": 1,
+        "name": "Alice",
+        "age": 30,
+        "department": "engineering",
+        "active": true,
+        "salary": 70000
+      },
+      {
+        "id": 2,
+        "name": "Bob",
+        "age": 25,
+        "department": "design",
+        "active": false,
+        "salary": 50000
+      },
+      {
+        "id": 3,
+        "name": "Charlie",
+        "age": 35,
+        "department": "engineering",
+        "active": true,
+        "salary": 80000
+      },
+      {
+        "id": 4,
+        "name": "Diana",
+        "age": 28,
+        "department": "marketing",
+        "active": true,
+        "salary": 60000
+      },
+      {
+        "id": 5,
+        "name": "Eve",
+        "age": 32,
+        "department": "design",
+        "active": true,
+        "salary": 65000
+      }
+    ]
+  }
+}
