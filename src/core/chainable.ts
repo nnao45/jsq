@@ -3,6 +3,12 @@ import { asyncMethods } from './async-methods';
 export class ChainableWrapper {
   private data: unknown;
 
+  // Cache for bound methods to avoid recreating them
+  private static methodCache = new WeakMap<
+    ChainableWrapper,
+    Map<string, (...args: unknown[]) => unknown>
+  >();
+
   constructor(data: unknown) {
     this.data = data;
 
@@ -14,7 +20,20 @@ export class ChainableWrapper {
         if (prop in target) {
           const value = Reflect.get(target, prop, receiver);
           if (typeof value === 'function') {
-            return value.bind(target);
+            // Check method cache first
+            let cache = ChainableWrapper.methodCache.get(target);
+            if (!cache) {
+              cache = new Map();
+              ChainableWrapper.methodCache.set(target, cache);
+            }
+
+            const propStr = String(prop);
+            let boundMethod = cache.get(propStr);
+            if (!boundMethod) {
+              boundMethod = value.bind(target);
+              cache.set(propStr, boundMethod);
+            }
+            return boundMethod;
           }
           return value;
         }
@@ -1393,7 +1412,10 @@ export class ChainableWrapper {
     transform: (item: unknown, index?: number) => Promise<T>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const results = await asyncMethods.mapAsync(this.data as unknown[], transform as any);
+      const results = await asyncMethods.mapAsync(
+        this.data as unknown[],
+        transform as (item: unknown, index: number, array: unknown[]) => Promise<unknown>
+      );
       return new ChainableWrapper(results);
     }
     const result = await transform(this.data, 0);
@@ -1407,7 +1429,10 @@ export class ChainableWrapper {
     transform: (item: unknown, index?: number) => Promise<T>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const results = await asyncMethods.mapAsyncSeq(this.data as unknown[], transform as any);
+      const results = await asyncMethods.mapAsyncSeq(
+        this.data as unknown[],
+        transform as (item: unknown, index: number, array: unknown[]) => Promise<unknown>
+      );
       return new ChainableWrapper(results);
     }
     const result = await transform(this.data, 0);

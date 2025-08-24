@@ -22,7 +22,7 @@ export class OutputFormatter {
       noColor: options.noColor,
       indent: options.indent,
       compact: options.compact,
-      sortKeys: options.sortKeys
+      sortKeys: options.sortKeys,
     };
 
     // Determine indent size
@@ -58,8 +58,7 @@ export class OutputFormatter {
   }
 
   private formatOneline(data: unknown): string {
-    const json = JSON.stringify(data, this.getReplacer());
-    return this.useColor ? this.colorize(json) : json;
+    return this.formatCompact(data);
   }
 
   private formatCompact(data: unknown): string {
@@ -93,23 +92,23 @@ export class OutputFormatter {
     let result = '';
     const inString = false;
     let escapeNext = false;
-    
+
     for (let i = 0; i < json.length; i++) {
       const char = json[i];
       const remainingText = json.slice(i);
-      
+
       if (escapeNext) {
         result += char;
         escapeNext = false;
         continue;
       }
-      
+
       if (char === '\\' && inString) {
         escapeNext = true;
         result += char;
         continue;
       }
-      
+
       if (char === '"' && !escapeNext) {
         // Start or end of string
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
@@ -119,7 +118,7 @@ export class OutputFormatter {
           continue;
         }
       }
-      
+
       if (!inString) {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
@@ -128,7 +127,7 @@ export class OutputFormatter {
           i += numberMatch[0].length - 1;
           continue;
         }
-        
+
         // Booleans
         const boolMatch = remainingText.match(/^(true|false)/);
         if (boolMatch) {
@@ -136,7 +135,7 @@ export class OutputFormatter {
           i += boolMatch[0].length - 1;
           continue;
         }
-        
+
         // Null
         const nullMatch = remainingText.match(/^null/);
         if (nullMatch) {
@@ -144,17 +143,17 @@ export class OutputFormatter {
           i += nullMatch[0].length - 1;
           continue;
         }
-        
+
         // Punctuation
         if (/[{}[\]:,]/.test(char)) {
           result += chalk.dim(char);
           continue;
         }
       }
-      
+
       result += char;
     }
-    
+
     return result;
   }
 

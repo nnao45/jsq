@@ -1,15 +1,13 @@
 export const asyncMethods = {
-  mapAsync: async function<T, U>(
+  mapAsync: async <T, U>(
     array: T[],
     fn: (item: T, index: number, array: T[]) => Promise<U>
-  ): Promise<U[]> {
-    return Promise.all(array.map((item, index) => fn(item, index, array)));
-  },
+  ): Promise<U[]> => Promise.all(array.map((item, index) => fn(item, index, array))),
 
-  mapAsyncSeq: async function<T, U>(
+  mapAsyncSeq: async <T, U>(
     array: T[],
     fn: (item: T, index: number, array: T[]) => Promise<U>
-  ): Promise<U[]> {
+  ): Promise<U[]> => {
     const results: U[] = [];
     for (let i = 0; i < array.length; i++) {
       // biome-ignore lint/style/noNonNullAssertion: array access is safe within bounds
@@ -18,20 +16,20 @@ export const asyncMethods = {
     return results;
   },
 
-  forEachAsync: async function<T>(
+  forEachAsync: async <T>(
     array: T[],
     fn: (item: T, index: number, array: T[]) => Promise<void>
-  ): Promise<void> {
+  ): Promise<void> => {
     await Promise.all(array.map((item, index) => fn(item, index, array)));
   },
 
-  forEachAsyncSeq: async function<T>(
+  forEachAsyncSeq: async <T>(
     array: T[],
     fn: (item: T, index: number, array: T[]) => Promise<void>
-  ): Promise<void> {
+  ): Promise<void> => {
     for (let i = 0; i < array.length; i++) {
       // biome-ignore lint/style/noNonNullAssertion: array access is safe within bounds
       await fn(array[i]!, i, array);
     }
-  }
+  },
 };
