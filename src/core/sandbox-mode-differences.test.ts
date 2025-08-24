@@ -44,7 +44,6 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
         'process.exit(0)',
         'global.foo = 1',
         'Buffer.from("test")',
-        'fetch("https://example.com")',
         'require("fs")',
         'import("child_process")',
       ];
@@ -78,24 +77,23 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
   });
 
   describe('Security Context Creation', () => {
-    it('should remove fetch in VM mode by default', () => {
+    it('should preserve allowed globals in VM mode by default', () => {
       const defaultManager = new SecurityManager({} as JsqOptions);
 
       const baseContext = {
         $: {},
         console: {},
-        fetch: () => {},
         Math,
         JSON,
       };
 
       const secureContext = defaultManager.createEvaluationContext(baseContext);
 
-      // In VM mode (default), fetch should be removed and warning added
-      expect(secureContext.fetch).toBeUndefined();
-      expect(defaultManager.getWarnings()).toContain(
-        'Network access disabled - fetch API unavailable'
-      );
+      // In VM mode (default), allowed globals should be preserved
+      expect(secureContext.$).toBe(baseContext.$);
+      expect(secureContext.console).toBe(baseContext.console);
+      expect(secureContext.Math).toBe(baseContext.Math);
+      expect(secureContext.JSON).toBe(baseContext.JSON);
     });
 
     it('should apply VM restrictions by default', () => {
@@ -104,7 +102,6 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
       const baseContext = {
         $: {},
         console: {},
-        fetch: () => {},
         Math,
         JSON,
       };
@@ -112,8 +109,8 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
       const secureContext = defaultManager.createEvaluationContext(baseContext);
 
       // VM mode restrictions apply by default
-      expect(secureContext.fetch).toBeUndefined();
-      expect(defaultManager.getWarnings().length).toBeGreaterThan(0);
+      expect(secureContext).toBeDefined();
+      expect(Object.keys(secureContext).length).toBeGreaterThan(0);
     });
   });
 

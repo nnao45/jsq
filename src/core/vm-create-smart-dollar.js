@@ -32,6 +32,19 @@ globalThis.createSmartDollar = function(data) {
     return data;
   }
   
+  // Prevent infinite recursion - track objects being processed
+  if (!globalThis._smartDollarProcessing) {
+    globalThis._smartDollarProcessing = new WeakSet();
+  }
+  
+  // Check if this object is already being processed
+  if (typeof data === 'object' && data !== null) {
+    if (globalThis._smartDollarProcessing.has(data)) {
+      return data; // Return as-is to prevent recursion
+    }
+    globalThis._smartDollarProcessing.add(data);
+  }
+  
   // For arrays, attach methods directly to avoid proxy issues with isolated-vm
   if (Array.isArray(data)) {
     // Create method implementations that reference globalThis to avoid closures
@@ -348,11 +361,41 @@ globalThis.createSmartDollar = function(data) {
       });
     }
     
+    // Clean up tracking before returning
+    if (globalThis._smartDollarProcessing) {
+      globalThis._smartDollarProcessing.delete(data);
+    }
     return smartArray;
   }
   
-  // For objects, create a proxy to handle property access
+  // Don't wrap built-in objects that shouldn't be proxied
   if (typeof data === 'object' && data !== null) {
+    // Skip Date, RegExp, Error, and other built-in objects
+    if (data instanceof Date || 
+        data instanceof RegExp || 
+        data instanceof Error ||
+        data instanceof Promise ||
+        data instanceof Map ||
+        data instanceof Set ||
+        data instanceof WeakMap ||
+        data instanceof WeakSet ||
+        data instanceof ArrayBuffer ||
+        data instanceof DataView ||
+        data.constructor && data.constructor.name && 
+        (data.constructor.name.includes('Error') || 
+         data.constructor.name.includes('Iterator'))) {
+      // Clean up tracking before returning
+      if (globalThis._smartDollarProcessing) {
+        globalThis._smartDollarProcessing.delete(data);
+      }
+      return data;
+    }
+    
+    // Clean up tracking set before creating proxy
+    if (globalThis._smartDollarProcessing) {
+      globalThis._smartDollarProcessing.delete(data);
+    }
+    
     return new Proxy(data, {
       get(target, prop) {
         // Handle special methods
@@ -363,6 +406,10 @@ globalThis.createSmartDollar = function(data) {
         // If property exists in the object, wrap the value with createSmartDollar
         if (prop in target) {
           const value = target[prop];
+          // For functions, return them directly to avoid wrapping
+          if (typeof value === 'function') {
+            return value.bind(target);
+          }
           // Recursively apply createSmartDollar to enable chaining
           return globalThis.createSmartDollar(value);
         }
@@ -433,7 +480,16 @@ globalThis.createSmartDollar = function(data) {
       configurable: true
     });
     
+    // Clean up tracking before returning
+    if (globalThis._smartDollarProcessing) {
+      globalThis._smartDollarProcessing.delete(data);
+    }
     return stringObj;
+  }
+  
+  // Clean up the tracking set for this object
+  if (globalThis._smartDollarProcessing && typeof data === 'object' && data !== null) {
+    globalThis._smartDollarProcessing.delete(data);
   }
   
   // For other primitives, return them directly
