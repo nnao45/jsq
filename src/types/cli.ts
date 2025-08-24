@@ -18,6 +18,12 @@ export interface JsqOptions {
   sandbox?: boolean;
   memoryLimit?: string | number;
   cpuLimit?: string | number;
+  oneline?: boolean;
+  color?: boolean;
+  noColor?: boolean;
+  indent?: string | number;
+  compact?: boolean;
+  sortKeys?: boolean;
 }
 
 export interface JsqConfig {

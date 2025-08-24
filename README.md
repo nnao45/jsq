@@ -83,28 +83,7 @@ time cat million-records.jsonl | jsq --parallel '$.process()'  # ~2 seconds
 time cat million-records.jsonl | jq '.process()'               # ~40 seconds
 ```
 
-### 6. 🚀 Optimized Performance
-Lightweight and fast with minimal dependencies
-
-### 7. 🌐 Built-in Fetch & Async/Await Support ✨ NEW
-Native fetch API and async/await support for seamless HTTP requests and asynchronous operations
-
-```bash
-# Fetch API data and process it
-jsq 'const response = await fetch("https://jsonplaceholder.typicode.com/posts/1"); const data = await response.json(); data.title'
-# Output: "sunt aut facere repellat provident occaecati excepturi optio reprehenderit"
-
-# Fetch multiple endpoints concurrently
-jsq 'const urls = ["https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2"]; const responses = await Promise.all(urls.map(url => fetch(url))); const data = await Promise.all(responses.map(r => r.json())); data.map(post => post.title)'
-
-# Combine with data processing
-echo '["posts/1", "posts/2", "posts/3"]' | jsq '$.map(async endpoint => { const response = await fetch(`https://jsonplaceholder.typicode.com/${endpoint}`); const data = await response.json(); return {id: data.id, title: data.title}; })'
-
-# Error handling with async operations
-jsq 'try { const response = await fetch("https://invalid-url"); const data = await response.json(); return data; } catch (error) { return {error: error.message}; }'
-```
-
-### 8. 🔗 Sequential Execution with Semicolon Operator ✨ NEW
+### 6. 🔗 Sequential Execution with Semicolon Operator ✨ NEW
 Execute multiple expressions sequentially, returning only the final result - perfect for side effects and complex data processing
 
 ```bash
@@ -130,7 +109,7 @@ echo '["https://jsonplaceholder.typicode.com/posts/1"]' | jsq 'console.log("Fetc
 #         1
 ```
 
-### 9. ⚡ Advanced Async Array Methods ✨ NEW  
+### 7. ⚡ Advanced Async Array Methods ✨ NEW  
 Powerful async array processing with both parallel and sequential execution modes - perfect for API calls and async operations
 
 ```bash
@@ -150,11 +129,7 @@ echo '[1, 2, 3]' | jsq 'await $.mapAsyncSeq(async id => { await new Promise(r =>
 echo '["valid-url", "invalid-url"]' | jsq 'await $.mapAsync(async url => { try { const res = await fetch(`https://jsonplaceholder.typicode.com/${url}`); return { url, status: "success", data: await res.json() }; } catch (error) { return { url, status: "error", message: error.message }; } })'
 ```
 
-
-### 10. 🎯 Full TypeScript Support
-Provides type-safe processing and excellent developer experience
-
-### 11. 👀 Watch Mode for Real-time Data Processing ✨ NEW
+### 8. 👀 Watch Mode for Real-time Data Processing ✨ NEW
 Monitor file changes and automatically re-execute expressions for live data updates
 
 ```bash
@@ -180,38 +155,10 @@ Watch mode features:
 ### Node.js (npm) - Primary Installation
 ```bash
 npm install -g @nnao45/jsq
-
-# Use default Node.js runtime
-jsq '$.users.pluck("name")' --file data.json
-
-# Or use Bun runtime via subcommand
-jsq bun '$.users.pluck("name")' --file data.json
-
-# Or use Deno runtime via subcommand  
-jsq deno '$.users.pluck("name")' --file data.json
-```
-
-### Runtime-Specific Usage
-
-#### Bun
-```bash
-# After npm install, use jsq bun subcommand
-jsq bun '$.users.pluck("name")' --file data.json
-
-# Or run directly with Bun (without installation)
-bun run https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.users.pluck("name")' --file data.json
-```
-
-#### Deno
-```bash
-# After npm install, use jsq deno subcommand
-jsq deno '$.users.pluck("name")' --file data.json
-
-# Or run directly with Deno (without installation)
-deno run --allow-all --unstable-sloppy-imports https://github.com/nnao45/jsq/raw/main/src/simple-cli.ts '$.users.pluck("name")' --file data.json
 ```
 
 ### Cross-Runtime Compatibility
+**Only support with `--unsafe` options**
 jsq supports running with multiple JavaScript runtimes through subcommands:
 - **Node.js**: `jsq` (default)
 - **Bun**: `jsq bun` (faster startup, better performance)
@@ -240,162 +187,6 @@ The REPL provides a Claude Code-style interface with:
 - Scrollable result area that auto-truncates for optimal viewing
 - Instant feedback for syntax errors and partial expressions
 
-## 🚀 Basic Usage
-
-### Data Transformation
-
-```bash
-# Transform each element in array
-echo '{"numbers": [1, 2, 3, 4, 5]}' | jsq '$.numbers.map(n => n * 2)'
-# Output: [2, 4, 6, 8, 10]
-
-# Filter objects
-echo '{"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}' | jsq '$.users.filter(u => u.age > 25)'
-# Output: [{"name": "Alice", "age": 30}]
-
-# Same operations with different runtimes
-echo '{"data": [1, 2, 3]}' | jsq bun '$.data.map(x => x * 3)'        # Using Bun
-echo '{"data": [1, 2, 3]}' | jsq deno '$.data.filter(x => x > 1)'    # Using Deno
-```
-
-### Chaining Operations
-
-```bash
-# Combine multiple operations
-echo '{"sales": [{"product": "laptop", "price": 1200}, {"product": "mouse", "price": 25}]}' | jsq '$.sales.sortBy("price").pluck("product")'
-# Output: ["mouse", "laptop"]
-
-# Aggregation operations
-echo '{"orders": [{"amount": 100}, {"amount": 250}, {"amount": 75}]}' | jsq '$.orders.sum("amount")'
-# Output: 425
-```
-
-### Conditional Filtering
-
-```bash
-echo '{"products": [{"name": "iPhone", "category": "phone", "price": 999}, {"name": "MacBook", "category": "laptop", "price": 1299}]}' | jsq '$.products.where("category", "phone").pluck("name")'
-# Output: ["iPhone"]
-```
-
-### Pipeline Variable Declarations ✨ NEW
-
-Create variables and use them in the same expression with intuitive pipeline syntax:
-
-```bash
-# Basic variable pipeline with const
-echo '{}' | jsq "const message = 'hello world' | message.toUpperCase()"
-# Output: "HELLO WORLD"
-
-# Using let for mutable variables
-echo '{}' | jsq "let numbers = [1,2,3,4,5] | numbers.filter(x => x > 3)"
-# Output: [4, 5]
-
-# Complex data processing with jsq data
-echo '{"users": [{"name": "Alice"}, {"name": "Bob"}]}' | jsq "const names = $.users.map(u => u.name) | names.join(', ')"
-# Output: "Alice, Bob"
-
-# Object manipulation
-echo '{}' | jsq "const data = {a: 1, b: 2, c: 3} | Object.keys(data).length"
-# Output: 3
-
-# Method chaining with variables
-echo '{}' | jsq "let text = 'The Quick Brown Fox' | text.toLowerCase().split(' ').join('-')"
-# Output: "the-quick-brown-fox"
-
-# Works seamlessly with all runtimes
-echo '{}' | jsq bun "const result = [1,2,3,4,5] | result.reduce((a,b) => a+b, 0)"  # Bun
-echo '{}' | jsq deno "let items = ['a','b','c'] | items.length"                     # Deno
-```
-
-## 🔧 Advanced Features
-
-
-### Security Features
-
-jsq provides secure VM isolation by default, ensuring safe execution of JavaScript expressions:
-
-#### 🔒 Default Mode (VM Isolation)
-```bash
-# Secure execution with VM isolation
-cat data.json | jsq '_.uniq($.tags)'
-# 🔒 Running in secure VM isolation mode
-```
-
-#### 🔒 Resource Control Options
-Configure VM resource limits:
-
-```bash
-# Adjust memory limit (default: 128MB)
-cat data.json | jsq --memory-limit 256 '$.data.map(x => x.value)'
-
-# Adjust CPU time limit (default: 30s)
-cat data.json | jsq --cpu-limit 60000 '$.data.filter(x => x.active)'
-# 🐚 Shell command execution disabled
-
-# Disable file system access
-cat data.json | jsq --no-fs '$.data.sortBy("name")'
-# 📁 File system access disabled
-
-# Combine multiple restrictions
-cat data.json | jsq --no-network --no-shell --no-fs '$.data.length'
-```
-
-#### 🛡️ Legacy Sandbox Flag
-The --sandbox flag is deprecated as VM isolation is now the default:
-
-```bash
-# --sandbox flag is no longer needed (VM is default)
-cat data.json | jsq '_.groupBy($.items, "category")'
-# 🔒 Running in secure VM isolation mode
-```
-
-#### ⚖️ Security Configuration
-
-| Mode | Network | Shell | FileSystem | VM | Timeout | Use Case |
-|------|---------|-------|------------|----|---------|---------| 
-| Default (VM) | ❌ | ❌ | ❌ | ✅ | 30s | Secure execution by default |
-| --memory-limit N | ❌ | ❌ | ❌ | ✅ | 30s | Custom memory limit (MB) |
-| --cpu-limit N | ❌ | ❌ | ❌ | ✅ | Custom | Custom CPU time limit (ms) |
-| Legacy flags | - | - | - | - | - | Deprecated, no effect |
-
-#### 🚨 Security Warnings & Validation
-
-jsq automatically detects and warns about security issues:
-
-```bash
-# Automatic security warnings
-cat data.json | jsq --use lodash 'import("child_process")'
-# ⚠️ Warning: External libraries will execute without VM isolation
-
-# Expression validation errors
-cat data.json | jsq --no-shell 'execSync("ls")'
-# ❌ Security validation failed: Shell command execution is disabled
-```
-
-### Streaming Processing Demo
-
-```bash
-# Experience real-time data processing
-# Note: Use double quotes for JSON and escape properly in your shell
-for i in {1..3}; do echo "{\"id\":$i,\"name\":\"User$i\"}"; sleep 1; done | jsq '$.name' --stream
-# Output:
-# "User1"
-# "User2"  (after 1 second)
-# "User3"  (after another second)
-
-# Alternative with printf for better compatibility
-for i in {1..3}; do printf '{"id":%d,"name":"User%d"}\n' $i $i; sleep 1; done | jsq '$.name' --stream
-```
-
-### Performance Monitoring
-
-```bash
-# Display detailed performance information
-cat large-data.json | jsq -v '$.records.filter(r => r.status === "active").length()'
-# Processing time: 15ms
-# Input size: 1024 bytes
-# Output size: 1 bytes
-```
 
 ## 📚 Available Methods
 
@@ -616,6 +407,16 @@ Options:
   --file-format <format> Specify input file format (json, jsonl, csv, tsv, parquet, auto)
   -w, --watch            Watch input file for changes and re-execute expression ✨ NEW
   --repl                 Start interactive REPL mode
+  
+  Output Formatting:
+  --oneline              Output JSON in a single line (no pretty-printing) ✨ NEW
+  --color                Enable colored output ✨ NEW
+  --no-color             Disable colored output ✨ NEW
+  --indent <spaces>      Number of spaces for indentation (default: 2) ✨ NEW
+  --compact              Compact output (no spaces after separators) ✨ NEW
+  --sort-keys            Sort object keys alphabetically ✨ NEW
+  
+  Legacy/Advanced:
   --no-network           Legacy option (deprecated, no effect in VM mode)
   --no-shell             Legacy option (deprecated, no effect in VM mode)
   --no-fs                Legacy option (deprecated, no effect in VM mode)
@@ -628,20 +429,6 @@ Options:
   --version              Display version
 ```
 
-### Runtime-Specific Usage
-
-#### Quick Start Examples
-```bash
-# Node.js (default)
-echo '{"data": [1,2,3]}' | jsq '$.data.map(x => x * 2)'
-
-# Bun (faster execution)
-echo '{"data": [1,2,3]}' | jsq bun '$.data.map(x => x * 2)'
-
-# Deno (secure by default)
-echo '{"data": [1,2,3]}' | jsq deno '$.data.map(x => x * 2)'
-```
-
 ## 🔄 Migration from jq
 
 | jq | jsq |
@@ -651,15 +438,6 @@ echo '{"data": [1,2,3]}' | jsq deno '$.data.map(x => x * 2)'
 | `.users \| length` | `$.users.length()` |
 | `.products \| sort_by(.price)` | `$.products.sortBy("price")` |
 | `.items[] \| select(.price > 100)` | `$.items.filter(i => i.price > 100)` |
-
-## 🏗️ Architecture
-
-jsq consists of the following main components:
-
-- **Chaining Engine**: Provides jQuery-style method chaining
-- **Library Manager**: Dynamic loading and caching of npm packages
-- **VM Executor**: Provides secure execution environment
-- **JSON Parser**: High-performance JSON parsing and error handling
 
 ## 💡 Practical Examples
 
@@ -876,20 +654,6 @@ cat api-keys.json | jsq '
 
 ```
 
-## 🎮 REPL Commands & Navigation
-
-The interactive REPL supports these keyboard shortcuts:
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+R` | Toggle data view |
-| `Ctrl+L` | Clear expression |
-| `Ctrl+C` / `Ctrl+D` | Exit REPL |
-| `←` / `→` | Move cursor |
-| `Ctrl+A` | Move to beginning |
-| `Ctrl+E` | Move to end |
-| `Backspace` | Delete character |
-
 ## 🔧 Development & Contributing
 
 ### Node.js Development
@@ -1010,29 +774,3 @@ Please report bugs and feature requests on [GitHub Issues](https://github.com/nn
 ---
 
 **@nnao45/jsq** revolutionizes JSON processing with a beautiful, interactive interface that makes data exploration enjoyable. By combining the power of jq with JavaScript familiarity and stunning visual design, it's the ultimate tool for developers who value both functionality and aesthetics.
-
-## 🌐 Cross-Runtime Compatibility
-
-jsq is designed to work seamlessly across all major JavaScript runtimes:
-
-| Runtime | Status | Installation | Performance | Notes |
-|---------|--------|--------------|-------------|-------|
-| **Node.js** | ✅ Full Support | `npm install -g @nnao45/jsq` | Standard | Complete ecosystem access |
-| **Bun** | ✅ Native Support | `bun add -g @nnao45/jsq` | **Fast** | Built-in bundler, faster execution |
-| **Deno** | ✅ Compatible | Direct URL import | Standard | Secure by default, no npm install needed |
-
-### Runtime Detection
-jsq automatically detects your runtime environment and optimizes accordingly:
-- **Package Management**: Uses npm, bun add, or deno imports as appropriate
-- **Module Resolution**: Handles different import/require patterns
-- **Performance**: Leverages runtime-specific optimizations
-- **Security**: Respects each runtime's security model
-
-## 🎨 Visual Highlights
-
-- **Dynamic Multi-Color Prompt**: Watch the ❯❯❯ characters cycle through vibrant colors
-- **Real-Time Feedback**: Instant visual confirmation of your expressions
-- **Elegant Loading States**: Sophisticated indicators that respect your time
-- **Clean Layout**: Fixed positioning that never interrupts your workflow
-
-Experience the future of command-line JSON processing - where powerful functionality meets beautiful design.

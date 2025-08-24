@@ -12,6 +12,7 @@ import {
   validateFile,
 } from '@/utils/file-input';
 import { getStdinStream, readStdin } from '@/utils/input';
+import { OutputFormatter } from '@/utils/output-formatter';
 
 function findPackageRoot(): string {
   const fs = require('node:fs');
@@ -77,6 +78,12 @@ program
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .option('-w, --watch', 'Watch input file for changes and re-execute expression')
+  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
+  .option('--color', 'Enable colored output')
+  .option('--no-color', 'Disable colored output')
+  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
+  .option('--compact', 'Compact output (no spaces after separators)')
+  .option('--sort-keys', 'Sort object keys alphabetically')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     try {
       if (options.repl) {
@@ -131,6 +138,12 @@ program
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .option('-w, --watch', 'Watch input file for changes and re-execute expression')
+  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
+  .option('--color', 'Enable colored output')
+  .option('--no-color', 'Disable colored output')
+  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
+  .option('--compact', 'Compact output (no spaces after separators)')
+  .option('--sort-keys', 'Sort object keys alphabetically')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('bun', expression, options);
   });
@@ -162,6 +175,12 @@ program
   .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
   .option('--repl', 'Start interactive REPL mode')
   .option('-w, --watch', 'Watch input file for changes and re-execute expression')
+  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
+  .option('--color', 'Enable colored output')
+  .option('--no-color', 'Disable colored output')
+  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
+  .option('--compact', 'Compact output (no spaces after separators)')
+  .option('--sort-keys', 'Sort object keys alphabetically')
   .action(async (expression: string | undefined, options: JsqOptions) => {
     await runWithRuntime('deno', expression, options);
   });
@@ -563,7 +582,7 @@ async function processStructuredData(
   // For YAML and TOML, use data directly since they're already properly structured
   const parsedData = ['yaml', 'yml', 'toml'].includes(format || '') ? input : { data: input };
   const result = await processor.process(expression, JSON.stringify(parsedData));
-  console.log(JSON.stringify(result.data, null, 2));
+  console.log(OutputFormatter.format(result.data, options));
 
   if (options.verbose && result.metadata) {
     console.error(`Processing time: ${result.metadata.processingTime}ms`);
@@ -582,7 +601,7 @@ async function processRegularData(
   // This enables usage like: jsq '_.range(5)' without requiring input data
 
   const result = await processor.process(expression, input as string);
-  console.log(JSON.stringify(result.data, null, 2));
+  console.log(OutputFormatter.format(result.data, options));
 
   if (options.verbose && result.metadata) {
     console.error(`Processing time: ${result.metadata.processingTime}ms`);

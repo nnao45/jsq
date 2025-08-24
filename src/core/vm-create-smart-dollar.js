@@ -6,7 +6,12 @@ globalThis.createSmartDollar = function(data) {
     return data;
   }
   
-  // For arrays, return a proxy that adds methods without attaching them
+  // Check if data already has smart methods to avoid re-wrapping
+  if (data && data._isSmartDollar) {
+    return data;
+  }
+  
+  // For arrays, attach methods directly to avoid proxy issues with isolated-vm
   if (Array.isArray(data)) {
     // Create method implementations that reference globalThis to avoid closures
     const arrayMethods = {
@@ -307,93 +312,38 @@ globalThis.createSmartDollar = function(data) {
       // Other methods can be added here...
     };
     
-    // Return a proxy that intercepts method calls
-    return new Proxy(data, {
-      get(target, prop) {
-        // Override specific array methods we want to intercept
-        if (prop === 'map' || prop === 'filter' || prop === 'slice' || prop === 'concat' || 
-            prop === 'orderBy' || prop === 'groupBy' || prop === 'pluck' || prop === 'entries') {
-          if (arrayMethods[prop]) {
-            return function(...args) {
-              return arrayMethods[prop](target, ...args);
-            };
-          }
-        }
-        
-        // Check other custom methods
-        if (Object.prototype.hasOwnProperty.call(arrayMethods, prop)) {
-          return function(...args) {
-            return arrayMethods[prop](target, ...args);
-          };
-        }
-        
-        // Special handling for find method to wrap result
-        if (prop === 'find') {
-          return function(...args) {
-            const result = Array.prototype.find.apply(target, args);
-            if (result !== undefined && typeof result === 'object') {
-              return globalThis.createSmartDollar(result);
-            }
-            return result;
-          };
-        }
-        
-        // For array properties and native methods, return them directly
-        const value = target[prop];
-        if (typeof value === 'function') {
-          // Bind native array methods
-          return value.bind(target);
-        }
-        return value;
-      }
-    });
-  }
-  
-  // For strings, convert to character array to support array methods
-  if (typeof data === 'string') {
-    const charArray = Array.from(data);
-    // Add original string as a property for reference
-    charArray._originalString = data;
-    return globalThis.createSmartDollar(charArray);
-  }
-  
-  // For objects, create a proxy for property access
-  if (typeof data === 'object' && data !== null) {
-    const handler = {
-      get: function(target, prop) {
-        // Check for object-specific methods
-        if (prop === 'entries') {
-          return function() {
-            return globalThis.createSmartDollar(Object.entries(target));
-          };
-        }
-        
-        // Special handling for 'value' property - commented out to allow normal access
-        // This was causing $.value to return the entire object instead of the property
-        // if (prop === 'value') {
-        //   return target;
-        // }
-        
-        // For property access, return the value directly (don't wrap primitives)
-        if (prop in target) {
-          const value = target[prop];
-          // Don't wrap primitives - return them directly
-          if (value === null || value === undefined ||
-              typeof value === 'string' || typeof value === 'number' || 
-              typeof value === 'boolean') {
-            return value;
-          }
-          // Always wrap arrays and objects with createSmartDollar
-          return globalThis.createSmartDollar(value);
-        }
-        return undefined;
-      }
-    };
+    // Create a copy of the array with methods attached directly
+    const smartArray = [...data];
     
-    return new Proxy(data, handler);
+    // Mark as smart dollar to avoid re-wrapping
+    Object.defineProperty(smartArray, '_isSmartDollar', {
+      value: true,
+      enumerable: false,
+      configurable: false
+    });
+    
+    // Attach methods directly to avoid proxy issues
+    for (const [methodName, methodImpl] of Object.entries(arrayMethods)) {
+      Object.defineProperty(smartArray, methodName, {
+        value: function(...args) {
+          return methodImpl(smartArray, ...args);
+        },
+        enumerable: false,
+        configurable: true
+      });
+    }
+    
+    return smartArray;
   }
   
-  // For primitives, return them directly
+  // For objects, return plain data to avoid proxy cloning issues
+  if (typeof data === 'object' && data !== null) {
+    // Just return the plain object
+    // Methods like $.map will be undefined, but at least $ will work
+    return data;
+  }
+  
+  // For primitives and strings, return them directly
   return data;
 };
 `;
