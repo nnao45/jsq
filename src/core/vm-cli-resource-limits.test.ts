@@ -67,7 +67,7 @@ describeWithVM('VM CLI Resource Limits', () => {
       `;
 
       // This should fail due to CPU time limit
-      await expect(evaluator.evaluate(code, null)).rejects.toThrow(/timeout|time/i);
+      await expect(evaluator.evaluate(code, null)).rejects.toThrow(/timeout|timed/i);
       await evaluator.dispose();
     });
 

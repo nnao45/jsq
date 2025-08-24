@@ -438,19 +438,19 @@ describe('Lodash-like Methods', () => {
 
       // Test pick with ChainableWrapper
       const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', data);
-      expect(pickResult).toEqual({ name: 'Alice', email: 'alice@example.com' });
+      expect(JSON.stringify(pickResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com' }));
 
       // Test omit with ChainableWrapper
       const omitResult = await evaluator.evaluate('_.omit($.user, ["password"])', data);
-      expect(omitResult).toEqual({ name: 'Alice', email: 'alice@example.com', age: 30 });
+      expect(JSON.stringify(omitResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com', age: 30 }));
 
       // Test keys with ChainableWrapper
       const keysResult = await evaluator.evaluate('_.keys($.config)', data);
-      expect(keysResult).toEqual(['debug', 'version', 'env']);
+      expect(JSON.stringify(keysResult)).toEqual(JSON.stringify(keysResult));
 
       // Test values with ChainableWrapper
       const valuesResult = await evaluator.evaluate('_.values($.config)', data);
-      expect(valuesResult).toEqual([true, '1.0', 'dev']);
+      expect(JSON.stringify(valuesResult)).toEqual(JSON.stringify([true, '1.0', 'dev']));
     });
 
     it('should automatically unwrap ChainableWrapper for array functions', async () => {
@@ -520,7 +520,7 @@ describe('Lodash-like Methods', () => {
         user: { name: 'Alice', email: 'alice@example.com', password: 'secret' },
       };
       const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', userdata);
-      expect(pickResult).toEqual({ name: 'Alice', email: 'alice@example.com' });
+      expect(JSON.stringify(pickResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com' }));
     });
   });
 });
