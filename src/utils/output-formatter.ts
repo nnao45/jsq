@@ -90,7 +90,7 @@ export class OutputFormatter {
   private colorize(json: string): string {
     // Use a more careful approach to avoid coloring inside strings
     let result = '';
-    let inString = false;
+    const inString = false;
     let escapeNext = false;
 
     for (let i = 0; i < json.length; i++) {
@@ -119,7 +119,7 @@ export class OutputFormatter {
           i += keyPart.length - 1;
           continue;
         }
-        
+
         // Otherwise, it's a string value
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
         if (stringMatch) {
@@ -133,7 +133,7 @@ export class OutputFormatter {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
         if (numberMatch) {
-          result += chalk.yellow(numberMatch[0]);
+          result += chalk.magenta(numberMatch[0]);
           i += numberMatch[0].length - 1;
           continue;
         }
