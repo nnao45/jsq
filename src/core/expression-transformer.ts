@@ -1,3 +1,5 @@
+import { expressionCache, getStringSizeInBytes } from './expression-cache';
+
 /**
  * Transform expression to handle special cases like standalone '$'
  * This is used for non-streaming mode where $ is a complex function/proxy
@@ -5,53 +7,63 @@
 export function transformExpression(expression: string): string {
   const trimmed = expression.trim();
 
+  // Check cache first
+  const cached = expressionCache.get(expression);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let result: string;
+
   // Skip transformation for multi-line code blocks with control structures
   // These should be handled by the VM wrapper instead
   if (trimmed.includes('\n') && /\b(while|for|if|switch|do)\s*[({]/.test(trimmed)) {
-    return expression;
+    result = expression;
   }
-
   // Also skip transformation for multi-line variable declarations that don't use semicolon as separator
-  if (
+  else if (
     trimmed.includes('\n') &&
     /^\s*(const|let|var)\s+/.test(trimmed) &&
     !isUsingSemicolonAsSeparator(trimmed)
   ) {
-    return expression;
+    result = expression;
   }
-
   // Handle semicolon operations (sequential execution)
-  if (hasSemicolonOperator(trimmed)) {
-    return transformSemicolonExpression(trimmed);
+  else if (hasSemicolonOperator(trimmed)) {
+    result = transformSemicolonExpression(trimmed);
   }
-
   // Handle variable declaration with pipeline (const a = 'xx' | a.toString())
-  if (hasVariablePipelineDeclaration(trimmed)) {
-    return transformVariablePipelineDeclaration(trimmed);
+  else if (hasVariablePipelineDeclaration(trimmed)) {
+    result = transformVariablePipelineDeclaration(trimmed);
   }
-
   // Handle pipe operations like '$.users | $'
-  if (hasPipeOperator(trimmed)) {
-    return transformPipeExpression(trimmed);
+  else if (hasPipeOperator(trimmed)) {
+    result = transformPipeExpression(trimmed);
   }
-
   // Handle array literals with method calls
-  if (isArrayLiteralWithMethods(trimmed)) {
-    return transformArrayLiteralExpression(trimmed);
+  else if (isArrayLiteralWithMethods(trimmed)) {
+    result = transformArrayLiteralExpression(trimmed);
   }
-
   // Handle async methods that return generators (interval, timer)
-  if (hasAsyncGeneratorMethods(trimmed)) {
-    return transformAsyncGeneratorExpression(trimmed);
+  else if (hasAsyncGeneratorMethods(trimmed)) {
+    result = transformAsyncGeneratorExpression(trimmed);
   }
-
   // Handle standalone '$' - for null/undefined data, return the data directly
   // For other data types, return $ as is and let the evaluator handle it
-  if (trimmed === '$') {
-    return '$';
+  else if (trimmed === '$') {
+    result = '$';
+  } else {
+    result = expression;
   }
 
-  return expression;
+  // Cache the result
+  expressionCache.set(
+    expression,
+    result,
+    getStringSizeInBytes(expression) + getStringSizeInBytes(result)
+  );
+
+  return result;
 }
 
 /**

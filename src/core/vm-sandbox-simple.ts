@@ -7,6 +7,7 @@ import type {
   VMResult,
   VMSandboxConfig,
 } from '@/types/sandbox';
+import { vmPool } from './vm-pool';
 
 /**
  * Simplified VM Sandbox for testing and basic functionality
@@ -27,6 +28,13 @@ export class VMSandboxSimple {
       recycleIsolates: options.recycleIsolates ?? false,
       isolatePoolSize: this.validatePositiveNumber(options.isolatePoolSize, 1),
     };
+
+    // Pre-warm the pool if recycling is enabled
+    if (this.config.recycleIsolates && this.config.isolatePoolSize > 0) {
+      vmPool.prewarm(Math.min(2, this.config.isolatePoolSize)).catch(err => {
+        console.error('Failed to pre-warm VM pool:', err);
+      });
+    }
   }
 
   async execute<T = unknown>(
@@ -39,23 +47,34 @@ export class VMSandboxSimple {
     let vmContext: ivm.Context | null = null;
 
     try {
-      // Create isolate with snapshot for better intrinsics support
-      const memoryLimit = options.memoryLimit ?? this.config.memoryLimit;
-      try {
-        // Try to create isolate with default snapshot (includes basic JavaScript environment)
-        isolate = new ivm.Isolate({
-          memoryLimit,
-          snapshot: ivm.Isolate.createSnapshot([
-            { code: 'undefined' }, // Minimal snapshot
-          ]),
-        });
-      } catch (_snapshotError) {
-        // Fallback to basic isolate if snapshot fails
-        isolate = new ivm.Isolate({ memoryLimit });
+      // Try to use pooled isolate if recycling is enabled
+      if (this.config.recycleIsolates) {
+        const pooled = await vmPool.acquire();
+        if (pooled) {
+          isolate = pooled.isolate;
+          vmContext = pooled.context;
+        }
       }
 
-      // Create context with intrinsics
-      vmContext = await isolate.createContext();
+      // Create new isolate if not pooled
+      if (!isolate || !vmContext) {
+        const memoryLimit = options.memoryLimit ?? this.config.memoryLimit;
+        try {
+          // Try to create isolate with default snapshot (includes basic JavaScript environment)
+          isolate = new ivm.Isolate({
+            memoryLimit,
+            snapshot: ivm.Isolate.createSnapshot([
+              { code: 'undefined' }, // Minimal snapshot
+            ]),
+          });
+        } catch (_snapshotError) {
+          // Fallback to basic isolate if snapshot fails
+          isolate = new ivm.Isolate({ memoryLimit });
+        }
+
+        // Create context with intrinsics
+        vmContext = await isolate.createContext();
+      }
       const jail = vmContext.global;
 
       // Set up basic environment (console, Math, JSON, etc.)
@@ -264,19 +283,25 @@ export class VMSandboxSimple {
 
       throw this.createSandboxError(error, executionTime);
     } finally {
-      // Cleanup
-      if (vmContext) {
-        try {
-          vmContext.release();
-        } catch {
-          // Context might be already released if isolate was disposed
+      // Return to pool or cleanup
+      if (this.config.recycleIsolates && isolate && vmContext && !isolate.isDisposed) {
+        // Return to pool for reuse
+        vmPool.release(isolate, vmContext);
+      } else {
+        // Cleanup if not pooling
+        if (vmContext) {
+          try {
+            vmContext.release();
+          } catch {
+            // Context might be already released if isolate was disposed
+          }
         }
-      }
-      if (isolate) {
-        try {
-          isolate.dispose();
-        } catch {
-          // Isolate might be already disposed due to memory limit
+        if (isolate) {
+          try {
+            isolate.dispose();
+          } catch {
+            // Isolate might be already disposed due to memory limit
+          }
         }
       }
     }

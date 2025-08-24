@@ -1,11 +1,11 @@
 import { cpus } from 'node:os';
 import { type Readable, Transform } from 'node:stream';
 import type { JsqOptions } from '@/types/cli';
+import { OutputFormatter } from '@/utils/output-formatter';
 import { ExpressionEvaluator } from './evaluator';
 import { ExpressionTransformer } from './expression-transformer';
 import { JsonParser } from './parser';
 import { WorkerPool } from './worker-pool';
-import { OutputFormatter } from '@/utils/output-formatter';
 
 export interface StreamProcessingOptions {
   batchSize?: number;
@@ -146,14 +146,15 @@ export class StreamProcessor {
     }
 
     // Convert result to JSON string
+    let stringified: string;
     try {
-      const stringified = JSON.stringify(result);
-      return `${stringified}\n`;
+      stringified = JSON.stringify(result);
     } catch (_jsonError) {
       // If JSON.stringify fails, try to convert to a plain object
       const safeResult = this.makeJSONSafe(result);
-      return `${JSON.stringify(safeResult)}\n`;
+      stringified = JSON.stringify(safeResult);
     }
+    return `${stringified}\n`;
   }
 
   private async processJsonLine(
@@ -177,14 +178,15 @@ export class StreamProcessor {
       }
 
       // Collect result - handle special objects
+      let stringified: string;
       try {
-        const stringified = JSON.stringify(result);
-        return `${stringified}\n`;
+        stringified = JSON.stringify(result);
       } catch (_jsonError) {
         // If JSON.stringify fails, try to convert to a plain object
         const safeResult = this.makeJSONSafe(result);
-        return `${JSON.stringify(safeResult)}\n`;
+        stringified = JSON.stringify(safeResult);
       }
+      return `${stringified}\n`;
     } catch (error) {
       if (this.options.verbose) {
         console.error(
@@ -330,7 +332,7 @@ export class StreamProcessor {
 
           // Output results as a single chunk
           const formatter = new OutputFormatter({ ...this.options, oneline: true });
-      const batchOutput = results.map(result => `${formatter.format(result)}\n`).join('');
+          const batchOutput = results.map(result => `${formatter.format(result)}\n`).join('');
 
           batch.length = 0; // Clear batch
           return batchOutput;
@@ -550,7 +552,7 @@ export class StreamProcessor {
 
       // Output results as a single chunk
       const formatter = new OutputFormatter({ ...this.options, oneline: true });
-    return results.map(result => `${formatter.format(result)}\n`).join('');
+      return results.map(result => `${formatter.format(result)}\n`).join('');
     }
 
     return null;

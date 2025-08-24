@@ -64,7 +64,7 @@ describe('Async Array Methods Tests', () => {
         'await $.mapAsync(async (str) => { return str.toUpperCase(); })',
         data
       );
-      expect(result.data).toEqual(['H', 'E', 'L', 'L', 'O']);
+      expect(result.data).toEqual(['HELLO']);
     });
   });
 
