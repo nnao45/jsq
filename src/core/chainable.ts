@@ -1,3 +1,5 @@
+import { asyncMethods } from './async-methods';
+
 export class ChainableWrapper {
   private data: unknown;
 
@@ -1363,8 +1365,7 @@ export class ChainableWrapper {
     fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const array = this.data as unknown[];
-      await Promise.all(array.map((item, index) => fn(item, index, array)));
+      await asyncMethods.forEachAsync(this.data as unknown[], fn);
     } else {
       await fn(this.data, 0, [this.data]);
     }
@@ -1378,10 +1379,7 @@ export class ChainableWrapper {
     fn: (item: unknown, index?: number, array?: unknown[]) => Promise<void>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const array = this.data as unknown[];
-      for (let index = 0; index < array.length; index++) {
-        await fn(array[index], index, array);
-      }
+      await asyncMethods.forEachAsyncSeq(this.data as unknown[], fn);
     } else {
       await fn(this.data, 0, [this.data]);
     }
@@ -1395,7 +1393,7 @@ export class ChainableWrapper {
     transform: (item: unknown, index?: number) => Promise<T>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const results = await Promise.all(this.data.map(transform));
+      const results = await asyncMethods.mapAsync(this.data as unknown[], transform as any);
       return new ChainableWrapper(results);
     }
     const result = await transform(this.data, 0);
@@ -1409,11 +1407,7 @@ export class ChainableWrapper {
     transform: (item: unknown, index?: number) => Promise<T>
   ): Promise<ChainableWrapper> {
     if (Array.isArray(this.data)) {
-      const results: T[] = [];
-      for (let index = 0; index < this.data.length; index++) {
-        const result = await transform(this.data[index], index);
-        results.push(result);
-      }
+      const results = await asyncMethods.mapAsyncSeq(this.data as unknown[], transform as any);
       return new ChainableWrapper(results);
     }
     const result = await transform(this.data, 0);

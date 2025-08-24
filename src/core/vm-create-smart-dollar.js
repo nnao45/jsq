@@ -1,5 +1,26 @@
 // New createSmartDollar implementation that avoids closure issues
 const createSmartDollarCode = `
+// Define async methods inside VM context
+globalThis.asyncMethods = {
+  mapAsync: async function(array, fn) {
+    return Promise.all(array.map((item, index) => fn(item, index, array)));
+  },
+  mapAsyncSeq: async function(array, fn) {
+    const results = [];
+    for (let i = 0; i < array.length; i++) {
+      results.push(await fn(array[i], i, array));
+    }
+    return results;
+  },
+  forEachAsync: async function(array, fn) {
+    await Promise.all(array.map((item, index) => fn(item, index, array)));
+  },
+  forEachAsyncSeq: async function(array, fn) {
+    for (let i = 0; i < array.length; i++) {
+      await fn(array[i], i, array);
+    }
+  }
+};
 globalThis.createSmartDollar = function(data) {
   // Special handling for null/undefined
   if (data === null || data === undefined) {
@@ -174,7 +195,7 @@ globalThis.createSmartDollar = function(data) {
       
       // Methods that return primitives
       includes: function(target, value) {
-        return target.includes(value);
+        return Array.prototype.includes.call(target, value);
       },
       minBy: function(target, iteratee) {
         if (target.length === 0) return undefined;
@@ -209,26 +230,20 @@ globalThis.createSmartDollar = function(data) {
       mapAsync: function(target, fn) {
         // Convert string to array of chars if needed
         const arrayTarget = typeof target === 'string' ? Array.from(target) : target;
-        return Promise.all(arrayTarget.map(fn)).then(results => 
+        return globalThis.asyncMethods.mapAsync(arrayTarget, fn).then(results => 
           globalThis.createSmartDollar(results)
         );
       },
       mapAsyncSeq: function(target, fn) {
-        return target.reduce((promise, item, index) => 
-          promise.then(results => 
-            Promise.resolve(fn(item, index, target))
-              .then(result => [...results, result])
-          ), Promise.resolve([])
-        ).then(results => globalThis.createSmartDollar(results));
+        return globalThis.asyncMethods.mapAsyncSeq(target, fn).then(results => 
+          globalThis.createSmartDollar(results)
+        );
       },
       forEachAsync: function(target, fn) {
-        return Promise.all(target.map(fn));
+        return globalThis.asyncMethods.forEachAsync(target, fn);
       },
       forEachAsyncSeq: function(target, fn) {
-        return target.reduce((promise, item, index) => 
-          promise.then(() => fn(item, index, target)), 
-          Promise.resolve()
-        );
+        return globalThis.asyncMethods.forEachAsyncSeq(target, fn);
       },
       
       // Chain method for lodash-style chaining
@@ -312,8 +327,8 @@ globalThis.createSmartDollar = function(data) {
       // Other methods can be added here...
     };
     
-    // Create a copy of the array with methods attached directly
-    const smartArray = [...data];
+    // Use the original array instead of creating a copy
+    const smartArray = data;
     
     // Mark as smart dollar to avoid re-wrapping
     Object.defineProperty(smartArray, '_isSmartDollar', {
@@ -336,14 +351,92 @@ globalThis.createSmartDollar = function(data) {
     return smartArray;
   }
   
-  // For objects, return plain data to avoid proxy cloning issues
+  // For objects, create a proxy to handle property access
   if (typeof data === 'object' && data !== null) {
-    // Just return the plain object
-    // Methods like $.map will be undefined, but at least $ will work
-    return data;
+    return new Proxy(data, {
+      get(target, prop) {
+        // Handle special methods
+        if (prop === 'toJSON') return () => target;
+        if (prop === 'valueOf') return () => target;
+        if (prop === 'toString') return () => JSON.stringify(target);
+        
+        // If property exists in the object, wrap the value with createSmartDollar
+        if (prop in target) {
+          const value = target[prop];
+          // Recursively apply createSmartDollar to enable chaining
+          return globalThis.createSmartDollar(value);
+        }
+        
+        return undefined;
+      },
+      has(target, prop) {
+        return prop in target;
+      },
+      ownKeys(target) {
+        return Object.keys(target);
+      },
+      getOwnPropertyDescriptor(target, prop) {
+        if (prop in target) {
+          return {
+            configurable: true,
+            enumerable: true,
+            value: target[prop]
+          };
+        }
+        return undefined;
+      }
+    });
   }
   
-  // For primitives and strings, return them directly
+  // For strings, add async methods that treat the string as a single value
+  if (typeof data === 'string') {
+    const stringObj = Object(data);
+    
+    // Add async methods to string
+    Object.defineProperty(stringObj, 'mapAsync', {
+      value: function(fn) {
+        // Treat string as single value, not array of chars
+        return Promise.resolve(fn(data, 0)).then(result => 
+          globalThis.createSmartDollar([result])
+        );
+      },
+      enumerable: false,
+      configurable: true
+    });
+    
+    Object.defineProperty(stringObj, 'mapAsyncSeq', {
+      value: function(fn) {
+        // Treat string as single value
+        return Promise.resolve(fn(data, 0)).then(result => 
+          globalThis.createSmartDollar([result])
+        );
+      },
+      enumerable: false,
+      configurable: true
+    });
+    
+    Object.defineProperty(stringObj, 'forEachAsync', {
+      value: function(fn) {
+        // Treat string as single value
+        return Promise.resolve(fn(data, 0));
+      },
+      enumerable: false,
+      configurable: true
+    });
+    
+    Object.defineProperty(stringObj, 'forEachAsyncSeq', {
+      value: function(fn) {
+        // Treat string as single value
+        return Promise.resolve(fn(data, 0));
+      },
+      enumerable: false,
+      configurable: true
+    });
+    
+    return stringObj;
+  }
+  
+  // For other primitives, return them directly
   return data;
 };
 `;
