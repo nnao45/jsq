@@ -522,13 +522,19 @@ describe('Reactive Methods (RxJS-style operators)', () => {
       const data = [1, 2, 3, 4, 5];
       const wrapper = new ChainableWrapper(data);
 
+      const tapFn = jest.fn();
       const result = wrapper
         .distinctUntilChanged()
         .takeLast(3)
         .startWith(0)
-        .tap(x => console.log('Processing:', x));
+        .tap(tapFn);
 
       expect(result.value).toEqual([0, 3, 4, 5]);
+      expect(tapFn).toHaveBeenCalledWith(0, 0);
+      expect(tapFn).toHaveBeenCalledWith(3, 1);
+      expect(tapFn).toHaveBeenCalledWith(4, 2);
+      expect(tapFn).toHaveBeenCalledWith(5, 3);
+      expect(tapFn).toHaveBeenCalledTimes(4);
     });
 
     it('should allow mixing sync and async methods', async () => {

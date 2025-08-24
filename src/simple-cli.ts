@@ -338,7 +338,6 @@ async function processOnce(expression: string, options: JsqOptions): Promise<voi
     }
   } finally {
     await processor.dispose();
-    process.exit(0);
   }
 }
 

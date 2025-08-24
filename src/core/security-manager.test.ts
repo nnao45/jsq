@@ -55,21 +55,20 @@ describe('SecurityManager', () => {
   });
 
   describe('Context Creation', () => {
-    it('should remove fetch in VM mode', () => {
+    it('should preserve allowed globals in VM mode', () => {
       const options: JsqOptions = {};
       const securityManager = new SecurityManager(options);
 
       const baseContext = {
         $: {},
-        fetch: () => {},
         console: console,
         Math: Math,
       };
 
       const secureContext = securityManager.createEvaluationContext(baseContext);
-      expect(secureContext.fetch).toBeUndefined();
       expect(secureContext.console).toBe(console);
       expect(secureContext.Math).toBe(Math);
+      expect(secureContext.$).toBe(baseContext.$);
     });
 
     // VM mode warnings are now disabled by default

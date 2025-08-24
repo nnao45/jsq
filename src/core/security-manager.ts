@@ -38,11 +38,6 @@ export class SecurityManager {
     const secureContext = { ...baseContext };
     const { level } = this.context;
 
-    // Remove network capabilities if disabled
-    if (!level.allowNetwork) {
-      secureContext.fetch = undefined;
-      this.addWarning('Network access disabled - fetch API unavailable');
-    }
 
     // Filter globals based on allowedGlobals list
     if (level.allowedGlobals.length > 0) {
@@ -110,7 +105,6 @@ export class SecurityManager {
         { pattern: /writeFileSync/, name: 'writeFileSync' },
         { pattern: /createReadStream/, name: 'createReadStream' },
         { pattern: /createWriteStream/, name: 'createWriteStream' },
-        { pattern: /fetch\s*\(/, name: 'fetch' },
       ];
 
       const foundPatterns: string[] = [];
