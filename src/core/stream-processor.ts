@@ -5,6 +5,7 @@ import { ExpressionEvaluator } from './evaluator';
 import { ExpressionTransformer } from './expression-transformer';
 import { JsonParser } from './parser';
 import { WorkerPool } from './worker-pool';
+import { OutputFormatter } from '@/utils/output-formatter';
 
 export interface StreamProcessingOptions {
   batchSize?: number;
@@ -137,15 +138,8 @@ export class StreamProcessor {
       console.error(`Processing object ${lineNumber}`);
     }
 
-    // Special handling for $ expression to avoid VM cloning issues
-    let result: unknown;
-    if (transformedExpression === '(function() { return $; })()' || transformedExpression === '$') {
-      // For simple $ expression, just return the chunk as-is
-      result = chunk;
-    } else {
-      // Process the object normally
-      result = await this.evaluator.evaluate(transformedExpression, chunk);
-    }
+    // Process the object normally
+    const result = await this.evaluator.evaluate(transformedExpression, chunk);
 
     if (this.options.verbose) {
       console.error(`Processed object ${lineNumber}`);
@@ -335,7 +329,8 @@ export class StreamProcessor {
           }
 
           // Output results as a single chunk
-          const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
+          const formatter = new OutputFormatter({ ...this.options, oneline: true });
+      const batchOutput = results.map(result => `${formatter.format(result)}\n`).join('');
 
           batch.length = 0; // Clear batch
           return batchOutput;
@@ -554,7 +549,8 @@ export class StreamProcessor {
       }
 
       // Output results as a single chunk
-      return results.map(result => `${JSON.stringify(result)}\n`).join('');
+      const formatter = new OutputFormatter({ ...this.options, oneline: true });
+    return results.map(result => `${formatter.format(result)}\n`).join('');
     }
 
     return null;
@@ -710,7 +706,8 @@ export class StreamProcessor {
       totalProcessed.value += batchToProcess.length;
       this.logBatchProcessed(batchToProcess.length, totalProcessed.value, false);
 
-      const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
+      const formatter = new OutputFormatter({ ...this.options, oneline: true });
+      const batchOutput = results.map(result => `${formatter.format(result)}\n`).join('');
       callback(null, batchOutput);
     } else {
       callback();
@@ -740,7 +737,8 @@ export class StreamProcessor {
       totalProcessed.value += lineBatch.length;
       this.logBatchProcessed(lineBatch.length, totalProcessed.value, true);
 
-      const batchOutput = results.map(result => `${JSON.stringify(result)}\n`).join('');
+      const formatter = new OutputFormatter({ ...this.options, oneline: true });
+      const batchOutput = results.map(result => `${formatter.format(result)}\n`).join('');
       callback(null, batchOutput);
     } else {
       callback();

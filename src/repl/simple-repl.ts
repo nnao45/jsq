@@ -10,6 +10,7 @@ interface ExtendedReadlineInterface extends ReadlineInterface {
 
 import { JsqProcessor } from '../core/processor';
 import type { JsqOptions } from '../types/cli';
+import { OutputFormatter } from '../utils/output-formatter';
 
 interface REPLSession {
   processor: JsqProcessor;
@@ -170,12 +171,13 @@ async function processExpression(
     process.stdout.write('Processing... ');
     const result = await session.processor.process(trimmed, session.data);
 
-    let output: string;
-    if (typeof result.data === 'string') {
-      output = JSON.stringify(result.data);
-    } else {
-      output = JSON.stringify(result.data, null, 2);
+    // REPL always uses pretty print unless oneline is specified
+    const replOptions = { ...session.options };
+    if (!replOptions.oneline && typeof result.data !== 'string') {
+      // Force pretty print for non-string values in REPL
+      replOptions.oneline = false;
     }
+    const output = OutputFormatter.format(result.data, replOptions);
 
     // Clear the "Processing..." message and show result
     process.stdout.write('\r\x1b[K');
