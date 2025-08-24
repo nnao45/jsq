@@ -113,7 +113,7 @@ export class OutputFormatter {
         // Start or end of string
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
         if (stringMatch) {
-          result += chalk.green(stringMatch[0]);
+          result += chalk.blue(stringMatch[0]);
           i += stringMatch[0].length - 1;
           continue;
         }

@@ -1,5 +1,5 @@
+import { CHAINABLE_METHODS } from '@/core/chainable-methods';
 import { ChainableWrapper } from './chainable';
-import { CHAINABLE_METHODS } from "@/core/chainable-methods";
 
 // Native array methods available for potential future array method delegation
 // Currently unused but kept for reference and future development

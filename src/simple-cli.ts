@@ -105,7 +105,7 @@ program
         process.exit(1);
       }
 
-      await processExpression(expression, options)
+      await processExpression(expression, options);
     } catch (error) {
       handleError(error, options);
     }

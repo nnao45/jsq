@@ -38,7 +38,6 @@ export class SecurityManager {
     const secureContext = { ...baseContext };
     const { level } = this.context;
 
-
     // Filter globals based on allowedGlobals list
     if (level.allowedGlobals.length > 0) {
       const filteredContext: Record<string, unknown> = {};
@@ -206,12 +205,6 @@ export class SecurityManager {
       timeout: undefined, // No timeout in unsafe mode
       useVM: false, // Don't use VM in unsafe mode
     };
-  }
-
-  private addWarning(warning: string): void {
-    if (!this.context.warnings.includes(warning)) {
-      this.context.warnings.push(warning);
-    }
   }
 
   private createSandboxVMConfig(options: JsqOptions): VMSandboxConfig {

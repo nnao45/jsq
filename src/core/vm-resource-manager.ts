@@ -1,4 +1,4 @@
-import ivm from "isolated-vm";
+import type ivm from 'isolated-vm';
 
 import type { ExecutionMetrics } from '@/types/sandbox';
 
