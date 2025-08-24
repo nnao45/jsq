@@ -523,11 +523,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
       const wrapper = new ChainableWrapper(data);
 
       const tapFn = jest.fn();
-      const result = wrapper
-        .distinctUntilChanged()
-        .takeLast(3)
-        .startWith(0)
-        .tap(tapFn);
+      const result = wrapper.distinctUntilChanged().takeLast(3).startWith(0).tap(tapFn);
 
       expect(result.value).toEqual([0, 3, 4, 5]);
       expect(tapFn).toHaveBeenCalledWith(0, 0);

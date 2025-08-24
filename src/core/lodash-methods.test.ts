@@ -438,11 +438,15 @@ describe('Lodash-like Methods', () => {
 
       // Test pick with ChainableWrapper
       const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', data);
-      expect(JSON.stringify(pickResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com' }));
+      expect(JSON.stringify(pickResult)).toEqual(
+        JSON.stringify({ name: 'Alice', email: 'alice@example.com' })
+      );
 
       // Test omit with ChainableWrapper
       const omitResult = await evaluator.evaluate('_.omit($.user, ["password"])', data);
-      expect(JSON.stringify(omitResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com', age: 30 }));
+      expect(JSON.stringify(omitResult)).toEqual(
+        JSON.stringify({ name: 'Alice', email: 'alice@example.com', age: 30 })
+      );
 
       // Test keys with ChainableWrapper
       const keysResult = await evaluator.evaluate('_.keys($.config)', data);
@@ -520,7 +524,9 @@ describe('Lodash-like Methods', () => {
         user: { name: 'Alice', email: 'alice@example.com', password: 'secret' },
       };
       const pickResult = await evaluator.evaluate('_.pick($.user, ["name", "email"])', userdata);
-      expect(JSON.stringify(pickResult)).toEqual(JSON.stringify({ name: 'Alice', email: 'alice@example.com' }));
+      expect(JSON.stringify(pickResult)).toEqual(
+        JSON.stringify({ name: 'Alice', email: 'alice@example.com' })
+      );
     });
   });
 });
