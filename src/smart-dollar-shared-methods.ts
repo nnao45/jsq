@@ -685,6 +685,46 @@ if (typeof SmartDollar === 'undefined') {
           return target[prop];
         }
         
+        // For 'length', use SmartDollar's length getter
+        if (prop === 'length') {
+          return target.length;
+        }
+        
+        // PRIORITIZE: Check if it's a property of the wrapped value BEFORE SmartDollar methods
+        // BUT: For array methods that exist both on Array and SmartDollar, prefer SmartDollar
+        const arrayMethodsToPreferFromSmartDollar = ['map', 'filter', 'find', 'some', 'every', 'reduce', 
+          'slice', 'concat', 'push', 'pop', 'shift', 'unshift', 'splice', 'includes', 'indexOf', 
+          'lastIndexOf', 'findIndex', 'join', 'reverse', 'sort', 'keys', 'values', 'entries', 
+          'flatMap', 'flatten', 'flattenDeep'];
+        
+        if (Array.isArray(target._value) && arrayMethodsToPreferFromSmartDollar.includes(prop)) {
+          // For arrays, prefer SmartDollar methods for common array operations
+          if (target.constructor.prototype.hasOwnProperty(prop)) {
+            return target[prop];
+          }
+        }
+        
+        if (target._value !== null && target._value !== undefined && typeof target._value === 'object' && prop in target._value) {
+          const propValue = target._value[prop];
+          // For functions on the wrapped value, only return them if they're not array methods we want to override
+          if (typeof propValue === 'function' && Array.isArray(target._value) && arrayMethodsToPreferFromSmartDollar.includes(prop)) {
+            // Skip returning native array methods, let SmartDollar methods be used instead
+          } else {
+            // For primitives, return directly
+            if (propValue === null || propValue === undefined || 
+                typeof propValue === 'string' || typeof propValue === 'number' || 
+                typeof propValue === 'boolean') {
+              return propValue;
+            }
+            // For functions, return bound function
+            if (typeof propValue === 'function') {
+              return propValue.bind(target._value);
+            }
+            // Wrap objects/arrays in SmartDollar
+            return new SmartDollar(propValue);
+          }
+        }
+        
         // Special handling for 'value' - if the wrapped object has a 'value' property, prioritize that
         if (prop === 'value' && target._value !== null && target._value !== undefined && 
             typeof target._value === 'object' && 'value' in target._value) {
@@ -702,24 +742,6 @@ if (typeof SmartDollar === 'undefined') {
         // Check if it's a SmartDollar method (from prototype)
         if (target.constructor.prototype.hasOwnProperty(prop)) {
           return target[prop];
-        }
-        
-        // For 'length', use SmartDollar's length getter
-        if (prop === 'length') {
-          return target.length;
-        }
-        
-        // Then check if it's a property of the wrapped value
-        if (target._value !== null && target._value !== undefined && typeof target._value === 'object' && prop in target._value) {
-          const propValue = target._value[prop];
-          // For primitives, return directly
-          if (propValue === null || propValue === undefined || 
-              typeof propValue === 'string' || typeof propValue === 'number' || 
-              typeof propValue === 'boolean') {
-            return propValue;
-          }
-          // Wrap objects/arrays in SmartDollar
-          return new SmartDollar(propValue);
         }
         
         // Finally check if it's a SmartDollar property not on prototype

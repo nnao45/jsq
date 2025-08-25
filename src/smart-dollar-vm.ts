@@ -12,12 +12,40 @@ globalThis.createSmartDollar = $;
 // Only set up $ if it hasn't been set already (e.g., when data was null/undefined)
 if (typeof globalThis.$ === 'undefined') {
   if (Array.isArray(globalThis.data)) {
-    // Create $ that can be both a direct data reference and a function
-    // When data is an array, $ should appear as an array for Array.isArray
-    // Create an array with SmartDollar methods
-    const arrayProxy = new Proxy(globalThis.data, {
+    // Create a SmartDollar instance for the array
+    const smartDollar = $(globalThis.data);
+    
+    // Create a proxy that intercepts property access
+    const arrayProxy = new Proxy(smartDollar, {
       get(target, prop) {
-        // First check if it's an array property/method
+        // For critical array properties, check the wrapped value
+        if (prop === 'length') {
+          return target._value.length;
+        }
+        
+        // Check if it's a numeric index
+        if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+          const index = parseInt(prop, 10);
+          const item = target._value[index];
+          return item !== undefined ? $(item) : undefined;
+        }
+        
+        // List of methods that should use SmartDollar implementation
+        const smartDollarMethods = ['map', 'filter', 'find', 'some', 'every', 'reduce', 
+          'slice', 'concat', 'includes', 'indexOf', 'lastIndexOf', 'findIndex', 
+          'join', 'reverse', 'sort', 'flatMap', 'flatten', 'flattenDeep', 'sortBy', 
+          'groupBy', 'pluck', 'where', 'uniqBy', 'chunk', 'compact'];
+        
+        // For SmartDollar methods, use the SmartDollar implementation
+        if (typeof prop === 'string' && smartDollarMethods.includes(prop)) {
+          const value = target[prop];
+          if (typeof value === 'function') {
+            return value.bind(target);
+          }
+          return value;
+        }
+        
+        // For other properties, check SmartDollar first, then the array
         if (prop in target) {
           const value = target[prop];
           if (typeof value === 'function') {
@@ -26,16 +54,32 @@ if (typeof globalThis.$ === 'undefined') {
           return value;
         }
         
-        // Then check SmartDollar methods
-        const wrapped = $(target);
-        if (prop in wrapped) {
-          const value = wrapped[prop];
+        // Then check array properties
+        if (prop in target._value) {
+          const value = target._value[prop];
           if (typeof value === 'function') {
-            return value.bind(wrapped);
+            return value.bind(target._value);
           }
           return value;
         }
         
+        return undefined;
+      },
+      
+      // Make Array.isArray() return true
+      has(target, prop) {
+        return prop in target || prop in target._value;
+      },
+      
+      // Support iteration
+      ownKeys(target) {
+        return Reflect.ownKeys(target._value);
+      },
+      
+      getOwnPropertyDescriptor(target, prop) {
+        if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+          return Object.getOwnPropertyDescriptor(target._value, prop);
+        }
         return undefined;
       }
     });
@@ -68,15 +112,6 @@ if (typeof globalThis.$ === 'undefined') {
     // Create a proxy that handles both SmartDollar methods and direct property access
     const $proxy = new Proxy(smartDollar, {
       get(target, prop) {
-        // First, check if it's a SmartDollar method or property
-        if (prop in target) {
-          const value = target[prop];
-          if (typeof value === 'function') {
-            return value.bind(target);
-          }
-          return value;
-        }
-        
         // Handle length property specifically
         if (prop === 'length') {
           return target.length;
@@ -91,7 +126,7 @@ if (typeof globalThis.$ === 'undefined') {
           }
         }
         
-        // Property access on the wrapped value
+        // PRIORITIZE: Property access on the wrapped value BEFORE SmartDollar methods
         if (target._value && typeof target._value === 'object' && prop in target._value) {
           const propValue = target._value[prop];
           if (typeof propValue === 'function') {
@@ -107,17 +142,26 @@ if (typeof globalThis.$ === 'undefined') {
           return $(propValue);
         }
         
+        // Then check if it's a SmartDollar method or property
+        if (prop in target) {
+          const value = target[prop];
+          if (typeof value === 'function') {
+            return value.bind(target);
+          }
+          return value;
+        }
+        
         return undefined;
       },
       
       // Implement has trap for 'in' operator
       has(target, prop) {
-        // Check SmartDollar properties first
-        if (prop in target) {
+        // Check wrapped value properties first
+        if (target._value && typeof target._value === 'object' && prop in target._value) {
           return true;
         }
-        // Then check wrapped value properties
-        if (target._value && typeof target._value === 'object' && prop in target._value) {
+        // Then check SmartDollar properties
+        if (prop in target) {
           return true;
         }
         return false;
