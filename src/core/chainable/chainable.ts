@@ -1,4 +1,4 @@
-import { asyncMethods } from './async-methods';
+import { asyncMethods } from '../async-methods';
 
 export class ChainableWrapper {
   private data: unknown;

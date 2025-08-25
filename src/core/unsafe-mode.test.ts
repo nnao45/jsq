@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
-import { SecurityManager } from './security-manager';
+import { SecurityManager } from './security/security-manager';
 
 describe.skip('Unsafe Mode', () => {
   let evaluator: ExpressionEvaluator;

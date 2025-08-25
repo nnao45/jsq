@@ -1,5 +1,5 @@
 import type { JsqOptions } from '@/types/cli';
-import { SecurityManager } from './security-manager';
+import { SecurityManager } from './security/security-manager';
 
 describe('VM Sandbox Mode (Default) - Key Features', () => {
   describe('Security Configuration', () => {

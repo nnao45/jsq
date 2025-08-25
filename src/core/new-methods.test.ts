@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { ChainableWrapper } from './chainable';
+import { ChainableWrapper } from './chainable/chainable';
 import { ExpressionEvaluator } from './evaluator';
 import { createSmartDollar } from './jquery-wrapper';
 

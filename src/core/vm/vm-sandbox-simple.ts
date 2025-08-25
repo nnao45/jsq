@@ -90,11 +90,11 @@ export class VMSandboxSimple {
 
       // Set up the createSmartDollar function for the VM BEFORE using it
       // Load the implementation from separate file to keep it clean
-      const { createVMSmartDollarCode } = await import('../smart-dollar-vm');
+      const { createVMSmartDollarCode } = await import('../smart-dollar/smart-dollar-vm');
       await vmContext.eval(createVMSmartDollarCode());
 
       // Set up the createLodashDollar function for the VM
-      const { createVMLodashDollarCode } = await import('../lodash-dollar-vm');
+      const { createVMLodashDollarCode } = await import('../lodash/lodash-dollar-vm');
       await vmContext.eval(createVMLodashDollarCode());
 
       // Set up $ first before other context variables
