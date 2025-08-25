@@ -580,61 +580,20 @@ globalThis.lodashDollarMethods = {
   kebabCase: function() {
     const str = String(this._value);
     // Simpler approach: insert hyphen before any capital letter that follows a lowercase or digit
-    let result = '';
-    for (let i = 0; i < str.length; i++) {
-      const char = str[i];
-      const prevChar = i > 0 ? str[i - 1] : '';
-      
-      // If current is uppercase and previous is lowercase or digit, add hyphen
-      if (i > 0 && /[A-Z]/.test(char) && /[a-z0-9]/.test(prevChar)) {
-        result += '-';
-      }
-      // If multiple uppercase and current is followed by lowercase, add hyphen before current
-      if (i > 0 && i < str.length - 1 && /[A-Z]/.test(prevChar) && /[A-Z]/.test(char) && /[a-z]/.test(str[i + 1])) {
-        result += '-';
-      }
-      
-      result += char;
-    }
-    
-    // Clean up and lowercase
-    result = result
-      .replace(/[\s_]+/g, '-')
-      .replace(/[^a-zA-Z0-9-]+/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .toLowerCase();
+    let result = str
+    .replace(/([a-z])([A-Z])/g, '$1-$2') // Add hyphen between lower/uppercase
+    .replace(/[\\s_]+/g, '-')             // Replace spaces/underscores with hyphen
+    .toLowerCase();
       
     return new this.constructor(result);
   },
   
   snakeCase: function() {
     const str = String(this._value);
-    // Simpler approach: insert underscore before any capital letter that follows a lowercase or digit
-    let result = '';
-    for (let i = 0; i < str.length; i++) {
-      const char = str[i];
-      const prevChar = i > 0 ? str[i - 1] : '';
-      
-      // If current is uppercase and previous is lowercase or digit, add underscore
-      if (i > 0 && /[A-Z]/.test(char) && /[a-z0-9]/.test(prevChar)) {
-        result += '_';
-      }
-      // If multiple uppercase and current is followed by lowercase, add underscore before current
-      if (i > 0 && i < str.length - 1 && /[A-Z]/.test(prevChar) && /[A-Z]/.test(char) && /[a-z]/.test(str[i + 1])) {
-        result += '_';
-      }
-      
-      result += char;
-    }
-    
-    // Clean up and lowercase
-    result = result
-      .replace(/[\s-]+/g, '_')
-      .replace(/[^a-zA-Z0-9_]+/g, '')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '')
-      .toLowerCase();
+    const result = str && str
+    .match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
+    .map(s => s.toLowerCase())
+    .join('_');
       
     return new this.constructor(result);
   },
