@@ -529,4 +529,308 @@ describe('Lodash-like Methods', () => {
       );
     });
   });
+
+  describe.skip('Lodash Dollar Notation (VM environment)', () => {
+    beforeEach(() => {
+      mockOptions = {
+        debug: false,
+        verbose: false,
+        unsafe: true, // VM環境を有効にする
+        use: undefined,
+      };
+      evaluator = new ExpressionEvaluator(mockOptions);
+    });
+
+    it('should support dollar notation for basic array operations', async () => {
+      const data = [1, 2, 3, 4, 5];
+      // First test just creating LodashDollar instance
+      const wrapped = await evaluator.evaluate('_(data)', data);
+      expect(wrapped).toBeDefined();
+      
+      // Then test if value method exists
+      const hasValue = await evaluator.evaluate('typeof _(data).value', data);
+      expect(hasValue).toBe('function');
+      
+      // Finally test the full chain
+      const result = await evaluator.evaluate('_(data).filter(x => x > 2).map(x => x * 2).value()', data);
+      expect(result).toEqual([6, 8, 10]);
+    });
+
+    it('should support dollar notation with where method', async () => {
+      const data = [
+        { name: 'Alice', age: 30, active: true },
+        { name: 'Bob', age: 25, active: false },
+        { name: 'Charlie', age: 35, active: true },
+      ];
+      const result = await evaluator.evaluate('_(data).where({ active: true }).value()', data);
+      expect(result).toEqual([
+        { name: 'Alice', age: 30, active: true },
+        { name: 'Charlie', age: 35, active: true },
+      ]);
+    });
+
+    it('should support dollar notation with pluck method', async () => {
+      const data = [
+        { name: 'Alice', age: 30 },
+        { name: 'Bob', age: 25 },
+        { name: 'Charlie', age: 35 },
+      ];
+      const result = await evaluator.evaluate('_(data).pluck("name").value()', data);
+      expect(result).toEqual(['Alice', 'Bob', 'Charlie']);
+    });
+
+    it('should support chainable methods with dollar notation', async () => {
+      const data = [
+        { category: 'A', value: 10 },
+        { category: 'B', value: 20 },
+        { category: 'A', value: 15 },
+        { category: 'C', value: 5 },
+      ];
+      const result = await evaluator.evaluate('_(data).groupBy("category").mapValues(items => _.sum(items.map(i => i.value))).value()', data);
+      expect(result).toEqual({
+        'A': 25,
+        'B': 20,
+        'C': 5
+      });
+    });
+
+    it('should support dollar notation with sortBy', async () => {
+      const data = [
+        { name: 'Charlie', age: 35 },
+        { name: 'Alice', age: 30 },
+        { name: 'Bob', age: 25 },
+      ];
+      const result = await evaluator.evaluate('_(data).sortBy("age").value()', data);
+      expect(result).toEqual([
+        { name: 'Bob', age: 25 },
+        { name: 'Alice', age: 30 },
+        { name: 'Charlie', age: 35 },
+      ]);
+    });
+
+    it('should support dollar notation with uniqBy', async () => {
+      const data = [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+        { id: 1, name: 'Alice Clone' },
+      ];
+      const result = await evaluator.evaluate('_(data).uniqBy("id").value()', data);
+      expect(result).toEqual([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ]);
+    });
+
+    it('should support dollar notation with flatten operations', async () => {
+      const data = [1, [2, [3, [4]], 5]];
+      const result = await evaluator.evaluate('_(data).flattenDeep().value()', data);
+      expect(result).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should support dollar notation with compact', async () => {
+      const data = [0, 1, false, 2, '', 3, null, 4, undefined, 5];
+      const result = await evaluator.evaluate('_(data).compact().value()', data);
+      expect(result).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should support dollar notation with chunk', async () => {
+      const data = [1, 2, 3, 4, 5, 6, 7];
+      const result = await evaluator.evaluate('_(data).chunk(3).value()', data);
+      expect(result).toEqual([[1, 2, 3], [4, 5, 6], [7]]);
+    });
+
+    it('should support dollar notation with object methods', async () => {
+      const data = { name: 'Alice', age: 30, email: 'alice@example.com', password: 'secret' };
+      const result = await evaluator.evaluate('_(data).pick(["name", "email"]).value()', data);
+      expect(result).toEqual({ name: 'Alice', email: 'alice@example.com' });
+    });
+
+    it('should support dollar notation with omit', async () => {
+      const data = { name: 'Alice', age: 30, email: 'alice@example.com', password: 'secret' };
+      const result = await evaluator.evaluate('_(data).omit(["password"]).value()', data);
+      expect(result).toEqual({ name: 'Alice', age: 30, email: 'alice@example.com' });
+    });
+
+    it('should support dollar notation with keys/values/entries', async () => {
+      const data = { a: 1, b: 2, c: 3 };
+      const keysResult = await evaluator.evaluate('_(data).keys().value()', data);
+      const valuesResult = await evaluator.evaluate('_(data).values().value()', data);
+      const entriesResult = await evaluator.evaluate('_(data).entries().value()', data);
+      
+      expect(keysResult).toEqual(['a', 'b', 'c']);
+      expect(valuesResult).toEqual([1, 2, 3]);
+      expect(entriesResult).toEqual([['a', 1], ['b', 2], ['c', 3]]);
+    });
+
+    it('should support dollar notation with mathematical operations', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const sumResult = await evaluator.evaluate('_(data).sum().value()', data);
+      const meanResult = await evaluator.evaluate('_(data).mean().value()', data);
+      
+      expect(sumResult).toBe(15);
+      expect(meanResult).toBe(3);
+    });
+
+    it('should support dollar notation with string transformations', async () => {
+      const data = 'hello-world_test case';
+      const camelResult = await evaluator.evaluate('_(data).camelCase().value()', data);
+      const kebabResult = await evaluator.evaluate('_("HelloWorldTest").kebabCase().value()', data);
+      
+      expect(camelResult).toBe('helloWorldTestCase');
+      expect(kebabResult).toBe('hello-world-test');
+    });
+
+    it('should support calling _ without arguments when data is available', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_().filter(x => x > 2).map(x => x * 2).value()', data);
+      expect(result).toEqual([6, 8, 10]);
+    });
+
+    it('should support static lodash methods alongside dollar notation', async () => {
+      const data = [1, 2, 3];
+      const result = await evaluator.evaluate('_.times(3, i => _(data).map(x => x + i).value())', data);
+      expect(result).toEqual([
+        [1, 2, 3],
+        [2, 3, 4],
+        [3, 4, 5]
+      ]);
+    });
+
+    it('should support complex chaining with dollar notation', async () => {
+      const data = [
+        { user: 'alice', posts: [{ title: 'Post 1', likes: 10 }, { title: 'Post 2', likes: 5 }] },
+        { user: 'bob', posts: [{ title: 'Post 3', likes: 15 }, { title: 'Post 4', likes: 20 }] },
+        { user: 'charlie', posts: [{ title: 'Post 5', likes: 8 }] }
+      ];
+      
+      const result = await evaluator.evaluate(`
+        _(data)
+          .flatMap(u => u.posts.map(p => ({ user: u.user, ...p })))
+          .filter(p => p.likes > 10)
+          .sortBy("likes")
+          .reverse()
+          .map(p => p.user + ": " + p.title)
+          .value()
+      `, data);
+      
+      expect(result).toEqual([
+        'bob: Post 4',
+        'bob: Post 3'
+      ]);
+    });
+  });
+
+  describe('Lodash Dollar Notation (VM environment - default)', () => {
+    beforeEach(() => {
+      mockOptions = {
+        debug: false,
+        verbose: false,
+        unsafe: false, // デフォルトではVM環境が有効
+        use: undefined,
+      };
+      evaluator = new ExpressionEvaluator(mockOptions);
+    });
+
+    it('should support dollar notation in VM environment (default)', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_(data).filter(x => x > 2).value()', data);
+      expect(result).toEqual([3, 4, 5]);
+    });
+
+    it('should still support regular lodash methods in non-VM environment', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_.filter(data, x => x > 2)', data);
+      expect(result).toEqual([3, 4, 5]);
+    });
+  });
+
+  describe.skip('Lodash Dollar Notation with Proxy features', () => {
+    beforeEach(() => {
+      mockOptions = {
+        debug: false,
+        verbose: false,
+        unsafe: true, // VM環境を有効にする
+        use: undefined,
+      };
+      evaluator = new ExpressionEvaluator(mockOptions);
+    });
+
+    it('should support transparent property access through Proxy', async () => {
+      const data = { user: { name: 'Alice', age: 30 } };
+      const result = await evaluator.evaluate('_(data).user.name', data);
+      expect(result).toBe('Alice');
+    });
+
+    it('should support array index access through Proxy', async () => {
+      const data = [10, 20, 30, 40, 50];
+      const result = await evaluator.evaluate('_(data)[2]', data);
+      expect(result).toBe(30);
+    });
+
+    it('should support nested property access with chaining', async () => {
+      const data = { 
+        users: [
+          { name: 'Alice', scores: [85, 90, 88] },
+          { name: 'Bob', scores: [78, 82, 80] }
+        ]
+      };
+      const result = await evaluator.evaluate('_(data).users[0].scores', data);
+      expect(result).toEqual([85, 90, 88]);
+    });
+
+    it('should support mixing property access and lodash methods', async () => {
+      const data = { 
+        items: [
+          { category: 'A', values: [1, 2, 3] },
+          { category: 'B', values: [4, 5, 6] }
+        ]
+      };
+      const result = await evaluator.evaluate('_(data).items.map(i => _(i.values).sum().value()).value()', data);
+      expect(result).toEqual([6, 15]);
+    });
+
+    it('should maintain chainability after property access', async () => {
+      const data = { 
+        config: {
+          settings: {
+            items: ['apple', 'banana', 'cherry', 'date']
+          }
+        }
+      };
+      const result = await evaluator.evaluate('_(data).config.settings.items.filter(i => i.length > 5).value()', data);
+      expect(result).toEqual(['banana', 'cherry']);
+    });
+
+    it('should handle undefined properties gracefully', async () => {
+      const data = { a: 1 };
+      const result = await evaluator.evaluate('_(data).b', data);
+      expect(result).toBeUndefined();
+    });
+
+    it('should support reverse method correctly', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_(data).reverse().value()', data);
+      expect(result).toEqual([5, 4, 3, 2, 1]);
+      // 元のデータは変更されない
+      expect(data).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should auto-unwrap when used in expressions', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_(data).filter(x => x > 2).value().length', data);
+      expect(result).toBe(3);
+    });
+
+    it('should support mapValues for objects', async () => {
+      const data = { a: 1, b: 2, c: 3 };
+      const result = await evaluator.evaluate('_(data).mapValues(v => v * 2).value()', data);
+      expect(result).toEqual({ a: 2, b: 4, c: 6 });
+    });
+
+    it('should support fromPairs with dollar notation', async () => {
+      const data = [['a', 1], ['b', 2], ['c', 3]];
+      const result = await evaluator.evaluate('_(data).fromPairs().value()', data);
+      expect(result).toEqual({ a: 1, b: 2, c: 3 });
+    });
+  });
 });

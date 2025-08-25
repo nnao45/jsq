@@ -52,6 +52,10 @@ export function transformExpression(expression: string): string {
   // For other data types, return $ as is and let the evaluator handle it
   else if (trimmed === '$') {
     result = '$';
+  }
+  // Handle standalone '_' - similar to '$'
+  else if (trimmed === '_') {
+    result = '_';
   } else {
     result = expression;
   }
@@ -97,8 +101,7 @@ export function isArrayLiteralWithMethods(expression: string): boolean {
   return (
     trimmed.startsWith('[') &&
     trimmed.includes('].') &&
-    !trimmed.startsWith('$.') &&
-    !trimmed.startsWith('_.')
+    !trimmed.startsWith('$.') // Don't transform if it's already a $ expression
   );
 }
 

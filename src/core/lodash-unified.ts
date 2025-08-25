@@ -5,6 +5,24 @@ import type { LodashMethods, MethodImplementation } from '../types/common-method
  * VM環境とnon-VM環境の両方で動作する実装を提供
  */
 
+// Helper function to create methods for both VM and non-VM environments
+function createMethods<T>(value: T, constructor: any) {
+  const methods = {
+    _value: value,
+    constructor: constructor,
+  };
+
+  // Bind all methods from the prototype to the instance with proper context
+  const proto = constructor.prototype;
+  Object.getOwnPropertyNames(proto).forEach(name => {
+    if (name !== 'constructor' && typeof proto[name] === 'function') {
+      (methods as any)[name] = proto[name].bind(methods);
+    }
+  });
+
+  return methods;
+}
+
 // 共通のメソッド実装（配列操作）
 const arrayMethods = {
   // 基本的な配列操作
@@ -394,15 +412,35 @@ const stringMethods = {
 
   kebabCase(str: string): string {
     return str
-      .replace(/([a-z])([A-Z])/g, '$1-$2')
+      // Insert hyphens before uppercase letters that follow lowercase letters
+      .replace(/([a-z\d])([A-Z])/g, '$1-$2')
+      // Insert hyphens between multiple uppercase letters
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+      // Replace spaces, underscores, etc. with hyphens
       .replace(/[\s_]+/g, '-')
+      // Remove non-alphanumeric characters except hyphens
+      .replace(/[^a-zA-Z0-9-]+/g, '')
+      // Remove multiple consecutive hyphens
+      .replace(/-+/g, '-')
+      // Remove leading/trailing hyphens
+      .replace(/^-|-$/g, '')
       .toLowerCase();
   },
 
   snakeCase(str: string): string {
     return str
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      // Insert underscores before uppercase letters that follow lowercase letters
+      .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+      // Insert underscores between multiple uppercase letters
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+      // Replace spaces, hyphens, etc. with underscores
       .replace(/[\s-]+/g, '_')
+      // Remove non-alphanumeric characters except underscores
+      .replace(/[^a-zA-Z0-9_]+/g, '')
+      // Remove multiple consecutive underscores
+      .replace(/_+/g, '_')
+      // Remove leading/trailing underscores
+      .replace(/^_|_$/g, '')
       .toLowerCase();
   },
 
@@ -773,6 +811,68 @@ globalThis._ = {
   }
 };
 `;
+
+// Create LodashDollar class for runtime usage (similar to SmartDollar)
+class LodashDollar<T> {
+  _value: T;
+  value: T;
+  __isLodashDollar = true;
+
+  constructor(value: T) {
+    this._value = value;
+    this.value = value;
+  }
+
+  // All methods will be attached dynamically
+  [key: string]: any;
+}
+
+// Attach all lodash methods to LodashDollar prototype
+const lodashMethods = {
+  ...arrayMethods,
+  ...objectMethods,
+  ...stringMethods,
+  ...utilityMethods,
+  // Add chainable wrapper
+  chain() {
+    return this;
+  },
+  value() {
+    this.value = this._value;
+    return this._value;
+  },
+  valueOf() {
+    return this._value;
+  }
+};
+
+// Apply methods to prototype
+Object.entries(lodashMethods).forEach(([name, method]) => {
+  (LodashDollar.prototype as any)[name] = function(...args: any[]) {
+    const result = method.call(this, ...args);
+    // If the method returns an array or object, wrap it in LodashDollar
+    if (result !== undefined && result !== null && (Array.isArray(result) || typeof result === 'object')) {
+      if (result instanceof LodashDollar) {
+        return result;
+      }
+      // Check if this is a method that should return raw value
+      const rawValueMethods = ['find', 'sample', 'min', 'max', 'minBy', 'maxBy', 'sum', 'mean', 'size', 'clamp', 'random', 'isEmpty', 'includes', 'some', 'every', 'indexOf', 'lastIndexOf', 'findIndex'];
+      if (rawValueMethods.includes(name)) {
+        return result;
+      }
+      return new LodashDollar(result);
+    }
+    return result;
+  };
+});
+
+// Export createLodashDollar function for VM environment
+export function createLodashDollar<T>(value: T) {
+  if (typeof globalThis !== 'undefined' && globalThis.LodashDollar) {
+    return new globalThis.LodashDollar(value);
+  }
+  return createMethods(value, LodashDollar);
+}
 
 // デフォルトエクスポート
 const _ = new LodashUtilities();

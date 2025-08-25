@@ -92,6 +92,10 @@ export class VMSandboxSimple {
       // Load the implementation from separate file to keep it clean
       const { createVMSmartDollarCode } = await import('../smart-dollar-vm');
       await vmContext.eval(createVMSmartDollarCode());
+      
+      // Set up the createLodashDollar function for the VM
+      const { createVMLodashDollarCode } = await import('../lodash-dollar-vm');
+      await vmContext.eval(createVMLodashDollarCode());
 
       // Set up $ first before other context variables
       if ('$' in context) {
@@ -179,8 +183,8 @@ export class VMSandboxSimple {
             // Skip functions that reference ChainableWrapper or are $ functions
             console.debug(`Skipping ${key} - it's a smart dollar or related function`);
           } else if (key === '_') {
-            // Handle lodash utilities - create them directly in the VM
-            await this.setupLodashUtilities(jail, vmContext);
+            // _ is already set up by createVMLodashDollarCode
+            continue;
           } else if (typeof value === 'function') {
             // Special handling for simple functions
             const func = value as (...args: unknown[]) => unknown;
@@ -383,6 +387,33 @@ export class VMSandboxSimple {
         globalThis.Set = this.constructor.constructor("return Set")();
         globalThis.Map = this.constructor.constructor("return Map")();
         globalThis.Promise = this.constructor.constructor("return Promise")();
+        
+        // Add Array.from if it doesn't exist
+        if (!globalThis.Array.from) {
+          globalThis.Array.from = function(arrayLike, mapFn, thisArg) {
+            if (arrayLike == null) {
+              throw new TypeError('Array.from requires an array-like object - not null or undefined');
+            }
+            
+            const C = this;
+            const items = Object(arrayLike);
+            const len = Number(items.length) || 0;
+            const result = new C(len);
+            
+            for (let i = 0; i < len; i++) {
+              if (i in items) {
+                if (mapFn) {
+                  result[i] = mapFn.call(thisArg, items[i], i);
+                } else {
+                  result[i] = items[i];
+                }
+              }
+            }
+            
+            result.length = len;
+            return result;
+          };
+        }
         
         // Date needs special handling
         var DateConstructor = this.constructor.constructor("return Date")();
@@ -615,429 +646,6 @@ export class VMSandboxSimple {
         console.warn('Failed to set up fetch in VM:', e);
       }
     }
-  }
-
-  private async setupLodashUtilities(_jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
-    // Set up lodash-like utilities in the VM
-    await vmContext.eval(`
-      // Helper function to unwrap SmartDollar/ChainableWrapper objects
-      function __unwrapValue(value) {
-        // If it's a SmartDollar object (has __isSmartDollar marker or _value property)
-        if (value && typeof value === 'object') {
-          if (value.__isSmartDollar || value._value !== undefined) {
-            return value._value !== undefined ? value._value : value.value;
-          }
-          // If it has a value property and looks like a ChainableWrapper
-          if ('value' in value && value.constructor && 
-              (value.constructor.name === 'ChainableWrapper' || 
-               value.constructor.name.includes('ChainableWrapper'))) {
-            return value.value;
-          }
-        }
-        return value;
-      }
-      
-      globalThis._ = {
-        // Array methods
-        chunk: function(arr, size) {
-          const unwrappedArr = __unwrapValue(arr);
-          const chunks = [];
-          for (let i = 0; i < unwrappedArr.length; i += size) {
-            chunks.push(unwrappedArr.slice(i, i + size));
-          }
-          return chunks;
-        },
-        filter: function(arr, predicate) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.filter(predicate);
-        },
-        uniqBy: function(arr, keyFn) {
-          const unwrappedArr = __unwrapValue(arr);
-          const seen = new Set();
-          const result = [];
-          for (const item of unwrappedArr) {
-            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            if (!seen.has(key)) {
-              seen.add(key);
-              result.push(item);
-            }
-          }
-          return result;
-        },
-        uniq: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return [...new Set(unwrappedArr)];
-        },
-        orderBy: function(arr, keys, orders) {
-          const unwrappedArr = __unwrapValue(arr);
-          if (!Array.isArray(keys)) keys = [keys];
-          if (!Array.isArray(orders)) orders = keys.map(() => 'asc');
-          
-          return [...unwrappedArr].sort((a, b) => {
-            for (let i = 0; i < keys.length; i++) {
-              const key = keys[i];
-              const order = orders[i] || 'asc';
-              const aVal = typeof key === 'function' ? key(a) : a[key];
-              const bVal = typeof key === 'function' ? key(b) : b[key];
-              
-              if (aVal < bVal) return order === 'asc' ? -1 : 1;
-              if (aVal > bVal) return order === 'asc' ? 1 : -1;
-            }
-            return 0;
-          });
-        },
-        sortBy: function(arr, keyFn) {
-          const unwrappedArr = __unwrapValue(arr);
-          return [...unwrappedArr].sort((a, b) => {
-            const aVal = typeof keyFn === 'function' ? keyFn(a) : a[keyFn];
-            const bVal = typeof keyFn === 'function' ? keyFn(b) : b[keyFn];
-            if (aVal < bVal) return -1;
-            if (aVal > bVal) return 1;
-            return 0;
-          });
-        },
-        groupBy: function(arr, keyFn) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((groups, item) => {
-            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(item);
-            return groups;
-          }, {});
-        },
-        flatten: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((acc, val) => 
-            acc.concat(Array.isArray(val) ? val : [val]), []);
-        },
-        flattenDeep: function flatten(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((acc, val) => 
-            Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
-        },
-        compact: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.filter(Boolean);
-        },
-        sum: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((sum, n) => sum + (typeof n === 'number' ? n : 0), 0);
-        },
-        mean: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          const nums = unwrappedArr.filter(n => typeof n === 'number');
-          return nums.length ? nums.reduce((sum, n) => sum + n, 0) / nums.length : NaN;
-        },
-        min: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return Math.min(...unwrappedArr.filter(n => typeof n === 'number'));
-        },
-        max: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return Math.max(...unwrappedArr.filter(n => typeof n === 'number'));
-        },
-        minBy: function(arr, keyFn) {
-          // Unwrap SmartDollar/ChainableWrapper objects
-          const unwrappedArr = __unwrapValue(arr);
-          if (!unwrappedArr || unwrappedArr.length === 0) return undefined;
-          return unwrappedArr.reduce((min, item) => {
-            const minVal = typeof keyFn === 'function' ? keyFn(min) : min[keyFn];
-            const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            return itemVal < minVal ? item : min;
-          });
-        },
-        maxBy: function(arr, keyFn) {
-          // Unwrap SmartDollar/ChainableWrapper objects
-          const unwrappedArr = __unwrapValue(arr);
-          if (!unwrappedArr || unwrappedArr.length === 0) return undefined;
-          return unwrappedArr.reduce((max, item) => {
-            const maxVal = typeof keyFn === 'function' ? keyFn(max) : max[keyFn];
-            const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            return itemVal > maxVal ? item : max;
-          });
-        },
-        countBy: function(arr, keyFn) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((counts, item) => {
-            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            counts[key] = (counts[key] || 0) + 1;
-            return counts;
-          }, {});
-        },
-        keyBy: function(arr, keyFn) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr.reduce((obj, item) => {
-            const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-            obj[key] = item;
-            return obj;
-          }, {});
-        },
-        takeWhile: function(arr, predicate) {
-          const unwrappedArr = __unwrapValue(arr);
-          const result = [];
-          for (const item of unwrappedArr) {
-            if (!predicate(item)) break;
-            result.push(item);
-          }
-          return result;
-        },
-        dropWhile: function(arr, predicate) {
-          const unwrappedArr = __unwrapValue(arr);
-          let i = 0;
-          while (i < unwrappedArr.length && predicate(unwrappedArr[i])) i++;
-          return unwrappedArr.slice(i);
-        },
-        shuffle: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          const result = [...unwrappedArr];
-          for (let i = result.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [result[i], result[j]] = [result[j], result[i]];
-          }
-          return result;
-        },
-        sample: function(arr) {
-          const unwrappedArr = __unwrapValue(arr);
-          return unwrappedArr[Math.floor(Math.random() * unwrappedArr.length)];
-        },
-        sampleSize: function(arr, n) {
-          const unwrappedArr = __unwrapValue(arr);
-          const shuffled = this.shuffle(unwrappedArr);
-          return shuffled.slice(0, Math.min(n, unwrappedArr.length));
-        },
-        // Object methods
-        pick: function(obj, keys) {
-          const unwrappedObj = __unwrapValue(obj);
-          const result = {};
-          for (const key of keys) {
-            if (key in unwrappedObj) result[key] = unwrappedObj[key];
-          }
-          return result;
-        },
-        omit: function(obj, keys) {
-          const unwrappedObj = __unwrapValue(obj);
-          const result = {...unwrappedObj};
-          for (const key of keys) {
-            delete result[key];
-          }
-          return result;
-        },
-        invert: function(obj) {
-          const unwrappedObj = __unwrapValue(obj);
-          const result = {};
-          for (const [key, value] of Object.entries(unwrappedObj)) {
-            result[value] = key;
-          }
-          return result;
-        },
-        merge: function(...objects) {
-          const result = {};
-          for (const obj of objects) {
-            const unwrapped = __unwrapValue(obj);
-            if (unwrapped && typeof unwrapped === 'object') {
-              Object.assign(result, unwrapped);
-            }
-          }
-          return result;
-        },
-        defaults: function(obj, ...sources) {
-          const unwrappedObj = __unwrapValue(obj);
-          const result = {...unwrappedObj};
-          for (const source of sources) {
-            const unwrappedSource = __unwrapValue(source);
-            if (unwrappedSource && typeof unwrappedSource === 'object') {
-              for (const [key, value] of Object.entries(unwrappedSource)) {
-                if (!(key in result)) {
-                  result[key] = value;
-                }
-              }
-            }
-          }
-          return result;
-        },
-        fromPairs: function(pairs) {
-          const unwrappedPairs = __unwrapValue(pairs);
-          const result = {};
-          for (const [key, value] of unwrappedPairs) {
-            result[key] = value;
-          }
-          return result;
-        },
-        // Collection methods
-        size: function(collection) {
-          const unwrapped = __unwrapValue(collection);
-          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
-            return unwrapped.length;
-          }
-          if (unwrapped && typeof unwrapped === 'object') {
-            return Object.keys(unwrapped).length;
-          }
-          return 0;
-        },
-        isEmpty: function(value) {
-          const unwrapped = __unwrapValue(value);
-          if (unwrapped == null) return true;
-          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
-            return unwrapped.length === 0;
-          }
-          if (typeof unwrapped === 'object') {
-            return Object.keys(unwrapped).length === 0;
-          }
-          return true;
-        },
-        includes: function(collection, value) {
-          const unwrapped = __unwrapValue(collection);
-          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
-            return unwrapped.includes(value);
-          }
-          if (unwrapped && typeof unwrapped === 'object') {
-            return Object.values(unwrapped).includes(value);
-          }
-          return false;
-        },
-        // String methods
-        camelCase: function(str) {
-          return str
-            .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
-            .replace(/^[A-Z]/, chr => chr.toLowerCase());
-        },
-        kebabCase: function(str) {
-          return str
-            .replace(/[A-Z]/g, function(letter) { return '-' + letter.toLowerCase(); })
-            .replace(/[^a-zA-Z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '')
-            .toLowerCase();
-        },
-        snakeCase: function(str) {
-          return str
-            .replace(/[A-Z]/g, function(letter) { return '_' + letter.toLowerCase(); })
-            .replace(/[^a-zA-Z0-9]+/g, '_')
-            .replace(/^_+|_+$/g, '')
-            .toLowerCase();
-        },
-        startCase: function(str) {
-          return str
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
-            .replace(/[_-]+/g, ' ')
-            .replace(/\\b\\w/g, function(letter) { return letter.toUpperCase(); })
-            .trim();
-        },
-        capitalize: function(str) {
-          return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-        },
-        // Utility methods
-        times: function(n, iteratee) {
-          const result = [];
-          const fn = iteratee || (i => i);
-          for (let i = 0; i < n; i++) {
-            result.push(fn(i));
-          }
-          return result;
-        },
-        range: function(...args) {
-          let start = 0, end = 0, step = 1;
-          if (args.length === 1) {
-            end = args[0];
-          } else if (args.length === 2) {
-            [start, end] = args;
-          } else if (args.length >= 3) {
-            [start, end, step] = args;
-          }
-          
-          const result = [];
-          if (step > 0) {
-            for (let i = start; i < end; i += step) {
-              result.push(i);
-            }
-          } else if (step < 0) {
-            for (let i = start; i > end; i += step) {
-              result.push(i);
-            }
-          }
-          return result;
-        },
-        keys: function(obj) {
-          return Object.keys(__unwrapValue(obj));
-        },
-        values: function(obj) {
-          return Object.values(__unwrapValue(obj));
-        },
-        identity: function(value) {
-          return value;
-        },
-        // Chain method for lodash-style chaining
-        chain: function(value) {
-          const ChainableWrapper = {
-            value: value,
-            map: function(fn) {
-              this.value = Array.isArray(this.value) ? this.value.map(fn) : this.value;
-              return this;
-            },
-            filter: function(fn) {
-              this.value = Array.isArray(this.value) ? this.value.filter(fn) : this.value;
-              return this;
-            },
-            sortBy: function(keyFn) {
-              if (Array.isArray(this.value)) {
-                this.value = [...this.value].sort((a, b) => {
-                  const aKey = typeof keyFn === 'function' ? keyFn(a) : a[keyFn];
-                  const bKey = typeof keyFn === 'function' ? keyFn(b) : b[keyFn];
-                  return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
-                });
-              }
-              return this;
-            },
-            groupBy: function(keyFn) {
-              if (Array.isArray(this.value)) {
-                this.value = this.value.reduce((groups, item) => {
-                  const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
-                  if (!groups[key]) groups[key] = [];
-                  groups[key].push(item);
-                  return groups;
-                }, {});
-              }
-              return this;
-            },
-            take: function(n) {
-              this.value = Array.isArray(this.value) ? this.value.slice(0, n) : this.value;
-              return this;
-            },
-            flatten: function() {
-              this.value = Array.isArray(this.value) ? this.value.flat() : this.value;
-              return this;
-            },
-            uniq: function() {
-              this.value = Array.isArray(this.value) ? [...new Set(this.value)] : this.value;
-              return this;
-            },
-            compact: function() {
-              this.value = Array.isArray(this.value) ? this.value.filter(Boolean) : this.value;
-              return this;
-            },
-            value: function() {
-              return this.value;
-            }
-          };
-          return ChainableWrapper;
-        },
-        constant: function(value) {
-          return function() { return value; };
-        },
-        random: function(lower, upper) {
-          if (arguments.length === 0) {
-            return Math.random();
-          }
-          if (upper === undefined) {
-            upper = lower;
-            lower = 0;
-          }
-          return Math.random() * (upper - lower) + lower;
-        },
-        clamp: function(number, lower, upper) {
-          return Math.min(Math.max(number, lower), upper);
-        }
-      };
-    `);
   }
 
   private async serializeValue(value: unknown): Promise<unknown> {
