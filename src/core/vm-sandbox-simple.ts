@@ -1231,7 +1231,7 @@ export class VMSandboxSimple {
           // Check if it's a SmartDollar object (has __isSmartDollar marker or _value property)
           if (__result.__isSmartDollar || 
               ('_value' in __result && __result.constructor && __result.constructor.name === 'SmartDollar')) {
-            const value = __result._value || __result.value;
+            const value = __result._value !== undefined ? __result._value : __result.value;
             // Return the unwrapped value
             if (value === null || value === undefined) {
               return value;
