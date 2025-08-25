@@ -222,7 +222,7 @@ const arrayMethods = {
   },
 
   reverse<T>(arr: T[]): T[] {
-    return [...arr].reverse();
+    return arr.reverse();
   },
 
   // 数学・統計系

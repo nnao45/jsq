@@ -88,6 +88,11 @@ export class VMSandboxSimple {
         throw ivmError;
       }
 
+      // Set up the createSmartDollar function for the VM BEFORE using it
+      // Load the implementation from separate file to keep it clean
+      const { createVMSmartDollarCode } = await import('../smart-dollar-vm');
+      await vmContext.eval(createVMSmartDollarCode());
+
       // Set up $ first before other context variables
       if ('$' in context) {
         const $value = context.$;
@@ -122,8 +127,13 @@ export class VMSandboxSimple {
         }
 
         // Create $ with createSmartDollar in the VM
+        // For null/undefined, $ should be the raw value, not wrapped
         await vmContext.eval(`
-          globalThis.$ = createSmartDollar(globalThis.$_data);
+          if (globalThis.$_data === null || globalThis.$_data === undefined) {
+            globalThis.$ = globalThis.$_data;
+          } else {
+            globalThis.$ = createSmartDollar(globalThis.$_data);
+          }
           delete globalThis.$_data;
         `);
       }
@@ -489,11 +499,6 @@ export class VMSandboxSimple {
       `);
     }
 
-    // Set up the createSmartDollar function for the VM
-    // Load the implementation from separate file to keep it clean
-    const createSmartDollarCode = require('./vm-create-smart-dollar.js');
-    await vmContext.eval(createSmartDollarCode);
-
     // Set up fetch in the VM with callback-based approach (only if network is allowed)
     if (options.allowNetwork) {
       try {
@@ -615,22 +620,42 @@ export class VMSandboxSimple {
   private async setupLodashUtilities(_jail: ivm.Reference, vmContext: ivm.Context): Promise<void> {
     // Set up lodash-like utilities in the VM
     await vmContext.eval(`
+      // Helper function to unwrap SmartDollar/ChainableWrapper objects
+      function __unwrapValue(value) {
+        // If it's a SmartDollar object (has __isSmartDollar marker or _value property)
+        if (value && typeof value === 'object') {
+          if (value.__isSmartDollar || value._value !== undefined) {
+            return value._value !== undefined ? value._value : value.value;
+          }
+          // If it has a value property and looks like a ChainableWrapper
+          if ('value' in value && value.constructor && 
+              (value.constructor.name === 'ChainableWrapper' || 
+               value.constructor.name.includes('ChainableWrapper'))) {
+            return value.value;
+          }
+        }
+        return value;
+      }
+      
       globalThis._ = {
         // Array methods
         chunk: function(arr, size) {
+          const unwrappedArr = __unwrapValue(arr);
           const chunks = [];
-          for (let i = 0; i < arr.length; i += size) {
-            chunks.push(arr.slice(i, i + size));
+          for (let i = 0; i < unwrappedArr.length; i += size) {
+            chunks.push(unwrappedArr.slice(i, i + size));
           }
           return chunks;
         },
         filter: function(arr, predicate) {
-          return arr.filter(predicate);
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.filter(predicate);
         },
         uniqBy: function(arr, keyFn) {
+          const unwrappedArr = __unwrapValue(arr);
           const seen = new Set();
           const result = [];
-          for (const item of arr) {
+          for (const item of unwrappedArr) {
             const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             if (!seen.has(key)) {
               seen.add(key);
@@ -640,13 +665,15 @@ export class VMSandboxSimple {
           return result;
         },
         uniq: function(arr) {
-          return [...new Set(arr)];
+          const unwrappedArr = __unwrapValue(arr);
+          return [...new Set(unwrappedArr)];
         },
         orderBy: function(arr, keys, orders) {
+          const unwrappedArr = __unwrapValue(arr);
           if (!Array.isArray(keys)) keys = [keys];
           if (!Array.isArray(orders)) orders = keys.map(() => 'asc');
           
-          return [...arr].sort((a, b) => {
+          return [...unwrappedArr].sort((a, b) => {
             for (let i = 0; i < keys.length; i++) {
               const key = keys[i];
               const order = orders[i] || 'asc';
@@ -660,7 +687,8 @@ export class VMSandboxSimple {
           });
         },
         sortBy: function(arr, keyFn) {
-          return [...arr].sort((a, b) => {
+          const unwrappedArr = __unwrapValue(arr);
+          return [...unwrappedArr].sort((a, b) => {
             const aVal = typeof keyFn === 'function' ? keyFn(a) : a[keyFn];
             const bVal = typeof keyFn === 'function' ? keyFn(b) : b[keyFn];
             if (aVal < bVal) return -1;
@@ -669,7 +697,8 @@ export class VMSandboxSimple {
           });
         },
         groupBy: function(arr, keyFn) {
-          return arr.reduce((groups, item) => {
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((groups, item) => {
             const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             if (!groups[key]) groups[key] = [];
             groups[key].push(item);
@@ -677,74 +706,90 @@ export class VMSandboxSimple {
           }, {});
         },
         flatten: function(arr) {
-          return arr.reduce((acc, val) => 
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((acc, val) => 
             acc.concat(Array.isArray(val) ? val : [val]), []);
         },
         flattenDeep: function flatten(arr) {
-          return arr.reduce((acc, val) => 
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((acc, val) => 
             Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
         },
         compact: function(arr) {
-          return arr.filter(Boolean);
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.filter(Boolean);
         },
         sum: function(arr) {
-          return arr.reduce((sum, n) => sum + (typeof n === 'number' ? n : 0), 0);
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((sum, n) => sum + (typeof n === 'number' ? n : 0), 0);
         },
         mean: function(arr) {
-          const nums = arr.filter(n => typeof n === 'number');
+          const unwrappedArr = __unwrapValue(arr);
+          const nums = unwrappedArr.filter(n => typeof n === 'number');
           return nums.length ? nums.reduce((sum, n) => sum + n, 0) / nums.length : NaN;
         },
         min: function(arr) {
-          return Math.min(...arr.filter(n => typeof n === 'number'));
+          const unwrappedArr = __unwrapValue(arr);
+          return Math.min(...unwrappedArr.filter(n => typeof n === 'number'));
         },
         max: function(arr) {
-          return Math.max(...arr.filter(n => typeof n === 'number'));
+          const unwrappedArr = __unwrapValue(arr);
+          return Math.max(...unwrappedArr.filter(n => typeof n === 'number'));
         },
         minBy: function(arr, keyFn) {
-          if (!arr || arr.length === 0) return undefined;
-          return arr.reduce((min, item) => {
+          // Unwrap SmartDollar/ChainableWrapper objects
+          const unwrappedArr = __unwrapValue(arr);
+          if (!unwrappedArr || unwrappedArr.length === 0) return undefined;
+          return unwrappedArr.reduce((min, item) => {
             const minVal = typeof keyFn === 'function' ? keyFn(min) : min[keyFn];
             const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             return itemVal < minVal ? item : min;
           });
         },
         maxBy: function(arr, keyFn) {
-          if (!arr || arr.length === 0) return undefined;
-          return arr.reduce((max, item) => {
+          // Unwrap SmartDollar/ChainableWrapper objects
+          const unwrappedArr = __unwrapValue(arr);
+          if (!unwrappedArr || unwrappedArr.length === 0) return undefined;
+          return unwrappedArr.reduce((max, item) => {
             const maxVal = typeof keyFn === 'function' ? keyFn(max) : max[keyFn];
             const itemVal = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             return itemVal > maxVal ? item : max;
           });
         },
         countBy: function(arr, keyFn) {
-          return arr.reduce((counts, item) => {
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((counts, item) => {
             const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             counts[key] = (counts[key] || 0) + 1;
             return counts;
           }, {});
         },
         keyBy: function(arr, keyFn) {
-          return arr.reduce((obj, item) => {
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr.reduce((obj, item) => {
             const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
             obj[key] = item;
             return obj;
           }, {});
         },
         takeWhile: function(arr, predicate) {
+          const unwrappedArr = __unwrapValue(arr);
           const result = [];
-          for (const item of arr) {
+          for (const item of unwrappedArr) {
             if (!predicate(item)) break;
             result.push(item);
           }
           return result;
         },
         dropWhile: function(arr, predicate) {
+          const unwrappedArr = __unwrapValue(arr);
           let i = 0;
-          while (i < arr.length && predicate(arr[i])) i++;
-          return arr.slice(i);
+          while (i < unwrappedArr.length && predicate(unwrappedArr[i])) i++;
+          return unwrappedArr.slice(i);
         },
         shuffle: function(arr) {
-          const result = [...arr];
+          const unwrappedArr = __unwrapValue(arr);
+          const result = [...unwrappedArr];
           for (let i = result.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [result[i], result[j]] = [result[j], result[i]];
@@ -752,30 +797,35 @@ export class VMSandboxSimple {
           return result;
         },
         sample: function(arr) {
-          return arr[Math.floor(Math.random() * arr.length)];
+          const unwrappedArr = __unwrapValue(arr);
+          return unwrappedArr[Math.floor(Math.random() * unwrappedArr.length)];
         },
         sampleSize: function(arr, n) {
-          const shuffled = this.shuffle(arr);
-          return shuffled.slice(0, Math.min(n, arr.length));
+          const unwrappedArr = __unwrapValue(arr);
+          const shuffled = this.shuffle(unwrappedArr);
+          return shuffled.slice(0, Math.min(n, unwrappedArr.length));
         },
         // Object methods
         pick: function(obj, keys) {
+          const unwrappedObj = __unwrapValue(obj);
           const result = {};
           for (const key of keys) {
-            if (key in obj) result[key] = obj[key];
+            if (key in unwrappedObj) result[key] = unwrappedObj[key];
           }
           return result;
         },
         omit: function(obj, keys) {
-          const result = {...obj};
+          const unwrappedObj = __unwrapValue(obj);
+          const result = {...unwrappedObj};
           for (const key of keys) {
             delete result[key];
           }
           return result;
         },
         invert: function(obj) {
+          const unwrappedObj = __unwrapValue(obj);
           const result = {};
-          for (const [key, value] of Object.entries(obj)) {
+          for (const [key, value] of Object.entries(unwrappedObj)) {
             result[value] = key;
           }
           return result;
@@ -783,17 +833,20 @@ export class VMSandboxSimple {
         merge: function(...objects) {
           const result = {};
           for (const obj of objects) {
-            if (obj && typeof obj === 'object') {
-              Object.assign(result, obj);
+            const unwrapped = __unwrapValue(obj);
+            if (unwrapped && typeof unwrapped === 'object') {
+              Object.assign(result, unwrapped);
             }
           }
           return result;
         },
         defaults: function(obj, ...sources) {
-          const result = {...obj};
+          const unwrappedObj = __unwrapValue(obj);
+          const result = {...unwrappedObj};
           for (const source of sources) {
-            if (source && typeof source === 'object') {
-              for (const [key, value] of Object.entries(source)) {
+            const unwrappedSource = __unwrapValue(source);
+            if (unwrappedSource && typeof unwrappedSource === 'object') {
+              for (const [key, value] of Object.entries(unwrappedSource)) {
                 if (!(key in result)) {
                   result[key] = value;
                 }
@@ -803,38 +856,42 @@ export class VMSandboxSimple {
           return result;
         },
         fromPairs: function(pairs) {
+          const unwrappedPairs = __unwrapValue(pairs);
           const result = {};
-          for (const [key, value] of pairs) {
+          for (const [key, value] of unwrappedPairs) {
             result[key] = value;
           }
           return result;
         },
         // Collection methods
         size: function(collection) {
-          if (Array.isArray(collection) || typeof collection === 'string') {
-            return collection.length;
+          const unwrapped = __unwrapValue(collection);
+          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
+            return unwrapped.length;
           }
-          if (collection && typeof collection === 'object') {
-            return Object.keys(collection).length;
+          if (unwrapped && typeof unwrapped === 'object') {
+            return Object.keys(unwrapped).length;
           }
           return 0;
         },
         isEmpty: function(value) {
-          if (value == null) return true;
-          if (Array.isArray(value) || typeof value === 'string') {
-            return value.length === 0;
+          const unwrapped = __unwrapValue(value);
+          if (unwrapped == null) return true;
+          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
+            return unwrapped.length === 0;
           }
-          if (typeof value === 'object') {
-            return Object.keys(value).length === 0;
+          if (typeof unwrapped === 'object') {
+            return Object.keys(unwrapped).length === 0;
           }
           return true;
         },
         includes: function(collection, value) {
-          if (Array.isArray(collection) || typeof collection === 'string') {
-            return collection.includes(value);
+          const unwrapped = __unwrapValue(collection);
+          if (Array.isArray(unwrapped) || typeof unwrapped === 'string') {
+            return unwrapped.includes(value);
           }
-          if (collection && typeof collection === 'object') {
-            return Object.values(collection).includes(value);
+          if (unwrapped && typeof unwrapped === 'object') {
+            return Object.values(unwrapped).includes(value);
           }
           return false;
         },
@@ -900,10 +957,10 @@ export class VMSandboxSimple {
           return result;
         },
         keys: function(obj) {
-          return Object.keys(obj);
+          return Object.keys(__unwrapValue(obj));
         },
         values: function(obj) {
-          return Object.values(obj);
+          return Object.values(__unwrapValue(obj));
         },
         identity: function(value) {
           return value;
@@ -1171,6 +1228,24 @@ export class VMSandboxSimple {
         }
         // For objects
         if (typeof __result === 'object') {
+          // Check if it's a SmartDollar object (has __isSmartDollar marker or _value property)
+          if (__result.__isSmartDollar || 
+              ('_value' in __result && __result.constructor && __result.constructor.name === 'SmartDollar')) {
+            const value = __result._value || __result.value;
+            // Return the unwrapped value
+            if (value === null || value === undefined) {
+              return value;
+            }
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              return value;
+            }
+            if (Array.isArray(value)) {
+              return new $ivm.ExternalCopy([...value]).copyInto();
+            }
+            if (typeof value === 'object') {
+              return new $ivm.ExternalCopy(value).copyInto();
+            }
+          }
           // Check if it's a ChainableWrapper (has a value property)
           if ('value' in __result && __result.constructor && 
               (__result.constructor.name === 'ChainableWrapper' || 

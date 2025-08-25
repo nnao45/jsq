@@ -30,7 +30,7 @@ export class JsqProcessor {
       if (
         !input ||
         input === null ||
-        (typeof input === 'string' && (input.trim() === '' || input === 'null'))
+        (typeof input === 'string' && input.trim() === '')
       ) {
         // No input available - expressions should work with $ as null
         data = null; // Will be handled by the expression evaluator
