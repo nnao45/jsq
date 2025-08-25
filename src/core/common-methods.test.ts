@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import type { MethodTestCase } from '../types/common-methods';
 import _, { LodashUtilities } from './lodash-unified';
-import { type ChainableWrapper, createSmartDollar } from './smart-dollar-unified';
+import { type ChainableWrapper, createSmartDollar } from '../smart-dollar-non-vm';
 
 /**
  * 共通メソッドのテストスイート
@@ -355,14 +355,26 @@ describe('共通メソッドの一貫性テスト', () => {
   describe('$記法とlodash記法の比較', () => {
     commonTestCases.forEach(testCase => {
       it(`${testCase.method}: ${testCase.description}`, () => {
+        // Create separate copies for each test to avoid mutation issues
+        const $inputData = Array.isArray(testCase.input) ? [...testCase.input] : testCase.input;
+        const lodashInputData = Array.isArray(testCase.input) ? [...testCase.input] : testCase.input;
+        
         // $記法でのテスト
-        const $input = createSmartDollar(testCase.input);
+        const $input = createSmartDollar($inputData);
         const $result = ($input as any)[testCase.method](...testCase.args);
-        const $value = $result && typeof $result.value === 'function' ? $result.value() : $result;
+        
+        // Check if result is a ChainableWrapper instance (has _value property)
+        const $value = $result && $result._value !== undefined
+          ? $result._value
+          : $result && typeof $result.value === 'function' 
+          ? $result.value() 
+          : $result && typeof $result.toJSON === 'function'
+          ? $result.toJSON()
+          : $result;
 
         // lodash記法でのテスト
         const lodashUtil = new LodashUtilities();
-        const lodashResult = (lodashUtil as any)[testCase.method](testCase.input, ...testCase.args);
+        const lodashResult = (lodashUtil as any)[testCase.method](lodashInputData, ...testCase.args);
 
         // 結果の比較
         expect($value).toEqual(testCase.expected);
