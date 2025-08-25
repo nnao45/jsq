@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { ChainableWrapper } from './chainable';
+import { ChainableWrapper } from './chainable/chainable';
 
 describe('Advanced Collection Methods', () => {
   describe('Tier 1 Methods', () => {

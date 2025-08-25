@@ -7,7 +7,7 @@
     "jsq": "bin/jsq"
   },
   "scripts": {
-    "build": "esbuild src/simple-cli.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=cjs --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=cjs --packages=external",
+    "build": "esbuild src/simple-cli.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=cjs --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=cjs --packages=external",
     "build:watch": "npm run build -- --watch",
     "build:bun": "bun build src/simple-cli.ts --outfile=dist/index-bun.js --target=bun",
     "build:deno": "deno bundle src/simple-cli.ts dist/index-deno.js",

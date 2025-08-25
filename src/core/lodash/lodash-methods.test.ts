@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
-import { ExpressionEvaluator } from './evaluator';
+import { ExpressionEvaluator } from '../evaluator';
 
 describe('Lodash-like Methods', () => {
   let evaluator: ExpressionEvaluator;

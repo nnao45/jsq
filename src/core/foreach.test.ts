@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { ChainableWrapper } from './chainable';
+import { ChainableWrapper } from './chainable/chainable';
 
 describe('forEach and each methods', () => {
   describe('forEach', () => {

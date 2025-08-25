@@ -2,10 +2,10 @@ import { cpus } from 'node:os';
 import { type Readable, Transform } from 'node:stream';
 import type { JsqOptions } from '@/types/cli';
 import { OutputFormatter } from '@/utils/output-formatter';
-import { ExpressionEvaluator } from './evaluator';
-import { ExpressionTransformer } from './expression-transformer';
-import { JsonParser } from './parser';
-import { WorkerPool } from './worker-pool';
+import { ExpressionEvaluator } from '../evaluator';
+import { ExpressionTransformer } from '../expression-transformer';
+import { JsonParser } from '../parser';
+import { WorkerPool } from '../vm/worker-pool';
 
 export interface StreamProcessingOptions {
   batchSize?: number;
