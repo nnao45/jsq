@@ -27,11 +27,7 @@ export class JsqProcessor {
     try {
       // Check for no input scenarios
       let data: unknown;
-      if (
-        !input ||
-        input === null ||
-        (typeof input === 'string' && input.trim() === '')
-      ) {
+      if (!input || input === null || (typeof input === 'string' && input.trim() === '')) {
         // No input available - expressions should work with $ as null
         data = null; // Will be handled by the expression evaluator
       } else {

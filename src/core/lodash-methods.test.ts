@@ -546,13 +546,16 @@ describe('Lodash-like Methods', () => {
       // First test just creating LodashDollar instance
       const wrapped = await evaluator.evaluate('_(data)', data);
       expect(wrapped).toBeDefined();
-      
+
       // Then test if value method exists
       const hasValue = await evaluator.evaluate('typeof _(data).value', data);
       expect(hasValue).toBe('function');
-      
+
       // Finally test the full chain
-      const result = await evaluator.evaluate('_(data).filter(x => x > 2).map(x => x * 2).value()', data);
+      const result = await evaluator.evaluate(
+        '_(data).filter(x => x > 2).map(x => x * 2).value()',
+        data
+      );
       expect(result).toEqual([6, 8, 10]);
     });
 
@@ -586,11 +589,14 @@ describe('Lodash-like Methods', () => {
         { category: 'A', value: 15 },
         { category: 'C', value: 5 },
       ];
-      const result = await evaluator.evaluate('_(data).groupBy("category").mapValues(items => _.sum(items.map(i => i.value))).value()', data);
+      const result = await evaluator.evaluate(
+        '_(data).groupBy("category").mapValues(items => _.sum(items.map(i => i.value))).value()',
+        data
+      );
       expect(result).toEqual({
-        'A': 25,
-        'B': 20,
-        'C': 5
+        A: 25,
+        B: 20,
+        C: 5,
       });
     });
 
@@ -656,17 +662,21 @@ describe('Lodash-like Methods', () => {
       const keysResult = await evaluator.evaluate('_(data).keys().value()', data);
       const valuesResult = await evaluator.evaluate('_(data).values().value()', data);
       const entriesResult = await evaluator.evaluate('_(data).entries().value()', data);
-      
+
       expect(keysResult).toEqual(['a', 'b', 'c']);
       expect(valuesResult).toEqual([1, 2, 3]);
-      expect(entriesResult).toEqual([['a', 1], ['b', 2], ['c', 3]]);
+      expect(entriesResult).toEqual([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ]);
     });
 
     it('should support dollar notation with mathematical operations', async () => {
       const data = [1, 2, 3, 4, 5];
       const sumResult = await evaluator.evaluate('_(data).sum().value()', data);
       const meanResult = await evaluator.evaluate('_(data).mean().value()', data);
-      
+
       expect(sumResult).toBe(15);
       expect(meanResult).toBe(3);
     });
@@ -675,35 +685,54 @@ describe('Lodash-like Methods', () => {
       const data = 'hello-world_test case';
       const camelResult = await evaluator.evaluate('_(data).camelCase().value()', data);
       const kebabResult = await evaluator.evaluate('_("HelloWorldTest").kebabCase().value()', data);
-      
+
       expect(camelResult).toBe('helloWorldTestCase');
       expect(kebabResult).toBe('hello-world-test');
     });
 
     it('should support calling _ without arguments when data is available', async () => {
       const data = [1, 2, 3, 4, 5];
-      const result = await evaluator.evaluate('_().filter(x => x > 2).map(x => x * 2).value()', data);
+      const result = await evaluator.evaluate(
+        '_().filter(x => x > 2).map(x => x * 2).value()',
+        data
+      );
       expect(result).toEqual([6, 8, 10]);
     });
 
     it('should support static lodash methods alongside dollar notation', async () => {
       const data = [1, 2, 3];
-      const result = await evaluator.evaluate('_.times(3, i => _(data).map(x => x + i).value())', data);
+      const result = await evaluator.evaluate(
+        '_.times(3, i => _(data).map(x => x + i).value())',
+        data
+      );
       expect(result).toEqual([
         [1, 2, 3],
         [2, 3, 4],
-        [3, 4, 5]
+        [3, 4, 5],
       ]);
     });
 
     it('should support complex chaining with dollar notation', async () => {
       const data = [
-        { user: 'alice', posts: [{ title: 'Post 1', likes: 10 }, { title: 'Post 2', likes: 5 }] },
-        { user: 'bob', posts: [{ title: 'Post 3', likes: 15 }, { title: 'Post 4', likes: 20 }] },
-        { user: 'charlie', posts: [{ title: 'Post 5', likes: 8 }] }
+        {
+          user: 'alice',
+          posts: [
+            { title: 'Post 1', likes: 10 },
+            { title: 'Post 2', likes: 5 },
+          ],
+        },
+        {
+          user: 'bob',
+          posts: [
+            { title: 'Post 3', likes: 15 },
+            { title: 'Post 4', likes: 20 },
+          ],
+        },
+        { user: 'charlie', posts: [{ title: 'Post 5', likes: 8 }] },
       ];
-      
-      const result = await evaluator.evaluate(`
+
+      const result = await evaluator.evaluate(
+        `
         _(data)
           .flatMap(u => u.posts.map(p => ({ user: u.user, ...p })))
           .filter(p => p.likes > 10)
@@ -711,12 +740,11 @@ describe('Lodash-like Methods', () => {
           .reverse()
           .map(p => p.user + ": " + p.title)
           .value()
-      `, data);
-      
-      expect(result).toEqual([
-        'bob: Post 4',
-        'bob: Post 3'
-      ]);
+      `,
+        data
+      );
+
+      expect(result).toEqual(['bob: Post 4', 'bob: Post 3']);
     });
   });
 
@@ -768,36 +796,42 @@ describe('Lodash-like Methods', () => {
     });
 
     it('should support nested property access with chaining', async () => {
-      const data = { 
+      const data = {
         users: [
           { name: 'Alice', scores: [85, 90, 88] },
-          { name: 'Bob', scores: [78, 82, 80] }
-        ]
+          { name: 'Bob', scores: [78, 82, 80] },
+        ],
       };
       const result = await evaluator.evaluate('_(data).users[0].scores', data);
       expect(result).toEqual([85, 90, 88]);
     });
 
     it('should support mixing property access and lodash methods', async () => {
-      const data = { 
+      const data = {
         items: [
           { category: 'A', values: [1, 2, 3] },
-          { category: 'B', values: [4, 5, 6] }
-        ]
+          { category: 'B', values: [4, 5, 6] },
+        ],
       };
-      const result = await evaluator.evaluate('_(data).items.map(i => _(i.values).sum().value()).value()', data);
+      const result = await evaluator.evaluate(
+        '_(data).items.map(i => _(i.values).sum().value()).value()',
+        data
+      );
       expect(result).toEqual([6, 15]);
     });
 
     it('should maintain chainability after property access', async () => {
-      const data = { 
+      const data = {
         config: {
           settings: {
-            items: ['apple', 'banana', 'cherry', 'date']
-          }
-        }
+            items: ['apple', 'banana', 'cherry', 'date'],
+          },
+        },
       };
-      const result = await evaluator.evaluate('_(data).config.settings.items.filter(i => i.length > 5).value()', data);
+      const result = await evaluator.evaluate(
+        '_(data).config.settings.items.filter(i => i.length > 5).value()',
+        data
+      );
       expect(result).toEqual(['banana', 'cherry']);
     });
 
@@ -828,7 +862,11 @@ describe('Lodash-like Methods', () => {
     });
 
     it('should support fromPairs with dollar notation', async () => {
-      const data = [['a', 1], ['b', 2], ['c', 3]];
+      const data = [
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ];
       const result = await evaluator.evaluate('_(data).fromPairs().value()', data);
       expect(result).toEqual({ a: 1, b: 2, c: 3 });
     });

@@ -88,7 +88,7 @@ export class ExpressionEvaluator {
       if (transformedExpression.trim() === '$' && (data === null || data === undefined)) {
         return data;
       }
-      
+
       // Special case: if expression is exactly '_' and we're using data directly
       if (transformedExpression.trim() === '_' && !this.securityManager.shouldUseVM()) {
         // In non-VM mode, _ is lodash utilities, so need to load and wrap data
@@ -310,22 +310,6 @@ export class ExpressionEvaluator {
       }
       throw new Error(`Invalid expression: Syntax error`);
     }
-  }
-
-  private unwrapValue(value: unknown): unknown {
-    // Unwrap ChainableWrapper objects to get their raw values
-    if (value && typeof value === 'object' && 'value' in value) {
-      return (value as { value: unknown }).value;
-    }
-    if (
-      value &&
-      typeof value === 'object' &&
-      'valueOf' in value &&
-      typeof (value as { valueOf: () => unknown }).valueOf === 'function'
-    ) {
-      return (value as { valueOf: () => unknown }).valueOf();
-    }
-    return value;
   }
 
   private async loadUtilities(): Promise<(value: unknown) => unknown> {
