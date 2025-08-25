@@ -1,4 +1,4 @@
-import { SMART_DOLLAR_METHODS, ASYNC_METHODS } from './smart-dollar-shared-methods';
+import { ASYNC_METHODS, SMART_DOLLAR_METHODS } from './smart-dollar-shared-methods';
 
 // Extract method definitions from the string
 const methodsMatch = SMART_DOLLAR_METHODS.match(/globalThis\.smartDollarMethods = ({[\s\S]*});/);
@@ -8,24 +8,24 @@ if (!methodsMatch || !methodsMatch[1]) {
 const methodsCode = methodsMatch[1];
 
 // Create function to evaluate the methods object
-const createMethods = new Function('return ' + methodsCode);
+const createMethods = new Function(`return ${methodsCode}`);
 const methods = createMethods();
 
 // Cache for method results
-const methodCache = new WeakMap();
+const _methodCache = new WeakMap();
 
 export class ChainableWrapper {
   private _value: any;
-  
+
   constructor(value: any) {
     this._value = value;
   }
-  
+
   // Add data property for compatibility with tests
   get data(): any {
     return this._value;
   }
-  
+
   get length(): number {
     if (Array.isArray(this._value) || typeof this._value === 'string') {
       return this._value.length;
@@ -35,7 +35,7 @@ export class ChainableWrapper {
     }
     return 0;
   }
-  
+
   [Symbol.iterator]() {
     if (Array.isArray(this._value) || typeof this._value === 'string') {
       return this._value[Symbol.iterator]();
@@ -45,7 +45,7 @@ export class ChainableWrapper {
     }
     return [][Symbol.iterator]();
   }
-  
+
   toJSON() {
     return this._value;
   }
@@ -53,7 +53,7 @@ export class ChainableWrapper {
 
 // Apply all methods to ChainableWrapper prototype
 Object.entries(methods).forEach(([name, fn]) => {
-  (ChainableWrapper.prototype as any)[name] = function(this: ChainableWrapper, ...args: any[]) {
+  (ChainableWrapper.prototype as any)[name] = function (this: ChainableWrapper, ...args: any[]) {
     // Use 'this' context with the method
     return fn.apply(this, args);
   };
@@ -63,10 +63,13 @@ Object.entries(methods).forEach(([name, fn]) => {
 ASYNC_METHODS.forEach(methodName => {
   const originalMethod = (ChainableWrapper.prototype as any)[methodName];
   if (originalMethod) {
-    (ChainableWrapper.prototype as any)[methodName + 'Async'] = async function(this: ChainableWrapper, ...args: any[]) {
+    (ChainableWrapper.prototype as any)[`${methodName}Async`] = async function (
+      this: ChainableWrapper,
+      ...args: any[]
+    ) {
       // Handle async callbacks
       const processedArgs = await Promise.all(
-        args.map(async (arg) => {
+        args.map(async arg => {
           if (typeof arg === 'function') {
             // Return a wrapped async version of the function
             return async (...fnArgs: any[]) => {
@@ -76,14 +79,17 @@ ASYNC_METHODS.forEach(methodName => {
           return arg;
         })
       );
-      
+
       return originalMethod.apply(this, processedArgs);
     };
   }
 });
 
 // Add specific async methods
-(ChainableWrapper.prototype as any).mapAsync = async function(this: ChainableWrapper, fn: Function) {
+(ChainableWrapper.prototype as any).mapAsync = async function (
+  this: ChainableWrapper,
+  fn: Function
+) {
   // Convert to array using same logic as toArray method
   let arr;
   if (Array.isArray(this._value)) {
@@ -97,7 +103,10 @@ ASYNC_METHODS.forEach(methodName => {
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as any).mapAsyncSeq = async function(this: ChainableWrapper, fn: Function) {
+(ChainableWrapper.prototype as any).mapAsyncSeq = async function (
+  this: ChainableWrapper,
+  fn: Function
+) {
   const results = [];
   // Convert to array using same logic as toArray method
   let arr;
@@ -113,7 +122,10 @@ ASYNC_METHODS.forEach(methodName => {
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as any).forEachAsync = async function(this: ChainableWrapper, fn: Function) {
+(ChainableWrapper.prototype as any).forEachAsync = async function (
+  this: ChainableWrapper,
+  fn: Function
+) {
   // Convert to array using same logic as toArray method
   let arr;
   if (Array.isArray(this._value)) {
@@ -126,7 +138,10 @@ ASYNC_METHODS.forEach(methodName => {
   await Promise.all(promises);
 };
 
-(ChainableWrapper.prototype as any).forEachAsyncSeq = async function(this: ChainableWrapper, fn: Function) {
+(ChainableWrapper.prototype as any).forEachAsyncSeq = async function (
+  this: ChainableWrapper,
+  fn: Function
+) {
   // Convert to array using same logic as toArray method
   let arr;
   if (Array.isArray(this._value)) {
@@ -151,9 +166,14 @@ export interface SmartDollar extends ChainableWrapper {
   map<U>(fn: (item: any, index: number, array: any[]) => U): SmartDollar;
   mapAsync<U>(fn: (item: any, index: number, array: any[]) => Promise<U>): Promise<SmartDollar>;
   filter(fn: (item: any, index: number, array: any[]) => boolean): SmartDollar;
-  filterAsync(fn: (item: any, index: number, array: any[]) => Promise<boolean>): Promise<SmartDollar>;
+  filterAsync(
+    fn: (item: any, index: number, array: any[]) => Promise<boolean>
+  ): Promise<SmartDollar>;
   reduce<U>(fn: (acc: U, item: any, index: number, array: any[]) => U, initial?: U): U;
-  reduceAsync<U>(fn: (acc: U, item: any, index: number, array: any[]) => Promise<U>, initial?: U): Promise<U>;
+  reduceAsync<U>(
+    fn: (acc: U, item: any, index: number, array: any[]) => Promise<U>,
+    initial?: U
+  ): Promise<U>;
   slice(start?: number, end?: number): SmartDollar;
   concat(...args: any[]): SmartDollar;
   find(fn: (item: any, index: number, array: any[]) => boolean): SmartDollar;
@@ -174,14 +194,14 @@ export interface SmartDollar extends ChainableWrapper {
   unshift(...elements: any[]): number;
   splice(start: number, deleteCount?: number, ...items: any[]): any[];
   findIndex(predicate: (value: any, index: number, obj: any[]) => boolean, thisArg?: any): number;
-  
+
   // Object methods
   keys(): SmartDollar;
   values(): SmartDollar;
   entries(): SmartDollar;
   hasOwn(prop: string | number | symbol): boolean;
   assign(...sources: any[]): SmartDollar;
-  
+
   // String methods
   split(separator: string | RegExp, limit?: number): SmartDollar;
   replace(search: string | RegExp, replacement: string): SmartDollar;
@@ -198,18 +218,18 @@ export interface SmartDollar extends ChainableWrapper {
   padEnd(targetLength: number, padString?: string): SmartDollar;
   match(regexp: string | RegExp): SmartDollar;
   search(regexp: string | RegExp): number;
-  
+
   // Number methods
   toFixed(digits?: number): string;
   toExponential(fractionDigits?: number): string;
   toPrecision(precision?: number): string;
-  
+
   // Type conversion methods
   toString(): string;
   toNumber(): number;
   toBoolean(): boolean;
   toArray(): any[];
-  
+
   // Utility methods
   pipe(...fns: Array<(value: any) => any>): SmartDollar;
   pipeAsync(...fns: Array<(value: any) => any | Promise<any>>): Promise<SmartDollar>;
@@ -221,10 +241,18 @@ export interface SmartDollar extends ChainableWrapper {
   isUndefined(): boolean;
   isNullOrUndefined(): boolean;
   isEmpty(): boolean;
-  
+
   // Chainable conditions
-  when(condition: boolean, trueFn?: (value: any) => any, falseFn?: (value: any) => any): SmartDollar;
-  whenAsync(condition: boolean, trueFn?: (value: any) => any | Promise<any>, falseFn?: (value: any) => any | Promise<any>): Promise<SmartDollar>;
+  when(
+    condition: boolean,
+    trueFn?: (value: any) => any,
+    falseFn?: (value: any) => any
+  ): SmartDollar;
+  whenAsync(
+    condition: boolean,
+    trueFn?: (value: any) => any | Promise<any>,
+    falseFn?: (value: any) => any | Promise<any>
+  ): Promise<SmartDollar>;
   unless(condition: boolean, fn?: (value: any) => any): SmartDollar;
   unlessAsync(condition: boolean, fn?: (value: any) => any | Promise<any>): Promise<SmartDollar>;
 }
@@ -237,33 +265,31 @@ export function createSmartDollarProxy(wrapper: ChainableWrapper): SmartDollar {
       if (prop in target) {
         return (target as any)[prop];
       }
-      
+
       // Check if it's a number (array index)
       if (typeof prop === 'string' && /^\d+$/.test(prop)) {
         const index = parseInt(prop, 10);
-        if (Array.isArray(target['_value'])) {
-          const item = target['_value'][index];
+        if (Array.isArray(target._value)) {
+          const item = target._value[index];
           return item !== undefined ? $(item) : undefined;
         }
       }
-      
+
       // Property access on the wrapped value
-      const value = target['_value'];
+      const value = target._value;
       if (value && typeof value === 'object' && prop in value) {
         const propValue = value[prop];
-        return typeof propValue === 'function' 
-          ? propValue.bind(value)
-          : $(propValue);
+        return typeof propValue === 'function' ? propValue.bind(value) : $(propValue);
       }
-      
+
       return undefined;
     },
-    
+
     has(target, prop) {
       if (prop in target) return true;
-      const value = target['_value'];
+      const value = target._value;
       return value && typeof value === 'object' && prop in value;
-    }
+    },
   }) as SmartDollar;
 }
 

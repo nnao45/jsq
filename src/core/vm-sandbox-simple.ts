@@ -92,7 +92,7 @@ export class VMSandboxSimple {
       // Load the implementation from separate file to keep it clean
       const { createVMSmartDollarCode } = await import('../smart-dollar-vm');
       await vmContext.eval(createVMSmartDollarCode());
-      
+
       // Set up the createLodashDollar function for the VM
       const { createVMLodashDollarCode } = await import('../lodash-dollar-vm');
       await vmContext.eval(createVMLodashDollarCode());
@@ -183,8 +183,6 @@ export class VMSandboxSimple {
             // Skip functions that reference ChainableWrapper or are $ functions
             console.debug(`Skipping ${key} - it's a smart dollar or related function`);
           } else if (key === '_') {
-            // _ is already set up by createVMLodashDollarCode
-            continue;
           } else if (typeof value === 'function') {
             // Special handling for simple functions
             const func = value as (...args: unknown[]) => unknown;

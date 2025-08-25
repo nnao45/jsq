@@ -99,9 +99,7 @@ export function hasAsyncMethods(expression: string): boolean {
 export function isArrayLiteralWithMethods(expression: string): boolean {
   const trimmed = expression.trim();
   return (
-    trimmed.startsWith('[') &&
-    trimmed.includes('].') &&
-    !trimmed.startsWith('$.') // Don't transform if it's already a $ expression
+    trimmed.startsWith('[') && trimmed.includes('].') && !trimmed.startsWith('$.') // Don't transform if it's already a $ expression
   );
 }
 

@@ -411,37 +411,41 @@ const stringMethods = {
   },
 
   kebabCase(str: string): string {
-    return str
-      // Insert hyphens before uppercase letters that follow lowercase letters
-      .replace(/([a-z\d])([A-Z])/g, '$1-$2')
-      // Insert hyphens between multiple uppercase letters
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-      // Replace spaces, underscores, etc. with hyphens
-      .replace(/[\s_]+/g, '-')
-      // Remove non-alphanumeric characters except hyphens
-      .replace(/[^a-zA-Z0-9-]+/g, '')
-      // Remove multiple consecutive hyphens
-      .replace(/-+/g, '-')
-      // Remove leading/trailing hyphens
-      .replace(/^-|-$/g, '')
-      .toLowerCase();
+    return (
+      str
+        // Insert hyphens before uppercase letters that follow lowercase letters
+        .replace(/([a-z\d])([A-Z])/g, '$1-$2')
+        // Insert hyphens between multiple uppercase letters
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+        // Replace spaces, underscores, etc. with hyphens
+        .replace(/[\s_]+/g, '-')
+        // Remove non-alphanumeric characters except hyphens
+        .replace(/[^a-zA-Z0-9-]+/g, '')
+        // Remove multiple consecutive hyphens
+        .replace(/-+/g, '-')
+        // Remove leading/trailing hyphens
+        .replace(/^-|-$/g, '')
+        .toLowerCase()
+    );
   },
 
   snakeCase(str: string): string {
-    return str
-      // Insert underscores before uppercase letters that follow lowercase letters
-      .replace(/([a-z\d])([A-Z])/g, '$1_$2')
-      // Insert underscores between multiple uppercase letters
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
-      // Replace spaces, hyphens, etc. with underscores
-      .replace(/[\s-]+/g, '_')
-      // Remove non-alphanumeric characters except underscores
-      .replace(/[^a-zA-Z0-9_]+/g, '')
-      // Remove multiple consecutive underscores
-      .replace(/_+/g, '_')
-      // Remove leading/trailing underscores
-      .replace(/^_|_$/g, '')
-      .toLowerCase();
+    return (
+      str
+        // Insert underscores before uppercase letters that follow lowercase letters
+        .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+        // Insert underscores between multiple uppercase letters
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+        // Replace spaces, hyphens, etc. with underscores
+        .replace(/[\s-]+/g, '_')
+        // Remove non-alphanumeric characters except underscores
+        .replace(/[^a-zA-Z0-9_]+/g, '')
+        // Remove multiple consecutive underscores
+        .replace(/_+/g, '_')
+        // Remove leading/trailing underscores
+        .replace(/^_|_$/g, '')
+        .toLowerCase()
+    );
   },
 
   startCase(str: string): string {
@@ -843,20 +847,43 @@ const lodashMethods = {
   },
   valueOf() {
     return this._value;
-  }
+  },
 };
 
 // Apply methods to prototype
 Object.entries(lodashMethods).forEach(([name, method]) => {
-  (LodashDollar.prototype as any)[name] = function(...args: any[]) {
+  (LodashDollar.prototype as any)[name] = function (...args: any[]) {
     const result = method.call(this, ...args);
     // If the method returns an array or object, wrap it in LodashDollar
-    if (result !== undefined && result !== null && (Array.isArray(result) || typeof result === 'object')) {
+    if (
+      result !== undefined &&
+      result !== null &&
+      (Array.isArray(result) || typeof result === 'object')
+    ) {
       if (result instanceof LodashDollar) {
         return result;
       }
       // Check if this is a method that should return raw value
-      const rawValueMethods = ['find', 'sample', 'min', 'max', 'minBy', 'maxBy', 'sum', 'mean', 'size', 'clamp', 'random', 'isEmpty', 'includes', 'some', 'every', 'indexOf', 'lastIndexOf', 'findIndex'];
+      const rawValueMethods = [
+        'find',
+        'sample',
+        'min',
+        'max',
+        'minBy',
+        'maxBy',
+        'sum',
+        'mean',
+        'size',
+        'clamp',
+        'random',
+        'isEmpty',
+        'includes',
+        'some',
+        'every',
+        'indexOf',
+        'lastIndexOf',
+        'findIndex',
+      ];
       if (rawValueMethods.includes(name)) {
         return result;
       }

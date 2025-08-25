@@ -663,7 +663,7 @@ export const ASYNC_METHODS = [
   'pipe',
   'tap',
   'when',
-  'unless'
+  'unless',
 ];
 
 export const VM_SMART_DOLLAR_CLASS = `

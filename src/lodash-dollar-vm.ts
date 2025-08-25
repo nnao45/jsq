@@ -1,4 +1,4 @@
-import { LODASH_DOLLAR_METHODS, VM_LODASH_DOLLAR_CLASS } from './lodash-dollar-shared-methods';
+import { LODASH_DOLLAR_METHODS } from './lodash-dollar-shared-methods';
 
 export function createVMLodashDollarCode(): string {
   return `

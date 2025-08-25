@@ -24,7 +24,7 @@ if (typeof globalThis.$ === 'undefined') {
         }
         
         // Check if it's a numeric index
-        if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+        if (typeof prop === 'string' && /^d+$/.test(prop)) {
           const index = parseInt(prop, 10);
           const item = target._value[index];
           return item !== undefined ? $(item) : undefined;
@@ -77,7 +77,7 @@ if (typeof globalThis.$ === 'undefined') {
       },
       
       getOwnPropertyDescriptor(target, prop) {
-        if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+        if (typeof prop === 'string' && /^d+$/.test(prop)) {
           return Object.getOwnPropertyDescriptor(target._value, prop);
         }
         return undefined;
@@ -118,7 +118,7 @@ if (typeof globalThis.$ === 'undefined') {
         }
         
         // Check if it's a number (array index)
-        if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+        if (typeof prop === 'string' && /^d+$/.test(prop)) {
           const index = parseInt(prop, 10);
           if (Array.isArray(target._value)) {
             const item = target._value[index];
