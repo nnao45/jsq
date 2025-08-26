@@ -1,11 +1,11 @@
 import type { JsqOptions } from '@/types/cli';
 import type { VMContext, VMOptions } from '@/types/sandbox';
 import { ErrorFormatter } from '@/utils/error-formatter';
-import type { ChainableWrapper } from './chainable/chainable';
+import type { ChainableWrapper } from '../chainable/chainable';
+import { createLodashDollar } from '../lodash/lodash-unified';
+import { SecurityManager } from '../security/security-manager';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
-import { createLodashDollar } from './lodash/lodash-unified';
-import { SecurityManager } from './security/security-manager';
 
 // Conditional VM imports to avoid issues in test environments
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
@@ -15,7 +15,7 @@ let VMSandboxSimpleClass: any;
 
 try {
   // Only import VM modules when actually needed
-  const vmModule = require('./vm/vm-sandbox-simple');
+  const vmModule = require('../vm/vm-sandbox-simple');
   VMSandboxSimpleClass = vmModule.VMSandboxSimple;
   VMSandboxSimple = VMSandboxSimpleClass;
 } catch (vmError) {

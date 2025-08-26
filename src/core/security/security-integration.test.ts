@@ -1,6 +1,6 @@
 import { describeWithVM, isIsolatedVMAvailable, testWithVM } from '@/test/vm-helpers';
 import type { JsqOptions } from '@/types/cli';
-import { ExpressionEvaluator } from '../evaluator';
+import { ExpressionEvaluator } from '../lib/evaluator';
 
 // Mock console.error to capture security warnings
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});

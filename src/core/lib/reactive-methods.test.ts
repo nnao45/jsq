@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { ChainableWrapper } from './chainable/chainable';
+import { ChainableWrapper } from '../chainable/chainable';
 
 // Mock timers for testing time-based operations
 jest.useFakeTimers();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
-import { type ChainableWrapper, createSmartDollar } from './smart-dollar/smart-dollar-non-vm';
-import type { MethodTestCase } from '../types/common-methods';
-import _, { LodashUtilities } from './lodash/lodash-unified';
+import type { MethodTestCase } from '../../types/common-methods';
+import _, { LodashUtilities } from '../lodash/lodash-unified';
+import { type ChainableWrapper, createSmartDollar } from '../smart-dollar/smart-dollar-non-vm';
 
 /**
  * 共通メソッドのテストスイート

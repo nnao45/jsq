@@ -15,14 +15,14 @@ const methods = createMethods();
 const _methodCache = new WeakMap();
 
 export class ChainableWrapper {
-  private _value: any;
+  private _value: unknown;
 
-  constructor(value: any) {
+  constructor(value: unknown) {
     this._value = value;
   }
 
   // Add data property for compatibility with tests
-  get data(): any {
+  get data(): unknown {
     return this._value;
   }
 
@@ -53,7 +53,10 @@ export class ChainableWrapper {
 
 // Apply all methods to ChainableWrapper prototype
 Object.entries(methods).forEach(([name, fn]) => {
-  (ChainableWrapper.prototype as any)[name] = function (this: ChainableWrapper, ...args: any[]) {
+  (ChainableWrapper.prototype as Record<string, unknown>)[name] = function (
+    this: ChainableWrapper,
+    ...args: unknown[]
+  ) {
     // Use 'this' context with the method
     return fn.apply(this, args);
   };
@@ -61,18 +64,18 @@ Object.entries(methods).forEach(([name, fn]) => {
 
 // Create async versions of specified methods
 ASYNC_METHODS.forEach(methodName => {
-  const originalMethod = (ChainableWrapper.prototype as any)[methodName];
+  const originalMethod = (ChainableWrapper.prototype as Record<string, unknown>)[methodName];
   if (originalMethod) {
-    (ChainableWrapper.prototype as any)[`${methodName}Async`] = async function (
+    (ChainableWrapper.prototype as Record<string, unknown>)[`${methodName}Async`] = async function (
       this: ChainableWrapper,
-      ...args: any[]
+      ...args: unknown[]
     ) {
       // Handle async callbacks
       const processedArgs = await Promise.all(
         args.map(async arg => {
           if (typeof arg === 'function') {
             // Return a wrapped async version of the function
-            return async (...fnArgs: any[]) => {
+            return async (...fnArgs: unknown[]) => {
               return await arg(...fnArgs);
             };
           }
@@ -86,12 +89,12 @@ ASYNC_METHODS.forEach(methodName => {
 });
 
 // Add specific async methods
-(ChainableWrapper.prototype as any).mapAsync = async function (
+(ChainableWrapper.prototype as Record<string, unknown>).mapAsync = async function (
   this: ChainableWrapper,
   fn: Function
 ) {
   // Convert to array using same logic as toArray method
-  let arr;
+  let arr: unknown[];
   if (Array.isArray(this._value)) {
     arr = Array.from(this._value);
   } else {
@@ -103,13 +106,13 @@ ASYNC_METHODS.forEach(methodName => {
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as any).mapAsyncSeq = async function (
+(ChainableWrapper.prototype as Record<string, unknown>).mapAsyncSeq = async function (
   this: ChainableWrapper,
   fn: Function
 ) {
   const results = [];
   // Convert to array using same logic as toArray method
-  let arr;
+  let arr: unknown[];
   if (Array.isArray(this._value)) {
     arr = Array.from(this._value);
   } else {
@@ -122,12 +125,12 @@ ASYNC_METHODS.forEach(methodName => {
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as any).forEachAsync = async function (
+(ChainableWrapper.prototype as Record<string, unknown>).forEachAsync = async function (
   this: ChainableWrapper,
   fn: Function
 ) {
   // Convert to array using same logic as toArray method
-  let arr;
+  let arr: unknown[];
   if (Array.isArray(this._value)) {
     arr = Array.from(this._value);
   } else {
@@ -138,12 +141,12 @@ ASYNC_METHODS.forEach(methodName => {
   await Promise.all(promises);
 };
 
-(ChainableWrapper.prototype as any).forEachAsyncSeq = async function (
+(ChainableWrapper.prototype as Record<string, unknown>).forEachAsyncSeq = async function (
   this: ChainableWrapper,
   fn: Function
 ) {
   // Convert to array using same logic as toArray method
-  let arr;
+  let arr: unknown[];
   if (Array.isArray(this._value)) {
     arr = Array.from(this._value);
   } else {
@@ -156,7 +159,7 @@ ASYNC_METHODS.forEach(methodName => {
 };
 
 // Export the smart dollar function
-export function $(value: any): ChainableWrapper {
+export function $(value: unknown): ChainableWrapper {
   return new ChainableWrapper(value);
 }
 

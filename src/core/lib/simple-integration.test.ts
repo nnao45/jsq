@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { ChainableWrapper } from './chainable/chainable';
+import { ChainableWrapper } from '../chainable/chainable';
 import { JsqProcessor } from './processor';
 
 describe('Simple integration tests for new methods', () => {

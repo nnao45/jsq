@@ -2,9 +2,9 @@ import { cpus } from 'node:os';
 import { type Readable, Transform } from 'node:stream';
 import type { JsqOptions } from '@/types/cli';
 import { OutputFormatter } from '@/utils/output-formatter';
-import { ExpressionEvaluator } from '../evaluator';
-import { ExpressionTransformer } from '../expression-transformer';
-import { JsonParser } from '../parser';
+import { ExpressionEvaluator } from '../lib/evaluator';
+import { ExpressionTransformer } from '../lib/expression-transformer';
+import { JsonParser } from '../lib/parser';
 import { WorkerPool } from '../vm/worker-pool';
 
 export interface StreamProcessingOptions {

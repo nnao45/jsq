@@ -1,7 +1,7 @@
 import { Readable, Transform } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
-import { JsqProcessor } from '../processor';
+import { JsqProcessor } from '../lib/processor';
 import type { StreamProcessingOptions } from '../stream/stream-processor';
 
 // Mock console.error to avoid noise in tests

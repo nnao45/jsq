@@ -1,6 +1,6 @@
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { JsqProcessor } from '../core/processor';
+import { JsqProcessor } from '../core/lib/processor';
 import type { JsqOptions } from '../types/cli';
 import { getSuggestions, isLikelyPartial } from './syntax-checker';
 

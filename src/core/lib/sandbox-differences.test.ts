@@ -1,6 +1,6 @@
 import type { JsqOptions } from '@/types/cli';
+import type { SecurityManager } from '../security/security-manager';
 import { ExpressionEvaluator } from './evaluator';
-import type { SecurityManager } from './security/security-manager';
 
 describe('VM Sandbox Mode (Default) Behavior', () => {
   // Mock dangerous operations globally

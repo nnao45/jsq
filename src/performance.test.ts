@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
-import { ExpressionEvaluator } from './core/evaluator';
-import { JsqProcessor } from './core/processor';
+import { ExpressionEvaluator } from './core/lib/evaluator';
+import { JsqProcessor } from './core/lib/processor';
 import type { JsqOptions } from './types/cli';
 
 describe('Performance Tests', () => {

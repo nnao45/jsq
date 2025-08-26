@@ -80,7 +80,14 @@ Object.entries(globalThis.lodashDollarMethods).forEach(([name, fn]) => {
   globalThis._[name] = function(...args) {
     // For static methods, wrap the first argument
     if (args.length > 0) {
-      const wrapped = new globalThis.LodashDollar(args[0]);
+      let dataToWrap = args[0];
+      
+      // If the first argument is a SmartDollar instance, unwrap it
+      if (dataToWrap && typeof dataToWrap === 'object' && dataToWrap.__isSmartDollar) {
+        dataToWrap = dataToWrap.valueOf();
+      }
+      
+      const wrapped = new globalThis.LodashDollar(dataToWrap);
       const result = wrapped[name](...args.slice(1));
       // If result is a LodashDollar instance, unwrap it for static methods
       if (result && result.__isLodashDollar) {
