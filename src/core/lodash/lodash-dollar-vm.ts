@@ -101,7 +101,3 @@ Object.entries(globalThis.lodashDollarMethods).forEach(([name, fn]) => {
 });
 `;
 }
-
-export function getVMLodashInitCode(): string {
-  return createVMLodashDollarCode();
-}

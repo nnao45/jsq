@@ -6,7 +6,7 @@ import type { LodashMethods, MethodImplementation } from '../types/common-method
  */
 
 // Helper function to create methods for both VM and non-VM environments
-function createMethods<T>(value: T, ctor: any) {
+function createMethods<T>(value: T, ctor: { prototype: Record<string, unknown>; new (): unknown }) {
   const methods = {
     _value: value,
     constructor: ctor,
@@ -16,7 +16,7 @@ function createMethods<T>(value: T, ctor: any) {
   const proto = ctor.prototype;
   Object.getOwnPropertyNames(proto).forEach(name => {
     if (name !== 'constructor' && typeof proto[name] === 'function') {
-      (methods as any)[name] = proto[name].bind(methods);
+      (methods as Record<string, unknown>)[name] = proto[name].bind(methods);
     }
   });
 
@@ -47,14 +47,16 @@ const arrayMethods = {
     reducer: (acc: U, value: T, index: number, array: T[]) => U,
     initial?: U
   ): U {
-    return initial !== undefined ? arr.reduce(reducer, initial) : arr.reduce(reducer as any);
+    return initial !== undefined ? arr.reduce(reducer, initial) : arr.reduce(reducer);
   },
 
   // 高度な配列操作
   where<T>(arr: T[], properties: Partial<T>): T[] {
     return arr.filter(item => {
       if (typeof item !== 'object' || item === null) return false;
-      return Object.entries(properties).every(([key, value]) => (item as any)[key] === value);
+      return Object.entries(properties).every(
+        ([key, value]) => (item as Record<string, unknown>)[key] === value
+      );
     });
   },
 
@@ -71,8 +73,8 @@ const arrayMethods = {
 
   sortBy<T>(arr: T[], keyFn: keyof T | ((item: T) => number | string)): T[] {
     return [...arr].sort((a, b) => {
-      const aVal = typeof keyFn === 'function' ? keyFn(a) : (a as any)[keyFn];
-      const bVal = typeof keyFn === 'function' ? keyFn(b) : (b as any)[keyFn];
+      const aVal = typeof keyFn === 'function' ? keyFn(a) : (a as Record<keyof T, unknown>)[keyFn];
+      const bVal = typeof keyFn === 'function' ? keyFn(b) : (b as Record<keyof T, unknown>)[keyFn];
 
       if (typeof aVal === 'string' && typeof bVal === 'string') {
         return aVal.localeCompare(bVal);
@@ -84,7 +86,11 @@ const arrayMethods = {
     });
   },
 
-  orderBy<T>(arr: T[], keys: (keyof T | ((item: T) => any))[], orders?: ('asc' | 'desc')[]): T[] {
+  orderBy<T>(
+    arr: T[],
+    keys: (keyof T | ((item: T) => unknown))[],
+    orders?: ('asc' | 'desc')[]
+  ): T[] {
     const keysArray = Array.isArray(keys) ? keys : [keys];
     const ordersArray = Array.isArray(orders)
       ? orders
@@ -97,8 +103,8 @@ const arrayMethods = {
         const key = keysArray[i];
         const order = ordersArray[i] || 'asc';
 
-        const aVal = typeof key === 'function' ? key(a) : (a as any)[key];
-        const bVal = typeof key === 'function' ? key(b) : (b as any)[key];
+        const aVal = typeof key === 'function' ? key(a) : (a as Record<keyof T, unknown>)[key];
+        const bVal = typeof key === 'function' ? key(b) : (b as Record<keyof T, unknown>)[key];
 
         let comparison = 0;
         if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -118,7 +124,10 @@ const arrayMethods = {
   groupBy<T>(arr: T[], keyFn: keyof T | ((item: T) => string)): Record<string, T[]> {
     return arr.reduce(
       (groups, item) => {
-        const key = typeof keyFn === 'function' ? keyFn(item) : String((item as any)[keyFn]);
+        const key =
+          typeof keyFn === 'function'
+            ? keyFn(item)
+            : String((item as Record<keyof T, unknown>)[keyFn]);
 
         if (!groups[key]) {
           groups[key] = [];
@@ -133,7 +142,10 @@ const arrayMethods = {
   countBy<T>(arr: T[], keyFn: keyof T | ((item: T) => string)): Record<string, number> {
     return arr.reduce(
       (counts, item) => {
-        const key = typeof keyFn === 'function' ? keyFn(item) : String((item as any)[keyFn]);
+        const key =
+          typeof keyFn === 'function'
+            ? keyFn(item)
+            : String((item as Record<keyof T, unknown>)[keyFn]);
         counts[key] = (counts[key] || 0) + 1;
         return counts;
       },
@@ -144,7 +156,10 @@ const arrayMethods = {
   keyBy<T>(arr: T[], keyFn: keyof T | ((item: T) => string)): Record<string, T> {
     return arr.reduce(
       (obj, item) => {
-        const key = typeof keyFn === 'function' ? keyFn(item) : String((item as any)[keyFn]);
+        const key =
+          typeof keyFn === 'function'
+            ? keyFn(item)
+            : String((item as Record<keyof T, unknown>)[keyFn]);
         obj[key] = item;
         return obj;
       },
@@ -187,7 +202,8 @@ const arrayMethods = {
   uniqBy<T>(arr: T[], keyFn: keyof T | ((item: T) => unknown)): T[] {
     const seen = new Set<unknown>();
     return arr.filter(item => {
-      const key = typeof keyFn === 'function' ? keyFn(item) : (item as any)[keyFn];
+      const key =
+        typeof keyFn === 'function' ? keyFn(item) : (item as Record<keyof T, unknown>)[keyFn];
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -217,10 +233,10 @@ const arrayMethods = {
     return arr.reduce<T[]>((acc, val) => acc.concat(Array.isArray(val) ? val : [val]), []);
   },
 
-  flattenDeep<T>(arr: any[]): T[] {
-    const flattenDeep = (arr: any[]): T[] =>
+  flattenDeep<T>(arr: unknown[]): T[] {
+    const flattenDeep = (arr: unknown[]): T[] =>
       arr.reduce(
-        (acc: T[], val: any) =>
+        (acc: T[], val: unknown) =>
           Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val),
         []
       );
@@ -270,8 +286,10 @@ const arrayMethods = {
     if (arr.length === 0) return undefined;
 
     return arr.reduce((min, item) => {
-      const minVal = typeof keyFn === 'function' ? keyFn(min) : (min as any)[keyFn];
-      const itemVal = typeof keyFn === 'function' ? keyFn(item) : (item as any)[keyFn];
+      const minVal =
+        typeof keyFn === 'function' ? keyFn(min) : (min as Record<keyof T, unknown>)[keyFn];
+      const itemVal =
+        typeof keyFn === 'function' ? keyFn(item) : (item as Record<keyof T, unknown>)[keyFn];
 
       if (typeof minVal === 'number' && typeof itemVal === 'number') {
         return itemVal < minVal ? item : min;
@@ -284,8 +302,10 @@ const arrayMethods = {
     if (arr.length === 0) return undefined;
 
     return arr.reduce((max, item) => {
-      const maxVal = typeof keyFn === 'function' ? keyFn(max) : (max as any)[keyFn];
-      const itemVal = typeof keyFn === 'function' ? keyFn(item) : (item as any)[keyFn];
+      const maxVal =
+        typeof keyFn === 'function' ? keyFn(max) : (max as Record<keyof T, unknown>)[keyFn];
+      const itemVal =
+        typeof keyFn === 'function' ? keyFn(item) : (item as Record<keyof T, unknown>)[keyFn];
 
       if (typeof maxVal === 'number' && typeof itemVal === 'number') {
         return itemVal > maxVal ? item : max;
@@ -393,7 +413,7 @@ const objectMethods = {
       if (source && typeof source === 'object') {
         for (const [key, value] of Object.entries(source)) {
           if (!(key in result)) {
-            (result as any)[key] = value;
+            (result as Record<string, unknown>)[key] = value;
           }
         }
       }
@@ -493,21 +513,25 @@ const utilityMethods = {
   },
 
   range(start: number, end?: number, step?: number): number[] {
-    if (end === undefined) {
-      end = start;
-      start = 0;
+    let rangeStart = start;
+    let rangeEnd = end;
+    let rangeStep = step;
+
+    if (rangeEnd === undefined) {
+      rangeEnd = rangeStart;
+      rangeStart = 0;
     }
-    if (step === undefined) {
-      step = start < end ? 1 : -1;
+    if (rangeStep === undefined) {
+      rangeStep = rangeStart < rangeEnd ? 1 : -1;
     }
 
     const result: number[] = [];
-    if (step > 0) {
-      for (let i = start; i < end; i += step) {
+    if (rangeStep > 0) {
+      for (let i = rangeStart; i < rangeEnd; i += rangeStep) {
         result.push(i);
       }
     } else {
-      for (let i = start; i > end; i += step) {
+      for (let i = rangeStart; i > rangeEnd; i += rangeStep) {
         result.push(i);
       }
     }
@@ -529,7 +553,10 @@ const utilityMethods = {
 
 // 関数ユーティリティ
 const functionMethods = {
-  debounce<T extends (...args: any[]) => any>(func: T, wait: number): T & { cancel: () => void } {
+  debounce<T extends (...args: unknown[]) => unknown>(
+    func: T,
+    wait: number
+  ): T & { cancel: () => void } {
     let timeoutId: NodeJS.Timeout | null = null;
 
     const debounced = ((...args: Parameters<T>) => {
@@ -553,7 +580,10 @@ const functionMethods = {
     return debounced;
   },
 
-  throttle<T extends (...args: any[]) => any>(func: T, wait: number): T & { cancel: () => void } {
+  throttle<T extends (...args: unknown[]) => unknown>(
+    func: T,
+    wait: number
+  ): T & { cancel: () => void } {
     let timeoutId: NodeJS.Timeout | null = null;
     let lastCallTime = 0;
 
@@ -602,7 +632,9 @@ class LodashChain<T> {
     iteratee: (value: T extends (infer E)[] ? E : never, index: number) => U
   ): LodashChain<U[]> {
     if (Array.isArray(this._value)) {
-      return new LodashChain(arrayMethods.map(this._value, iteratee as any));
+      return new LodashChain(
+        arrayMethods.map(this._value, iteratee as (value: unknown, index: number) => U)
+      );
     }
     return new LodashChain([] as U[]);
   }
@@ -611,7 +643,12 @@ class LodashChain<T> {
     predicate: (value: T extends (infer E)[] ? E : never, index: number) => boolean
   ): LodashChain<T> {
     if (Array.isArray(this._value)) {
-      return new LodashChain(arrayMethods.filter(this._value, predicate as any) as T);
+      return new LodashChain(
+        arrayMethods.filter(
+          this._value,
+          predicate as (value: unknown, index: number) => boolean
+        ) as T
+      );
     }
     return new LodashChain([] as T);
   }
@@ -622,7 +659,12 @@ class LodashChain<T> {
       | ((item: T extends (infer E)[] ? E : never) => number | string)
   ): LodashChain<T> {
     if (Array.isArray(this._value)) {
-      return new LodashChain(arrayMethods.sortBy(this._value, keyFn as any) as T);
+      return new LodashChain(
+        arrayMethods.sortBy(
+          this._value,
+          keyFn as keyof unknown | ((item: unknown) => number | string)
+        ) as T
+      );
     }
     return new LodashChain([] as T);
   }
@@ -828,7 +870,7 @@ class LodashDollar<T> {
   }
 
   // All methods will be attached dynamically
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Attach all lodash methods to LodashDollar prototype
@@ -852,7 +894,7 @@ const lodashMethods = {
 
 // Apply methods to prototype
 Object.entries(lodashMethods).forEach(([name, method]) => {
-  (LodashDollar.prototype as any)[name] = function (...args: any[]) {
+  (LodashDollar.prototype as Record<string, unknown>)[name] = function (...args: unknown[]) {
     const result = method.call(this, ...args);
     // If the method returns an array or object, wrap it in LodashDollar
     if (
