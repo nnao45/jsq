@@ -81,13 +81,14 @@ export class StreamProcessor {
 
     if (typeof obj === 'object') {
       const safeObj: Record<string, unknown> = {};
-      for (const key in obj) {
-        if (Object.hasOwn(obj, key)) {
+      const objAsRecord = obj as Record<string, unknown>;
+      for (const key in objAsRecord) {
+        if (Object.hasOwn(objAsRecord, key)) {
           try {
-            safeObj[key] = this.makeJSONSafe(obj[key]);
+            safeObj[key] = this.makeJSONSafe(objAsRecord[key]);
           } catch (_error) {
             // If property access fails, use string representation
-            safeObj[key] = String(obj[key]);
+            safeObj[key] = String(objAsRecord[key]);
           }
         }
       }
@@ -585,8 +586,8 @@ export class StreamProcessor {
     workerPool: WorkerPool
   ): Promise<unknown[]> {
     try {
-      const result = await workerPool.processTask(batch, expression, this.options);
-      return result.results;
+      const results = await workerPool.processTask(batch, expression, this.options);
+      return results;
     } catch (error) {
       this.logParallelProcessingError(error);
       return await this.fallbackSequentialProcessing(expression, batch);

@@ -29,8 +29,10 @@ export class ChainableWrapper {
 
             const propStr = String(prop);
             let boundMethod = cache.get(propStr);
-            if (!boundMethod) {
+            if (!boundMethod && value) {
               boundMethod = value.bind(target);
+            }
+            if (boundMethod) {
               cache.set(propStr, boundMethod);
             }
             return boundMethod;

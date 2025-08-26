@@ -1,3 +1,4 @@
+import type { Readable } from 'node:stream';
 import type { JsqOptions, ProcessingResult } from '@/types/cli';
 import { type StreamProcessingOptions, StreamProcessor } from '../stream/stream-processor';
 import { ExpressionEvaluator } from './evaluator';
@@ -64,7 +65,7 @@ export class JsqProcessor {
 
   async processStream(
     expression: string,
-    inputStream: NodeJS.ReadableStream,
+    inputStream: Readable,
     streamOptions?: StreamProcessingOptions
   ): Promise<AsyncIterable<unknown>> {
     return this.streamProcessor.processStreamIterable(expression, inputStream, streamOptions);

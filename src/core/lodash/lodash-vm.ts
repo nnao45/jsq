@@ -1,16 +1,16 @@
-import { LODASH_DOLLAR_METHODS } from './lodash-dollar-shared-methods';
+import { LODASH_METHODS } from './lodash-shared-methods';
 
-export function createVMLodashDollarCode(): string {
+export function createVMLodashCode(): string {
   return `
-${LODASH_DOLLAR_METHODS}
+${LODASH_METHODS}
 
-// Simplified LodashDollar class for VM environment
-if (typeof LodashDollar === 'undefined') {
-  globalThis.LodashDollar = class LodashDollar {
+// Simplified Lodash class for VM environment
+if (typeof Lodash === 'undefined') {
+  globalThis.Lodash = class Lodash {
     constructor(value) {
       this._value = value;
       // Don't set this.value here - it conflicts with the value() method
-      this.__isLodashDollar = true;
+      this.__isLodash = true;
     }
     
     [Symbol.iterator]() {
@@ -49,16 +49,16 @@ if (typeof LodashDollar === 'undefined') {
   };
 }
 
-// Apply all methods to LodashDollar prototype
-if (typeof globalThis.lodashDollarMethods !== 'undefined' && typeof globalThis.LodashDollar !== 'undefined') {
-  Object.entries(globalThis.lodashDollarMethods).forEach(([name, fn]) => {
-    globalThis.LodashDollar.prototype[name] = fn;
+// Apply all methods to Lodash prototype
+if (typeof globalThis.lodashMethods !== 'undefined' && typeof globalThis.Lodash !== 'undefined') {
+  Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
+    globalThis.Lodash.prototype[name] = fn;
   });
 }
 
 // Create _ function first before using it in the setup
-globalThis.createLodashDollar = function(value) {
-  return new globalThis.LodashDollar(value);
+globalThis.createLodash = function(value) {
+  return new globalThis.Lodash(value);
 };
 
 // Set up _ for direct use (always override)
@@ -67,16 +67,16 @@ globalThis._ = function(value) {
   if (arguments.length === 0) {
     // If called without arguments and data exists, use data
     if (typeof globalThis.data !== 'undefined') {
-      return new globalThis.LodashDollar(globalThis.data);
+      return new globalThis.Lodash(globalThis.data);
     }
     // Otherwise return undefined
     return undefined;
   }
-  return new globalThis.LodashDollar(value);
+  return new globalThis.Lodash(value);
 };
 
 // Add static methods to _ (like _.chunk, _.filter, etc)
-Object.entries(globalThis.lodashDollarMethods).forEach(([name, fn]) => {
+Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
   globalThis._[name] = function(...args) {
     // For static methods, wrap the first argument
     if (args.length > 0) {
@@ -87,16 +87,16 @@ Object.entries(globalThis.lodashDollarMethods).forEach(([name, fn]) => {
         dataToWrap = dataToWrap.valueOf();
       }
       
-      const wrapped = new globalThis.LodashDollar(dataToWrap);
+      const wrapped = new globalThis.Lodash(dataToWrap);
       const result = wrapped[name](...args.slice(1));
-      // If result is a LodashDollar instance, unwrap it for static methods
-      if (result && result.__isLodashDollar) {
+      // If result is a Lodash instance, unwrap it for static methods
+      if (result && result.__isLodash) {
         return result._value;
       }
       return result;
     }
     // For methods that don't need arguments
-    return fn.call({_value: undefined, constructor: globalThis.LodashDollar});
+    return fn.call({_value: undefined, constructor: globalThis.Lodash});
   };
 });
 `;

@@ -9,6 +9,8 @@ import {
   type SupportedFormat,
 } from './format-parsers';
 
+export type { SupportedFormat } from './format-parsers';
+
 export interface FileInputOptions {
   fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'yaml' | 'yml' | 'toml' | 'auto';
 }
@@ -61,8 +63,8 @@ async function detectFormatFromContent(filePath: string): Promise<SupportedForma
     let linesChecked = 0;
 
     return new Promise(resolve => {
-      stream.on('data', (chunk: string) => {
-        content += chunk;
+      stream.on('data', (chunk: string | Buffer) => {
+        content += chunk.toString();
         const lines = content.split('\n');
 
         const result = analyzeContentLines(lines, linesChecked);
@@ -94,7 +96,7 @@ function analyzeContentLines(
   let linesChecked = startIndex;
 
   for (let i = startIndex; i < Math.min(lines.length, 3); i++) {
-    const line = lines[i].trim();
+    const line = lines[i]?.trim();
     if (line) {
       linesChecked++;
       const lineFormat = detectLineFormat(line, linesChecked);
@@ -144,9 +146,11 @@ export async function readFileByFormat(
     case 'parquet':
     case 'yaml':
     case 'yml':
-    case 'toml':
+    case 'toml': {
       // For structured formats, return parsed data
-      return parseFile(filePath, format);
+      const result = await parseFile(filePath, format);
+      return result as string | unknown[];
+    }
     default:
       throw new Error(`Unsupported file format: ${format}`);
   }

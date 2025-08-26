@@ -11,113 +11,105 @@ const methodsCode = methodsMatch[1];
 const createMethods = new Function(`return ${methodsCode}`);
 const methods = createMethods();
 
-// Cache for method results
-const _methodCache = new WeakMap();
-
 export class ChainableWrapper {
-  private _value: unknown;
+  readonly data: unknown;
 
   constructor(value: unknown) {
-    this._value = value;
-  }
-
-  // Add data property for compatibility with tests
-  get data(): unknown {
-    return this._value;
+    this.data = value;
   }
 
   get length(): number {
-    if (Array.isArray(this._value) || typeof this._value === 'string') {
-      return this._value.length;
+    if (Array.isArray(this.data) || typeof this.data === 'string') {
+      return this.data.length;
     }
-    if (this._value && typeof this._value === 'object') {
-      return Object.keys(this._value).length;
+    if (this.data && typeof this.data === 'object') {
+      return Object.keys(this.data).length;
     }
     return 0;
   }
 
   [Symbol.iterator]() {
-    if (Array.isArray(this._value) || typeof this._value === 'string') {
-      return this._value[Symbol.iterator]();
+    if (Array.isArray(this.data) || typeof this.data === 'string') {
+      return this.data[Symbol.iterator]();
     }
-    if (this._value && typeof this._value === 'object') {
-      return Object.entries(this._value)[Symbol.iterator]();
+    if (this.data && typeof this.data === 'object') {
+      return Object.entries(this.data)[Symbol.iterator]();
     }
     return [][Symbol.iterator]();
   }
 
   toJSON() {
-    return this._value;
+    return this.data;
   }
 }
 
 // Apply all methods to ChainableWrapper prototype
 Object.entries(methods).forEach(([name, fn]) => {
-  (ChainableWrapper.prototype as Record<string, unknown>)[name] = function (
+  (ChainableWrapper.prototype as unknown as Record<string, unknown>)[name] = function (
     this: ChainableWrapper,
     ...args: unknown[]
   ) {
     // Use 'this' context with the method
-    return fn.apply(this, args);
+    return (fn as (...args: any[]) => any).apply(this, args);
   };
 });
 
 // Create async versions of specified methods
 ASYNC_METHODS.forEach(methodName => {
-  const originalMethod = (ChainableWrapper.prototype as Record<string, unknown>)[methodName];
+  const originalMethod = (ChainableWrapper.prototype as unknown as Record<string, unknown>)[
+    methodName
+  ];
   if (originalMethod) {
-    (ChainableWrapper.prototype as Record<string, unknown>)[`${methodName}Async`] = async function (
-      this: ChainableWrapper,
-      ...args: unknown[]
-    ) {
-      // Handle async callbacks
-      const processedArgs = await Promise.all(
-        args.map(async arg => {
-          if (typeof arg === 'function') {
-            // Return a wrapped async version of the function
-            return async (...fnArgs: unknown[]) => {
-              return await arg(...fnArgs);
-            };
-          }
-          return arg;
-        })
-      );
+    (ChainableWrapper.prototype as unknown as Record<string, unknown>)[`${methodName}Async`] =
+      async function (this: ChainableWrapper, ...args: unknown[]) {
+        // Handle async callbacks
+        const processedArgs = await Promise.all(
+          args.map(async arg => {
+            if (typeof arg === 'function') {
+              // Return a wrapped async version of the function
+              return async (...fnArgs: unknown[]) => {
+                return await arg(...fnArgs);
+              };
+            }
+            return arg;
+          })
+        );
 
-      return originalMethod.apply(this, processedArgs);
-    };
+        return (originalMethod as (...args: any[]) => any).apply(this, processedArgs);
+      };
   }
 });
 
 // Add specific async methods
-(ChainableWrapper.prototype as Record<string, unknown>).mapAsync = async function (
+(ChainableWrapper.prototype as unknown as Record<string, unknown>).mapAsync = async function (
   this: ChainableWrapper,
   fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   // Convert to array using same logic as toArray method
   let arr: unknown[];
-  if (Array.isArray(this._value)) {
-    arr = Array.from(this._value);
+  if (Array.isArray(this.data)) {
+    arr = Array.from(this.data);
   } else {
     // For non-arrays, treat as single value
-    arr = [this._value];
+    arr = [this.data];
   }
   const promises = arr.map((item, index) => fn(item, index, arr));
   const results = await Promise.all(promises);
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as Record<string, unknown>).mapAsyncSeq = async function (
+(ChainableWrapper.prototype as unknown as Record<string, unknown>).mapAsyncSeq = async function (
   this: ChainableWrapper,
   fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   const results = [];
   // Convert to array using same logic as toArray method
   let arr: unknown[];
-  if (Array.isArray(this._value)) {
-    arr = Array.from(this._value);
+  if (Array.isArray(this.data)) {
+    arr = Array.from(this.data);
   } else {
     // For non-arrays, treat as single value
-    arr = [this._value];
+    arr = [this.data];
   }
   for (let i = 0; i < arr.length; i++) {
     results.push(await fn(arr[i], i, arr));
@@ -125,38 +117,39 @@ ASYNC_METHODS.forEach(methodName => {
   return new ChainableWrapper(results);
 };
 
-(ChainableWrapper.prototype as Record<string, unknown>).forEachAsync = async function (
+(ChainableWrapper.prototype as unknown as Record<string, unknown>).forEachAsync = async function (
   this: ChainableWrapper,
   fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   // Convert to array using same logic as toArray method
   let arr: unknown[];
-  if (Array.isArray(this._value)) {
-    arr = Array.from(this._value);
+  if (Array.isArray(this.data)) {
+    arr = Array.from(this.data);
   } else {
     // For non-arrays, treat as single value
-    arr = [this._value];
+    arr = [this.data];
   }
   const promises = arr.map((item, index) => fn(item, index, arr));
   await Promise.all(promises);
 };
 
-(ChainableWrapper.prototype as Record<string, unknown>).forEachAsyncSeq = async function (
-  this: ChainableWrapper,
-  fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
-) {
-  // Convert to array using same logic as toArray method
-  let arr: unknown[];
-  if (Array.isArray(this._value)) {
-    arr = Array.from(this._value);
-  } else {
-    // For non-arrays, treat as single value
-    arr = [this._value];
-  }
-  for (let i = 0; i < arr.length; i++) {
-    await fn(arr[i], i, arr);
-  }
-};
+(ChainableWrapper.prototype as unknown as Record<string, unknown>).forEachAsyncSeq =
+  async function (
+    this: ChainableWrapper,
+    fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
+  ) {
+    // Convert to array using same logic as toArray method
+    let arr: unknown[];
+    if (Array.isArray(this.data)) {
+      arr = Array.from(this.data);
+    } else {
+      // For non-arrays, treat as single value
+      arr = [this.data];
+    }
+    for (let i = 0; i < arr.length; i++) {
+      await fn(arr[i], i, arr);
+    }
+  };
 
 // Export the smart dollar function
 export function $(value: unknown): ChainableWrapper {
@@ -272,16 +265,16 @@ export function createSmartDollarProxy(wrapper: ChainableWrapper): SmartDollar {
       // Check if it's a number (array index)
       if (typeof prop === 'string' && /^\d+$/.test(prop)) {
         const index = parseInt(prop, 10);
-        if (Array.isArray(target._value)) {
-          const item = target._value[index];
+        if (Array.isArray(target.data)) {
+          const item = target.data[index];
           return item !== undefined ? $(item) : undefined;
         }
       }
 
       // Property access on the wrapped value
-      const value = target._value;
+      const value = target.data;
       if (value && typeof value === 'object' && prop in value) {
-        const propValue = value[prop];
+        const propValue = (value as any)[prop];
         return typeof propValue === 'function' ? propValue.bind(value) : $(propValue);
       }
 
@@ -290,8 +283,8 @@ export function createSmartDollarProxy(wrapper: ChainableWrapper): SmartDollar {
 
     has(target, prop) {
       if (prop in target) return true;
-      const value = target._value;
-      return value && typeof value === 'object' && prop in value;
+      const value = target.data;
+      return !!(value && typeof value === 'object' && prop in value);
     },
   }) as SmartDollar;
 }

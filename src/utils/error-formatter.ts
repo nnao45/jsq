@@ -9,10 +9,10 @@ export interface ErrorPosition {
 export interface FormattedError {
   type: 'syntax' | 'security' | 'runtime';
   message: string;
-  detail?: string;
-  position?: ErrorPosition;
-  context?: string;
-  suggestion?: string;
+  detail?: string | undefined;
+  position?: ErrorPosition | undefined;
+  context?: string | undefined;
+  suggestion?: string | undefined;
 }
 
 export class ErrorFormatter {
@@ -120,12 +120,17 @@ export class ErrorFormatter {
     let suggestion: string | undefined;
 
     if (positionMatch || unexpectedMatch) {
-      const pos = parseInt(unexpectedMatch ? unexpectedMatch[2] : positionMatch?.[1], 10);
-      position = ErrorFormatter.calculatePosition(input, pos);
+      const posStr = unexpectedMatch ? unexpectedMatch[2] : positionMatch?.[1];
+      if (posStr) {
+        const pos = parseInt(posStr, 10);
+        position = ErrorFormatter.calculatePosition(input, pos);
 
-      if (unexpectedMatch) {
-        const token = unexpectedMatch[1];
-        suggestion = ErrorFormatter.getJSONSuggestion(token, input, pos);
+        if (unexpectedMatch) {
+          const token = unexpectedMatch[1];
+          if (token) {
+            suggestion = ErrorFormatter.getJSONSuggestion(token, input, pos);
+          }
+        }
       }
     } else if (unexpectedEndMatch) {
       position = ErrorFormatter.calculatePosition(input, input.length);
@@ -175,17 +180,20 @@ export class ErrorFormatter {
 
     // 一般的なJavaScriptエラーパターンから位置情報を抽出
     const unexpectedTokenMatch = message.match(/Unexpected token '?(.+?)'?/);
-    const _missingMatch = message.match(/Missing (.+?) after/);
+    const missingMatch = message.match(/Missing (.+?) after/);
+    void missingMatch; // unused
 
     let position: ErrorPosition | undefined;
     let suggestion: string | undefined;
 
     if (unexpectedTokenMatch) {
       const token = unexpectedTokenMatch[1];
-      const index = expression.indexOf(token);
-      if (index !== -1) {
-        position = ErrorFormatter.calculatePosition(expression, index);
-        position.length = token.length;
+      if (token) {
+        const index = expression.indexOf(token);
+        if (index !== -1) {
+          position = ErrorFormatter.calculatePosition(expression, index);
+          position.length = token.length;
+        }
       }
       suggestion = ErrorFormatter.getExpressionSuggestion(message);
     }

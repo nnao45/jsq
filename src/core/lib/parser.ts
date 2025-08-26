@@ -9,8 +9,6 @@ export class JsonParser {
   }
 
   parse(input: string): unknown {
-    this.input = input;
-
     try {
       if (!input.trim()) {
         throw new Error('Empty input');

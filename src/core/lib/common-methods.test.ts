@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import type { MethodTestCase } from '../../types/common-methods';
-import _, { LodashUtilities } from '../lodash/lodash-unified';
+import { _ } from '../lodash/lodash-non-vm';
 import { type ChainableWrapper, createSmartDollar } from '../smart-dollar/smart-dollar-non-vm';
 
 /**
@@ -376,11 +376,7 @@ describe('共通メソッドの一貫性テスト', () => {
                 : $result;
 
         // lodash記法でのテスト
-        const lodashUtil = new LodashUtilities();
-        const lodashResult = (lodashUtil as any)[testCase.method](
-          lodashInputData,
-          ...testCase.args
-        );
+        const lodashResult = (_ as any)[testCase.method](lodashInputData, ...testCase.args);
 
         // 結果の比較
         expect($value).toEqual(testCase.expected);

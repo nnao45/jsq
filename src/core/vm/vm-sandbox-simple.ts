@@ -1,4 +1,55 @@
-import ivm from 'isolated-vm';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ivm = require('isolated-vm') as {
+  Isolate: {
+    new (options?: { memoryLimit?: number; snapshot?: unknown }): Isolate;
+    createSnapshot(scripts: Array<{ code: string }>): unknown;
+  };
+  Reference: {
+    new (value: unknown, options?: { unsafeInherit?: boolean }): Reference;
+  };
+  ExternalCopy: {
+    new (value: unknown, options?: { releaseWhenOrphaned?: boolean }): ExternalCopy;
+  };
+  NativeModule: {
+    _cache: Map<string, unknown>;
+    _init(context: unknown, module: string): void;
+  };
+};
+
+type Isolate = {
+  createContext(): Promise<Context>;
+  dispose(): void;
+  getHeapStatistics(): { totalHeapSize: number; usedHeapSize: number };
+  compileScript(code: string): Promise<Script>;
+  isDisposed?: boolean;
+};
+
+type Script = {
+  run(context: Context, options?: { timeout?: number; copy?: boolean }): Promise<unknown>;
+};
+
+type Context = {
+  global: Reference;
+  release(): void;
+  eval(code: string, options?: { timeout?: number; copy?: boolean }): Promise<unknown>;
+};
+
+type Reference = {
+  set(
+    key: string,
+    value: unknown,
+    options?: { copy?: boolean; reference?: boolean }
+  ): Promise<void>;
+  get(key: string, options?: { reference?: boolean }): Promise<unknown>;
+  getSync(key: string, options?: { reference?: boolean }): unknown;
+  apply(thisArg: unknown, args: unknown[]): Promise<unknown>;
+};
+
+type ExternalCopy = {
+  copy(): unknown;
+  copySync(): unknown;
+  copyInto(options?: { release?: boolean }): unknown;
+};
 
 import type {
   SandboxError,
@@ -62,16 +113,16 @@ export class VMSandboxSimple {
     options: VMOptions = {}
   ): Promise<VMResult<T>> {
     const startTime = Date.now();
-    let isolate: ivm.Isolate | null = null;
-    let vmContext: ivm.Context | null = null;
+    let isolate: Isolate | null = null;
+    let vmContext: Context | null = null;
 
     try {
       // Try to use pooled isolate if recycling is enabled
       if (this.config.recycleIsolates) {
         const pooled = await vmPool.acquire();
         if (pooled) {
-          isolate = pooled.isolate;
-          vmContext = pooled.context;
+          isolate = pooled.isolate as Isolate;
+          vmContext = pooled.context as Context;
         }
       }
 
@@ -112,9 +163,9 @@ export class VMSandboxSimple {
       const { createVMSmartDollarCode } = await import('../smart-dollar/smart-dollar-vm');
       await vmContext.eval(createVMSmartDollarCode());
 
-      // Set up the createLodashDollar function for the VM
-      const { createVMLodashDollarCode } = await import('../lodash/lodash-dollar-vm');
-      await vmContext.eval(createVMLodashDollarCode());
+      // Set up the createLodash function for the VM
+      const { createVMLodashCode } = await import('../lodash/lodash-vm');
+      await vmContext.eval(createVMLodashCode());
 
       // Set up $ first before other context variables
       if ('$' in context) {
@@ -226,7 +277,9 @@ export class VMSandboxSimple {
               await jail.set(`_${key}_impl`, new ivm.Reference(func));
             } catch (funcError) {
               // If the function can't be cloned, skip it
-              console.debug(`Skipping function ${key} - cannot be cloned: ${funcError.message}`);
+              console.debug(
+                `Skipping function ${key} - cannot be cloned: ${(funcError as Error).message}`
+              );
             }
           } else {
             try {
@@ -236,7 +289,7 @@ export class VMSandboxSimple {
                 serialized instanceof ivm.ExternalCopy ? serialized.copyInto() : serialized
               );
             } catch (serError) {
-              console.error(`Error serializing/setting key ${key}:`, serError.message);
+              console.error(`Error serializing/setting key ${key}:`, (serError as Error).message);
               // Check if it's the specific cloning error
               if (serError instanceof Error && serError.message.includes('could not be cloned')) {
                 this.logCloningError(key, value);
@@ -322,8 +375,8 @@ export class VMSandboxSimple {
   }
 
   private async setupBasicEnvironment(
-    jail: ivm.Reference,
-    vmContext: ivm.Context,
+    jail: Reference,
+    vmContext: Context,
     _context: VMContext,
     options: VMOptions = {}
   ): Promise<void> {
@@ -537,7 +590,7 @@ export class VMSandboxSimple {
         await jail.set(
           '_fetchCallback',
           new ivm.Reference(
-            async (url: string, options: RequestInit | undefined, callbackRef: ivm.Reference) => {
+            async (url: string, options: RequestInit | undefined, callbackRef: Reference) => {
               try {
                 const response = await fetch(url, options);
                 const text = await response.text();
@@ -551,7 +604,13 @@ export class VMSandboxSimple {
                     statusText: response.statusText,
                     url: response.url,
                     text: text,
-                    headers: Object.fromEntries(response.headers.entries()),
+                    headers: (() => {
+                      const headersObj: Record<string, string> = {};
+                      response.headers.forEach((value, key) => {
+                        headersObj[key] = value;
+                      });
+                      return headersObj;
+                    })(),
                   }).copyInto(),
                 ]);
               } catch (error) {
@@ -935,7 +994,7 @@ export class VMSandboxSimple {
           // If the code has control structures, we need to handle it differently
           // Check if the last line is a simple expression we can return
           const lines = code.trim().split('\n');
-          const lastLine = lines[lines.length - 1].trim();
+          const lastLine = lines[lines.length - 1]?.trim() || '';
 
           // If the last line is just a variable or simple expression (not a statement)
           const lastLineWithoutSemi = lastLine.replace(/;$/, '');
@@ -987,7 +1046,7 @@ export class VMSandboxSimple {
           const statements = this.splitStatements(code);
 
           if (statements.length > 1) {
-            const lastStatement = statements[statements.length - 1].trim();
+            const lastStatement = statements[statements.length - 1]?.trim() || '';
             const otherStatements = statements.slice(0, -1);
 
             return `
@@ -1077,7 +1136,7 @@ export class VMSandboxSimple {
           // If the code has control structures, we need to handle it differently
           // Check if the last line is a simple expression we can return
           const lines = code.trim().split('\n');
-          const lastLine = lines[lines.length - 1].trim();
+          const lastLine = lines[lines.length - 1]?.trim() || '';
 
           // If the last line is just a variable or simple expression (not a statement)
           const lastLineWithoutSemi = lastLine.replace(/;$/, '');

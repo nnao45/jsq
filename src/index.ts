@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import type { JsqOptions } from '@/types/cli';
+import type { SupportedFormat } from '@/utils/file-input';
 import {
   createFormatStream,
   detectFileFormat,
@@ -18,7 +19,7 @@ function findPackageRoot(): string {
   const fs = require('node:fs');
 
   // Try to find package root from the script location
-  let currentDir = dirname(__filename || process.argv[1]);
+  let currentDir = dirname(__filename || process.argv[1] || '.');
 
   while (currentDir !== dirname(currentDir)) {
     const packageJsonPath = join(currentDir, 'package.json');
@@ -37,7 +38,7 @@ function findPackageRoot(): string {
 
   // If we can't find it, try from the dist directory upwards
   // This handles the case where we're running from dist/index.js
-  currentDir = join(dirname(__filename || process.argv[1]), '..');
+  currentDir = join(dirname(__filename || process.argv[1] || '.'), '..');
   if (fs.existsSync(join(currentDir, 'package.json'))) {
     return currentDir;
   }
@@ -228,16 +229,20 @@ async function runWithRuntime(
     if (options.cpuLimit) args.push('--cpu-limit', String(options.cpuLimit));
     if (options.watch) args.push('--watch');
 
-    const child = spawn(args[0], args.slice(1), {
+    if (args.length === 0 || !args[0]) {
+      throw new Error('No runtime command specified');
+    }
+
+    const child: ChildProcess = spawn(args[0], args.slice(1), {
       stdio: 'inherit',
       env: process.env,
     });
 
-    child.on('exit', code => {
+    child.on('exit', (code: number | null) => {
       process.exit(code || 0);
     });
 
-    child.on('error', error => {
+    child.on('error', (error: Error) => {
       console.error(`Failed to start ${runtime}:`, error.message);
       process.exit(1);
     });
@@ -440,9 +445,9 @@ async function determineInputSource(options: JsqOptions): Promise<{
 function shouldUseStreaming(options: JsqOptions, detectedFormat: string): boolean {
   const streamingFormats = ['jsonl', 'csv', 'tsv', 'parquet'];
   return (
-    options.stream ||
-    options.batch ||
-    options.jsonLines ||
+    !!options.stream ||
+    !!options.batch ||
+    !!options.jsonLines ||
     streamingFormats.includes(detectedFormat)
   );
 }
@@ -491,7 +496,7 @@ async function getInputStream(
   detectedFormat: string
 ) {
   if (inputSource === 'file' && filePath) {
-    return await createFormatStream(filePath, detectedFormat);
+    return await createFormatStream(filePath, detectedFormat as SupportedFormat);
   }
   if (inputSource === 'none') {
     // Create a readable stream with null data
@@ -503,17 +508,36 @@ async function getInputStream(
 
 function createStreamOptions(options: JsqOptions, detectedFormat: string) {
   const streamingFormats = ['jsonl', 'csv', 'tsv', 'parquet'];
-  return {
+  const result: {
+    jsonLines: boolean;
+    batchSize?: number;
+    parallel?: boolean | number;
+  } = {
     jsonLines:
       options.jsonLines ||
       options.stream ||
       !!options.batch ||
       !!options.parallel ||
       streamingFormats.includes(detectedFormat),
-    batchSize:
-      typeof options.batch === 'number' ? options.batch : options.parallel ? 200 : undefined,
-    parallel: options.parallel,
   };
+
+  if (typeof options.batch === 'number') {
+    result.batchSize = options.batch;
+  } else if (options.parallel) {
+    result.batchSize = 200;
+  }
+
+  if (options.parallel) {
+    if (typeof options.parallel === 'string') {
+      result.parallel = true;
+    } else if (typeof options.parallel === 'number') {
+      result.parallel = options.parallel;
+    } else {
+      result.parallel = options.parallel;
+    }
+  }
+
+  return result;
 }
 
 function createTransformStream(
@@ -560,7 +584,7 @@ async function getInputData(
   detectedFormat: string
 ): Promise<string | unknown> {
   if (inputSource === 'file' && filePath) {
-    return await readFileByFormat(filePath, detectedFormat);
+    return await readFileByFormat(filePath, detectedFormat as SupportedFormat);
   }
   if (inputSource === 'none') {
     return null;

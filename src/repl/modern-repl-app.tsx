@@ -1,4 +1,5 @@
-import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import type { Key } from 'ink/build/index.js';
+import { Box, Text, useApp, useInput, useStdout } from 'ink/build/index.js';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { JsqProcessor } from '../core/lib/processor';
 import type { JsqOptions } from '../types/cli';
@@ -89,9 +90,9 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   const [promptColors, setPromptColors] = useState<[PromptColor, PromptColor, PromptColor]>(() => {
     // Initialize with random colors for each character
     return [
-      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
+      PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
     ];
   });
 
@@ -99,9 +100,9 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
   const changePromptColors = useCallback(() => {
     setPromptColors(() => {
       return [
-        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
-        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)],
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
+        PROMPT_COLORS[Math.floor(Math.random() * PROMPT_COLORS.length)] as PromptColor,
       ];
     });
   }, []);
@@ -117,51 +118,54 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
 
   // Debounced evaluation function
   const debouncedEvaluate = useCallback(
-    debounce(async (expression: string) => {
-      if (!expression.trim()) {
-        setEvaluationResult({});
-        return;
-      }
-
-      setIsEvaluating(true);
-      setShowSlowLoading(false);
-
-      // Set a timer to show slow loading indicator after 500ms
-      const slowLoadingTimer = setTimeout(() => {
-        setShowSlowLoading(true);
-      }, 500);
-
-      try {
-        const result = await processor.process(expression, data);
-
-        // Clear the timer since evaluation completed
-        clearTimeout(slowLoadingTimer);
-        let resultStr: string;
-
-        if (typeof result.data === 'string') {
-          resultStr = JSON.stringify(result.data);
-        } else {
-          resultStr = JSON.stringify(result.data, null, 2);
+    debounce(
+      (async (expression: string) => {
+        if (!expression.trim()) {
+          setEvaluationResult({});
+          return;
         }
 
-        setEvaluationResult({ result: resultStr });
-      } catch (error) {
-        // Clear the timer on error as well
-        clearTimeout(slowLoadingTimer);
-        const errorStr = error instanceof Error ? error.message : 'Syntax error';
-        // Use syntax checker to determine if expression is partial
-        const isPartial = isLikelyPartial(expression);
-
-        setEvaluationResult({
-          error: errorStr,
-          isPartial,
-        });
-      } finally {
-        clearTimeout(slowLoadingTimer);
-        setIsEvaluating(false);
+        setIsEvaluating(true);
         setShowSlowLoading(false);
-      }
-    }, DEBOUNCE_MS),
+
+        // Set a timer to show slow loading indicator after 500ms
+        const slowLoadingTimer = setTimeout(() => {
+          setShowSlowLoading(true);
+        }, 500);
+
+        try {
+          const result = await processor.process(expression, data);
+
+          // Clear the timer since evaluation completed
+          clearTimeout(slowLoadingTimer);
+          let resultStr: string;
+
+          if (typeof result.data === 'string') {
+            resultStr = JSON.stringify(result.data);
+          } else {
+            resultStr = JSON.stringify(result.data, null, 2);
+          }
+
+          setEvaluationResult({ result: resultStr });
+        } catch (error) {
+          // Clear the timer on error as well
+          clearTimeout(slowLoadingTimer);
+          const errorStr = error instanceof Error ? error.message : 'Syntax error';
+          // Use syntax checker to determine if expression is partial
+          const isPartial = isLikelyPartial(expression);
+
+          setEvaluationResult({
+            error: errorStr,
+            isPartial,
+          });
+        } finally {
+          clearTimeout(slowLoadingTimer);
+          setIsEvaluating(false);
+          setShowSlowLoading(false);
+        }
+      }) as (...args: unknown[]) => unknown,
+      DEBOUNCE_MS
+    ),
     [processor, data]
   );
 
@@ -233,7 +237,7 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
     [cursorPosition]
   );
 
-  useInput((input, key) => {
+  useInput((input: string, key: Key) => {
     if (key.ctrl && input) {
       handleCtrlKeys(input);
     } else if (key.delete) {
@@ -337,13 +341,6 @@ export function ModernREPLApp({ initialData = '{}', options }: REPLAppProps) {
         Type a jsq expression...
       </Text>
     );
-  };
-
-  const _getStatusColor = () => {
-    if (isEvaluating && showSlowLoading) return 'yellow';
-    if (evaluationResult.error && !evaluationResult.isPartial) return 'red';
-    if (evaluationResult.result !== undefined) return 'green';
-    return 'blue';
   };
 
   // Get terminal height and reserve space for prompt

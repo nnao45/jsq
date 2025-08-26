@@ -20,8 +20,8 @@
         "timezone": "PST"
       },
       "projects": [
-        {"name": "ProjectA", "role": "lead", "status": "active"},
-        {"name": "ProjectB", "role": "contributor", "status": "completed"}
+        { "name": "ProjectA", "role": "lead", "status": "active" },
+        { "name": "ProjectB", "role": "contributor", "status": "completed" }
       ]
     },
     {
@@ -38,9 +38,7 @@
         "country": "USA",
         "timezone": "EST"
       },
-      "projects": [
-        {"name": "ProjectC", "role": "designer", "status": "active"}
-      ]
+      "projects": [{ "name": "ProjectC", "role": "designer", "status": "active" }]
     },
     {
       "id": 3,
@@ -57,8 +55,8 @@
         "timezone": "CST"
       },
       "projects": [
-        {"name": "ProjectA", "role": "contributor", "status": "active"},
-        {"name": "ProjectD", "role": "lead", "status": "planning"}
+        { "name": "ProjectA", "role": "contributor", "status": "active" },
+        { "name": "ProjectD", "role": "lead", "status": "planning" }
       ]
     },
     {
@@ -75,9 +73,7 @@
         "country": "USA",
         "timezone": "PST"
       },
-      "projects": [
-        {"name": "Campaign2023", "role": "manager", "status": "active"}
-      ]
+      "projects": [{ "name": "Campaign2023", "role": "manager", "status": "active" }]
     },
     {
       "id": 5,
@@ -94,8 +90,8 @@
         "timezone": "PST"
       },
       "projects": [
-        {"name": "ProjectB", "role": "lead", "status": "completed"},
-        {"name": "ProjectE", "role": "lead", "status": "active"}
+        { "name": "ProjectB", "role": "lead", "status": "completed" },
+        { "name": "ProjectE", "role": "lead", "status": "active" }
       ]
     },
     {
@@ -112,9 +108,7 @@
         "country": "USA",
         "timezone": "EST"
       },
-      "projects": [
-        {"name": "ProjectF", "role": "architect", "status": "active"}
-      ]
+      "projects": [{ "name": "ProjectF", "role": "architect", "status": "active" }]
     },
     {
       "id": 7,
@@ -146,9 +140,7 @@
         "country": "USA",
         "timezone": "MST"
       },
-      "projects": [
-        {"name": "ProjectG", "role": "developer", "status": "active"}
-      ]
+      "projects": [{ "name": "ProjectG", "role": "developer", "status": "active" }]
     }
   ]
 }

@@ -2,12 +2,12 @@ import chalk from 'chalk';
 import type { JsqOptions } from '../types/cli.js';
 
 interface FormatterOptions {
-  oneline?: boolean;
-  color?: boolean;
-  noColor?: boolean;
-  indent?: string | number;
-  compact?: boolean;
-  sortKeys?: boolean;
+  oneline?: boolean | undefined;
+  color?: boolean | undefined;
+  noColor?: boolean | undefined;
+  indent?: string | number | undefined;
+  compact?: boolean | undefined;
+  sortKeys?: boolean | undefined;
 }
 
 export class OutputFormatter {
@@ -100,7 +100,7 @@ export class OutputFormatter {
     let escapeNext = false;
 
     for (let i = 0; i < json.length; i++) {
-      const char = json[i];
+      const char = json.charAt(i);
       const remainingText = json.slice(i);
 
       if (escapeNext) {

@@ -109,11 +109,11 @@ export function isArrayLiteralWithMethods(expression: string): boolean {
 function findArrayEndIndex(expression: string): number {
   let bracketCount = 0;
   let inString = false;
-  let stringChar: string | undefined = '';
+  let stringChar: string | undefined;
 
   for (let i = 0; i < expression.length; i++) {
-    const char = expression[i];
-    const prevChar = expression[i - 1];
+    const char = expression.charAt(i);
+    const prevChar = i > 0 ? expression.charAt(i - 1) : undefined;
 
     if (shouldUpdateStringState(char, prevChar, inString, stringChar)) {
       const stringState = getStringState(char, prevChar, inString, stringChar);
@@ -221,14 +221,14 @@ function createInitialParseState(): ParseState {
   };
 }
 
-function updateStringState(state: ParseState, char: string, prevChar: string): void {
+function updateStringState(state: ParseState, char: string, prevChar: string | undefined): void {
   if (!state.inString && (char === '"' || char === "'" || char === '`')) {
     state.inString = true;
     state.stringChar = char;
     return;
   }
 
-  if (state.inString && char === state.stringChar && prevChar !== '\\') {
+  if (state.inString && char === state.stringChar && prevChar !== '\\\\') {
     state.inString = false;
     state.stringChar = undefined;
   }
@@ -244,9 +244,9 @@ function updateBracketDepth(state: ParseState, char: string): void {
 }
 
 function isPipeOperatorAt(expression: string, i: number, state: ParseState): boolean {
-  const char = expression[i];
-  const next = expression[i + 1];
-  const afterNext = expression[i + 2];
+  const char = expression.charAt(i);
+  const next = expression.charAt(i + 1);
+  const afterNext = expression.charAt(i + 2);
 
   return (
     char === ' ' &&
@@ -265,14 +265,14 @@ export function hasPipeOperator(expression: string): boolean {
   const state = createInitialParseState();
 
   for (let i = 0; i < expression.length - 2; i++) {
-    const char = expression[i];
-    const prevChar = expression[i - 1] || '';
+    const char = expression.charAt(i);
+    const prevChar = i > 0 ? expression.charAt(i - 1) : '';
 
-    updateStringState(state, char, prevChar);
+    updateStringState(state, char, prevChar as string);
 
     if (state.inString) continue;
 
-    updateBracketDepth(state, char);
+    updateBracketDepth(state, char as string);
 
     if (isPipeOperatorAt(expression, i, state)) {
       return true;
@@ -292,10 +292,10 @@ export function transformPipeExpression(expression: string): string {
     return expression;
   }
 
-  let result = parts[0].trim();
+  let result = parts[0]?.trim() || '';
 
   for (let i = 1; i < parts.length; i++) {
-    const part = parts[i].trim();
+    const part = parts[i]?.trim() || '';
 
     // If the part starts with '$', replace it with the result of previous operation
     if (part.startsWith('$')) {
@@ -319,12 +319,17 @@ export function transformPipeExpression(expression: string): string {
   return result;
 }
 
-function handleStringChar(state: ParseState, char: string, prev: string): string {
-  updateStringState(state, char, prev);
+function handleStringChar(state: ParseState, char: string, prev: string | undefined): string {
+  updateStringState(state, char, prev || '');
   return char;
 }
 
-function shouldSplitAtPipe(char: string, prev: string, next: string, state: ParseState): boolean {
+function shouldSplitAtPipe(
+  char: string,
+  prev: string | undefined,
+  next: string | undefined,
+  state: ParseState
+): boolean {
   return (
     char === '|' &&
     prev === ' ' &&
@@ -355,16 +360,16 @@ export function splitByPipe(expression: string): string[] {
   const state = createInitialParseState();
 
   for (let i = 0; i < expression.length; i++) {
-    const char = expression[i];
-    const next = expression[i + 1];
-    const prev = expression[i - 1];
+    const char = expression.charAt(i);
+    const next = expression.charAt(i + 1);
+    const prev = i > 0 ? expression.charAt(i - 1) : undefined;
 
     const charToAdd = handleStringChar(state, char, prev);
     current += charToAdd;
 
     if (state.inString) continue;
 
-    updateBracketDepth(state, char);
+    updateBracketDepth(state, char as string);
 
     if (shouldSplitAtPipe(char, prev, next, state)) {
       current = current.slice(0, -1); // Remove the '|' from current
@@ -432,8 +437,12 @@ function transformMultipleVariableDeclarations(expression: string): string {
     }
 
     const [, declType, varName, value, rest] = declMatch;
-    declarations.push(`${declType} ${varName} = ${value.trim()};`);
-    remaining = rest.trim();
+    if (declType && varName && value && rest !== undefined) {
+      declarations.push(`${declType} ${varName} = ${value.trim()};`);
+      remaining = rest.trim();
+    } else {
+      break;
+    }
   }
 
   // Check if any part contains await
@@ -463,6 +472,10 @@ function transformSingleVariableDeclaration(expression: string): string {
   }
 
   const [, _declType, varName, initialValue, pipelineExpr] = match;
+
+  if (!varName || !initialValue || !pipelineExpr) {
+    return expression; // Shouldn't happen but handle gracefully
+  }
 
   // Check if the expression contains await keywords
   const hasAwait = /\bawait\b/.test(initialValue) || /\bawait\b/.test(pipelineExpr);
@@ -522,14 +535,14 @@ function hasSemicolonOperator(expression: string): boolean {
   const state = createInitialParseState();
 
   for (let i = 0; i < expression.length; i++) {
-    const char = expression[i];
-    const prevChar = expression[i - 1] || '';
+    const char = expression.charAt(i);
+    const prevChar = i > 0 ? expression.charAt(i - 1) : '';
 
-    updateStringState(state, char, prevChar);
+    updateStringState(state, char, prevChar as string);
 
     if (state.inString) continue;
 
-    updateBracketDepth(state, char);
+    updateBracketDepth(state, char as string);
 
     // Check for semicolon at top level (not inside parentheses, braces, or brackets)
     if (
@@ -564,6 +577,10 @@ function transformSemicolonExpression(expression: string): string {
   const sideEffectParts = parts.slice(0, -1);
   const returnPart = parts[parts.length - 1];
 
+  if (!returnPart) {
+    return expression; // Shouldn't happen but handle gracefully
+  }
+
   if (hasAwait) {
     return `(async () => {
       ${sideEffectParts.map(part => `${part.trim()};`).join('\n      ')}
@@ -586,15 +603,15 @@ function splitBySemicolon(expression: string): string[] {
   const state = createInitialParseState();
 
   for (let i = 0; i < expression.length; i++) {
-    const char = expression[i];
-    const prevChar = expression[i - 1] || '';
+    const char = expression.charAt(i);
+    const prevChar = i > 0 ? expression.charAt(i - 1) : '';
 
-    updateStringState(state, char, prevChar);
+    updateStringState(state, char, prevChar as string);
     current += char;
 
     if (state.inString) continue;
 
-    updateBracketDepth(state, char);
+    updateBracketDepth(state, char as string);
 
     // Split at semicolon if at top level
     if (

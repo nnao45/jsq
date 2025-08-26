@@ -2,10 +2,25 @@
  * VM Instance Pool for isolated-vm isolates
  */
 
-import ivm from 'isolated-vm';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ivm = require('isolated-vm') as {
+  Isolate: {
+    new (options?: {
+      memoryLimit?: number;
+      snapshot?: unknown;
+    }): {
+      createContext(): Promise<unknown>;
+      dispose(): void;
+      isDisposed?: boolean;
+    };
+    createSnapshot(scripts: Array<{ code: string }>): unknown;
+  };
+};
+
+type IvmIsolate = InstanceType<typeof ivm.Isolate>;
 
 interface PooledIsolate {
-  isolate: unknown; // ivm.Isolate
+  isolate: IvmIsolate;
   context: unknown; // ivm.Context
   lastUsed: number;
   useCount: number;
@@ -82,6 +97,9 @@ export class VMIsolatePool {
 
     if (index !== -1) {
       const pooled = this.pool.splice(index, 1)[0];
+      if (!pooled) {
+        return null;
+      }
       this.reusedCount++;
       return {
         isolate: pooled.isolate,
@@ -111,7 +129,7 @@ export class VMIsolatePool {
   /**
    * Release an isolate back to the pool
    */
-  release(isolate: unknown, context: unknown): void {
+  release(isolate: IvmIsolate, context: unknown): void {
     // Find if this isolate is already being tracked
     const existing = this.pool.find(item => item.isolate === isolate);
 
@@ -122,7 +140,7 @@ export class VMIsolatePool {
     }
 
     // Add to pool if there's space and it's still valid
-    if (this.pool.length < this.maxSize && !isolate.isDisposed) {
+    if (this.pool.length < this.maxSize && !('isDisposed' in isolate && isolate.isDisposed)) {
       this.pool.push({
         isolate,
         context,
@@ -155,10 +173,12 @@ export class VMIsolatePool {
     // Remove from end to beginning to maintain indices
     toRemove.reverse().forEach(index => {
       const removed = this.pool.splice(index, 1)[0];
-      try {
-        removed.isolate.dispose();
-      } catch (_) {
-        // Ignore disposal errors
+      if (removed) {
+        try {
+          removed.isolate.dispose();
+        } catch (_) {
+          // Ignore disposal errors
+        }
       }
     });
   }

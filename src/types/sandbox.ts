@@ -131,6 +131,9 @@ export interface SandboxError extends Error {
     | 'CPU_LIMIT'
     | 'SECURITY_VIOLATION'
     | 'SERIALIZATION_ERROR'
-    | 'EXECUTION_ERROR';
+    | 'EXECUTION_ERROR'
+    | 'SYNTAX_ERROR'
+    | 'REFERENCE_ERROR'
+    | 'TYPE_ERROR';
   details?: unknown;
 }
