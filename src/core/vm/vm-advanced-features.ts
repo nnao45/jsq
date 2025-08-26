@@ -4,7 +4,6 @@ type IvmReference = typeof ivm.Reference & {
   set(key: string, value: unknown, options?: { reference?: boolean }): Promise<void>;
 };
 
-// biome-ignore lint/complexity/noStaticOnlyClass: Utility class for VM features organization
 export class VMAdvancedFeatures {
   /**
    * Set up async/await support in the VM

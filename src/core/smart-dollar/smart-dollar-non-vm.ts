@@ -91,7 +91,7 @@ ASYNC_METHODS.forEach(methodName => {
 // Add specific async methods
 (ChainableWrapper.prototype as Record<string, unknown>).mapAsync = async function (
   this: ChainableWrapper,
-  fn: Function
+  fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   // Convert to array using same logic as toArray method
   let arr: unknown[];
@@ -108,7 +108,7 @@ ASYNC_METHODS.forEach(methodName => {
 
 (ChainableWrapper.prototype as Record<string, unknown>).mapAsyncSeq = async function (
   this: ChainableWrapper,
-  fn: Function
+  fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   const results = [];
   // Convert to array using same logic as toArray method
@@ -127,7 +127,7 @@ ASYNC_METHODS.forEach(methodName => {
 
 (ChainableWrapper.prototype as Record<string, unknown>).forEachAsync = async function (
   this: ChainableWrapper,
-  fn: Function
+  fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   // Convert to array using same logic as toArray method
   let arr: unknown[];
@@ -143,7 +143,7 @@ ASYNC_METHODS.forEach(methodName => {
 
 (ChainableWrapper.prototype as Record<string, unknown>).forEachAsyncSeq = async function (
   this: ChainableWrapper,
-  fn: Function
+  fn: (value: unknown, index: number, array: unknown[]) => unknown | Promise<unknown>
 ) {
   // Convert to array using same logic as toArray method
   let arr: unknown[];

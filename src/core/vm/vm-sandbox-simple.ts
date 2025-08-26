@@ -37,6 +37,25 @@ export class VMSandboxSimple {
     }
   }
 
+  private logCloningError(key: string, value: unknown): void {
+    console.error(`\n=== CLONING ERROR DETAILS ===`);
+    console.error(`Key: "${key}"`);
+    console.error(`Type: ${typeof value}`);
+    if (typeof value === 'function') {
+      console.error(`Function string: ${value.toString().substring(0, 200)}...`);
+      console.error(`Function name: ${value.name}`);
+    } else if (typeof value === 'object' && value !== null) {
+      console.error(`Object keys: ${Object.keys(value).slice(0, 10).join(', ')}...`);
+      // Check if object contains functions
+      for (const [k, v] of Object.entries(value)) {
+        if (typeof v === 'function') {
+          console.error(`  Contains function at key "${k}": ${v.toString().substring(0, 100)}...`);
+        }
+      }
+    }
+    console.error(`===========================\n`);
+  }
+
   async execute<T = unknown>(
     code: string,
     context: VMContext = {},
@@ -220,24 +239,7 @@ export class VMSandboxSimple {
               console.error(`Error serializing/setting key ${key}:`, serError.message);
               // Check if it's the specific cloning error
               if (serError instanceof Error && serError.message.includes('could not be cloned')) {
-                console.error(`\n=== CLONING ERROR DETAILS ===`);
-                console.error(`Key: "${key}"`);
-                console.error(`Type: ${typeof value}`);
-                if (typeof value === 'function') {
-                  console.error(`Function string: ${value.toString().substring(0, 200)}...`);
-                  console.error(`Function name: ${value.name}`);
-                } else if (typeof value === 'object' && value !== null) {
-                  console.error(`Object keys: ${Object.keys(value).slice(0, 10).join(', ')}...`);
-                  // Check if object contains functions
-                  for (const [k, v] of Object.entries(value)) {
-                    if (typeof v === 'function') {
-                      console.error(
-                        `  Contains function at key "${k}": ${v.toString().substring(0, 100)}...`
-                      );
-                    }
-                  }
-                }
-                console.error(`===========================\n`);
+                this.logCloningError(key, value);
                 throw serError; // Re-throw to identify the problematic key
               }
               throw serError;
