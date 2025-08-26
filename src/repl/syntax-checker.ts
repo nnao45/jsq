@@ -100,11 +100,11 @@ function processStringLiterals(
   callback: (index: number, char: string) => boolean
 ): { inString: boolean } {
   let inString = false;
-  let stringChar = '';
+  let stringChar: string | undefined;
 
   for (let i = 0; i < expression.length; i++) {
-    const char = expression[i];
-    const prevChar = i > 0 ? expression[i - 1] : '';
+    const char = expression.charAt(i);
+    const prevChar = i > 0 ? expression.charAt(i - 1) : '';
 
     if (handleStringDelimiter(char, prevChar, inString, stringChar)) {
       const result = updateStringState(char, inString, stringChar);
@@ -125,7 +125,7 @@ function handleStringDelimiter(
   char: string,
   prevChar: string,
   _inString: boolean,
-  _stringChar: string
+  _stringChar: string | undefined
 ): boolean {
   return (char === '"' || char === "'") && prevChar !== '\\\\';
 }
@@ -133,8 +133,8 @@ function handleStringDelimiter(
 function updateStringState(
   char: string,
   inString: boolean,
-  stringChar: string
-): { inString: boolean; stringChar: string } {
+  stringChar: string | undefined
+): { inString: boolean; stringChar: string | undefined } {
   if (!inString) {
     return { inString: true, stringChar: char };
   }

@@ -22,7 +22,7 @@ interface WorkerResult {
 
 interface QueuedTask {
   task: WorkerTask;
-  resolve: (result: WorkerResult) => void;
+  resolve: (result: unknown[]) => void;
   reject: (error: Error) => void;
 }
 
@@ -30,7 +30,7 @@ interface WorkerInfo {
   worker: Worker;
   busy: boolean;
   id: number;
-  currentTask?: QueuedTask;
+  currentTask: QueuedTask | undefined;
 }
 
 export class WorkerPool {
@@ -61,6 +61,7 @@ export class WorkerPool {
         worker,
         busy: false,
         id: i,
+        currentTask: undefined,
       };
 
       // Setup worker event handlers
@@ -172,7 +173,7 @@ export class WorkerPool {
     if (result.error) {
       queuedTask.reject(new Error(`Worker error: ${result.error}`));
     } else {
-      queuedTask.resolve(result);
+      queuedTask.resolve(result.results);
     }
 
     // Process next task in queue

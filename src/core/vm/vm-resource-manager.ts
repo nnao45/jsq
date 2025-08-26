@@ -1,4 +1,20 @@
-import type ivm from 'isolated-vm';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ivm = require('isolated-vm') as {
+  Isolate: {
+    new (options?: {
+      memoryLimit?: number;
+      cpuTimeLimit?: number;
+      inspector?: boolean;
+    }): {
+      createContext(): Promise<unknown>;
+      dispose(): void;
+      getHeapStatistics(): { totalHeapSize: number; usedHeapSize: number };
+      isDisposed?: boolean;
+    };
+  };
+};
+
+type IvmIsolate = InstanceType<typeof ivm.Isolate>;
 
 import type { ExecutionMetrics } from '@/types/sandbox';
 
@@ -27,7 +43,7 @@ export class VMResourceManager {
     {
       startTime: number;
       startMemory: number;
-      isolate: ivm.Isolate;
+      isolate: IvmIsolate;
       executionId: string;
     }
   >();
@@ -35,9 +51,9 @@ export class VMResourceManager {
   constructor(limits: Partial<ResourceLimits> = {}) {
     this.limits = {
       memoryLimit: limits.memoryLimit ?? 128,
-      cpuTimeLimit: limits.cpuTimeLimit,
+      ...(limits.cpuTimeLimit && { cpuTimeLimit: limits.cpuTimeLimit }),
       wallTimeLimit: limits.wallTimeLimit ?? 30000,
-      heapSnapshotLimit: limits.heapSnapshotLimit,
+      ...(limits.heapSnapshotLimit && { heapSnapshotLimit: limits.heapSnapshotLimit }),
       maxContextSize: limits.maxContextSize ?? 10 * 1024 * 1024,
       maxStringLength: limits.maxStringLength ?? 1024 * 1024,
       maxArrayLength: limits.maxArrayLength ?? 100000,
@@ -47,7 +63,7 @@ export class VMResourceManager {
   /**
    * Create a monitored isolate with resource limits
    */
-  createManagedIsolate(): ivm.Isolate {
+  createManagedIsolate(): IvmIsolate {
     // biome-ignore lint/suspicious/noExplicitAny: isolateOptions type varies by isolated-vm version
     const isolateOptions: any = {
       memoryLimit: this.limits.memoryLimit,
@@ -59,7 +75,7 @@ export class VMResourceManager {
       isolateOptions.cpuTimeLimit = this.limits.cpuTimeLimit;
     }
 
-    const isolate = new isolatedVM.Isolate(isolateOptions);
+    const isolate = new ivm.Isolate(isolateOptions);
 
     // Set up memory monitoring
     this.setupMemoryMonitoring(isolate);
@@ -70,7 +86,7 @@ export class VMResourceManager {
   /**
    * Start monitoring an execution
    */
-  startExecution(isolate: ivm.Isolate): string {
+  startExecution(isolate: IvmIsolate): string {
     const executionId = this.generateExecutionId();
     const startTime = Date.now();
     const startMemory = process.memoryUsage().heapUsed;
@@ -291,7 +307,7 @@ export class VMResourceManager {
     return value;
   }
 
-  private setupMemoryMonitoring(isolate: ivm.Isolate): void {
+  private setupMemoryMonitoring(isolate: IvmIsolate): void {
     // Set up periodic memory monitoring
     const monitoringInterval = 1000; // 1 second
 
@@ -316,7 +332,7 @@ export class VMResourceManager {
   }
 
   // biome-ignore lint/suspicious/noExplicitAny: Heap statistics structure varies
-  private async getHeapStatistics(_isolate: ivm.Isolate): Promise<any> {
+  private async getHeapStatistics(_isolate: IvmIsolate): Promise<any> {
     try {
       // Try to get heap statistics from the isolate
       // This is a simplified version - real implementation would use V8 APIs
@@ -386,7 +402,7 @@ export class VMResourceManager {
     return 16; // Default size for unknown types
   }
 
-  private estimateContextSize(_isolate: ivm.Isolate): number {
+  private estimateContextSize(_isolate: IvmIsolate): number {
     // This is a simplified estimation
     // In a real implementation, you'd use V8 APIs to get actual context size
     return process.memoryUsage().heapUsed;

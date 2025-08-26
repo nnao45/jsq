@@ -2,7 +2,7 @@ import type { JsqOptions } from '@/types/cli';
 import type { VMContext, VMOptions } from '@/types/sandbox';
 import { ErrorFormatter } from '@/utils/error-formatter';
 import type { ChainableWrapper } from '../chainable/chainable';
-import { createLodashDollar } from '../lodash/lodash-unified';
+import { _ } from '../lodash/lodash-non-vm';
 import { SecurityManager } from '../security/security-manager';
 import { ExpressionTransformer } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
@@ -313,8 +313,8 @@ export class ExpressionEvaluator {
   }
 
   private async loadUtilities(): Promise<(value: unknown) => unknown> {
-    // Return createLodashDollar function to wrap data
-    return createLodashDollar;
+    // Return lodash function to wrap data
+    return _;
   }
   private async executeInVMSandbox(
     expression: string,
@@ -333,9 +333,12 @@ export class ExpressionEvaluator {
     }
 
     try {
+      const timeout = this.securityManager.getTimeout();
+      const memoryLimit = this.securityManager.getMemoryLimit();
+
       const vmOptions: VMOptions = {
-        timeout: this.securityManager.getTimeout(),
-        memoryLimit: this.securityManager.getMemoryLimit(),
+        ...(timeout !== undefined && { timeout }),
+        ...(memoryLimit !== undefined && { memoryLimit }),
         allowedGlobals: this.securityManager.getSecurityContext().level.allowedGlobals,
         allowNetwork: this.securityManager.getSecurityContext().level.allowNetwork,
       };

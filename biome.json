@@ -23,7 +23,10 @@
     "rules": {
       "recommended": true,
       "complexity": {
-        "noExcessiveCognitiveComplexity": { "level": "warn", "options": { "maxAllowedComplexity": 100 } },
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": { "maxAllowedComplexity": 100 }
+        },
         "noVoid": "off",
         "noStaticOnlyClass": "off"
       },

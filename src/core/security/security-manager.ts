@@ -123,7 +123,7 @@ export class SecurityManager {
     return {
       valid: errors.length === 0,
       errors,
-      formattedError,
+      ...(formattedError !== undefined && { formattedError }),
     };
   }
 
@@ -175,8 +175,8 @@ export class SecurityManager {
       level,
       options,
       warnings,
-      vmConfig,
-      capabilities,
+      ...(vmConfig !== undefined && { vmConfig }),
+      ...(capabilities !== undefined && { capabilities }),
     };
   }
 
@@ -187,9 +187,9 @@ export class SecurityManager {
       allowFileSystem: false,
       allowDynamicImports: false,
       allowedGlobals: [], // Allow all globals but in VM
-      timeout: options.cpuLimit || 30000, // 30 second default timeout in sandbox mode
-      memoryLimit: options.memoryLimit || 128, // 128MB default in sandbox mode
-      cpuLimit: options.cpuLimit, // Optional CPU limit
+      timeout: Number(options.cpuLimit) || 30000, // 30 second default timeout in sandbox mode
+      memoryLimit: Number(options.memoryLimit) || 128, // 128MB default in sandbox mode
+      ...(options.cpuLimit && { cpuLimit: Number(options.cpuLimit) }), // Optional CPU limit
       maxContextSize: 10 * 1024 * 1024, // 10MB context size
       useVM: true,
     };
@@ -202,16 +202,16 @@ export class SecurityManager {
       allowFileSystem: true,
       allowDynamicImports: true,
       allowedGlobals: [], // Allow all globals in unsafe mode
-      timeout: undefined, // No timeout in unsafe mode
+      // No timeout in unsafe mode
       useVM: false, // Don't use VM in unsafe mode
     };
   }
 
   private createSandboxVMConfig(options: JsqOptions): VMSandboxConfig {
     return {
-      memoryLimit: options.memoryLimit || 128,
-      timeout: options.cpuLimit || 30000,
-      cpuLimit: options.cpuLimit,
+      memoryLimit: Number(options.memoryLimit) || 128,
+      timeout: Number(options.cpuLimit) || 30000,
+      ...(options.cpuLimit && { cpuLimit: Number(options.cpuLimit) }),
       enableAsync: true,
       enableGenerators: true,
       enableProxies: false,

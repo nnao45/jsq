@@ -31,7 +31,7 @@ export function skipIfNoVM(testName: string): void {
  */
 export function testWithVM(
   testName: string,
-  testFn: () => void | Promise<void>,
+  testFn: (() => void) | (() => Promise<void>),
   timeout?: number
 ): void {
   if (isIsolatedVMAvailable()) {

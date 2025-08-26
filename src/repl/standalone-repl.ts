@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { render } from 'ink';
+import { render } from 'ink/build/index.js';
 import React from 'react';
 import type { JsqOptions } from '../types/cli';
 import { detectFileFormat, readFileByFormat, validateFile } from '../utils/file-input';
+import type { SupportedFormat } from '../utils/format-parsers';
 import { isStdinAvailable, readStdin } from '../utils/input';
 import { ModernREPLApp } from './modern-repl-app';
 
@@ -27,7 +28,10 @@ async function loadInitialData(args: string[]): Promise<string> {
   const fileIndex = args.indexOf('--file');
 
   if (fileIndex !== -1 && args[fileIndex + 1]) {
-    return await loadFromFile(args[fileIndex + 1]);
+    const filePath = args[fileIndex + 1];
+    if (filePath) {
+      return await loadFromFile(filePath);
+    }
   }
 
   if (isStdinAvailable()) {
@@ -48,7 +52,7 @@ async function loadFromFile(filePath: string): Promise<string> {
   }
 }
 
-async function processFileContent(filePath: string, format: string): Promise<string> {
+async function processFileContent(filePath: string, format: SupportedFormat): Promise<string> {
   const content = await readFileByFormat(filePath, format);
 
   if (format === 'json') {

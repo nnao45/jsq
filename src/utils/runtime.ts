@@ -17,9 +17,11 @@ interface BunGlobal {
   version?: string;
 }
 
-interface RuntimeGlobalThis extends GlobalThis {
+interface RuntimeGlobalThis {
   Deno?: DenoGlobal;
   Bun?: BunGlobal;
+  process?: NodeJS.Process;
+  [key: string]: unknown;
 }
 
 /**
@@ -119,7 +121,7 @@ export function getRuntimeGlobals() {
     case 'deno':
       return {
         process: runtimeGlobal.Deno?.process || globalThis.process,
-        env: runtimeGlobal.Deno?.env?.toObject() || {},
+        env: runtimeGlobal.Deno?.env?.toObject?.() || {},
         cwd: () => runtimeGlobal.Deno?.cwd?.() || '/',
         exit: (code: number) => runtimeGlobal.Deno?.exit?.(code),
       };

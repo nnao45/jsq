@@ -206,7 +206,7 @@ export function createSmartDollar(data: unknown) {
   });
 
   // Attach chainable methods
-  attachChainableMethods($, data);
+  attachChainableMethods($ as unknown as Record<string, unknown>, data);
 
   // Add other special handlers
   Object.defineProperty($, 'toJSON', {
@@ -249,7 +249,7 @@ function attachChainableMethods(target: Record<string, unknown>, originalData: u
   for (const methodName of CHAINABLE_METHODS) {
     if (
       methodName in wrapper &&
-      typeof (wrapper as Record<string, unknown>)[methodName] === 'function'
+      typeof (wrapper as unknown as Record<string, unknown>)[methodName] === 'function'
     ) {
       // For objects, check if property already exists (data property takes precedence)
       if (
@@ -264,7 +264,11 @@ function attachChainableMethods(target: Record<string, unknown>, originalData: u
 
       Object.defineProperty(target, methodName, {
         value: (...args: unknown[]) => {
-          const result = (wrapper as Record<string, unknown>)[methodName](...args);
+          const method = (wrapper as unknown as Record<string, unknown>)[methodName];
+          if (typeof method !== 'function') {
+            throw new Error(`${methodName} is not a function`);
+          }
+          const result = method(...args);
 
           // For arrays, return ChainableWrapper as-is for chaining
           if (Array.isArray(originalData)) {
