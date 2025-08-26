@@ -4,8 +4,8 @@
  */
 import { parentPort } from 'node:worker_threads';
 import type { JsqOptions } from '@/types/cli';
-import { ExpressionEvaluator } from '../evaluator';
-import { JsonParser } from '../parser';
+import { ExpressionEvaluator } from '../lib/evaluator';
+import { JsonParser } from '../lib/parser';
 
 interface WorkerTask {
   id: number;

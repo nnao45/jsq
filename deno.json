@@ -30,8 +30,8 @@
     "papaparse": "npm:papaparse@^5.5.3"
   },
   "tasks": {
-    "dev": "deno run --allow-all --watch src/simple-cli.ts",
-    "start": "deno run --allow-all src/simple-cli.ts",
+    "dev": "deno run --allow-all --watch src/index.ts",
+    "start": "deno run --allow-all src/index.ts",
     "test": "deno test --allow-all",
     "bench": "deno bench --allow-all",
     "check": "deno check src/**/*.ts",

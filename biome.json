@@ -24,7 +24,8 @@
       "recommended": true,
       "complexity": {
         "noExcessiveCognitiveComplexity": { "level": "warn", "options": { "maxAllowedComplexity": 100 } },
-        "noVoid": "off"
+        "noVoid": "off",
+        "noStaticOnlyClass": "off"
       },
       "correctness": {
         "noUnusedVariables": "warn",
@@ -68,6 +69,17 @@
           },
           "correctness": {
             "useYield": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/smart-dollar-non-vm.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noImplicitAnyLet": "off"
           }
         }
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
-import { ExpressionEvaluator } from '../evaluator';
+import { ExpressionEvaluator } from '../lib/evaluator';
 
 describe('Lodash-like Methods', () => {
   let evaluator: ExpressionEvaluator;
@@ -484,11 +484,11 @@ describe('Lodash-like Methods', () => {
       ]);
     });
 
-    it('should work with compound operations mixing ChainableWrapper and lodash', async () => {
+    it('should work with compound operations mixing ChainableWrapper jquery and lodash', async () => {
       const data = { items: [1, null, [2, 3], undefined, [4, [5]]] };
 
       // Test compound operations: compact + flattenDeep
-      const result = await evaluator.evaluate('_.compact(_.flattenDeep($.items))', data);
+      const result = await evaluator.evaluate('$.compact(_.flattenDeep($.items))', data);
       expect(result).toEqual([1, 2, 3, 4, 5]);
     });
 

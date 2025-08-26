@@ -2,19 +2,43 @@ export const SMART_DOLLAR_METHODS = `
 if (typeof smartDollarMethods === 'undefined') {
   globalThis.smartDollarMethods = {
   // Array methods
-  map: function(fn) {
-    if (this._value === null || this._value === undefined) {
+  map: function(dataOrFn, fn) {
+    // Handle both $.map(array, fn) and array.map(fn) usage
+    let data, mapFn;
+    if (arguments.length === 1) {
+      // Instance method: array.map(fn)
+      data = this._value;
+      mapFn = dataOrFn;
+    } else {
+      // Static method: $.map(array, fn)
+      data = dataOrFn;
+      mapFn = fn;
+    }
+    
+    if (data === null || data === undefined) {
       return new this.constructor([]);
     }
-    const mapped = Array.from(this._value).map((item, index) => fn(item, index, this._value));
+    const mapped = Array.from(data).map((item, index) => mapFn(item, index, data));
     return new this.constructor(mapped);
   },
   
-  filter: function(fn) {
-    if (this._value === null || this._value === undefined) {
+  filter: function(dataOrFn, fn) {
+    // Handle both $.filter(array, fn) and array.filter(fn) usage
+    let data, filterFn;
+    if (arguments.length === 1) {
+      // Instance method: array.filter(fn)
+      data = this._value;
+      filterFn = dataOrFn;
+    } else {
+      // Static method: $.filter(array, fn)
+      data = dataOrFn;
+      filterFn = fn;
+    }
+    
+    if (data === null || data === undefined) {
       return new this.constructor([]);
     }
-    const filtered = Array.from(this._value).filter((item, index) => fn(item, index, this._value));
+    const filtered = Array.from(data).filter((item, index) => filterFn(item, index, data));
     return new this.constructor(filtered);
   },
   
@@ -444,17 +468,21 @@ if (typeof smartDollarMethods === 'undefined') {
     return new this.constructor(mapped);
   },
   
-  flattenDeep: function() {
+  flattenDeep: function(data) {
     const flattenDeepRecursive = (arr) => {
       return arr.reduce((acc, val) => 
         acc.concat(Array.isArray(val) ? flattenDeepRecursive(val) : val), []);
     };
-    const flattened = flattenDeepRecursive(Array.from(this._value));
+    // If called with an argument, use that instead of this._value
+    const target = arguments.length > 0 ? data : this._value;
+    const flattened = flattenDeepRecursive(Array.from(target));
     return new this.constructor(flattened);
   },
   
-  compact: function() {
-    const compacted = Array.from(this._value).filter(Boolean);
+  compact: function(data) {
+    // If called with an argument, use that instead of this._value
+    const target = arguments.length > 0 ? data : this._value;
+    const compacted = Array.from(target).filter(Boolean);
     return new this.constructor(compacted);
   },
   

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
-import { ExpressionEvaluator } from './core/evaluator';
+import { ExpressionEvaluator } from './core/lib/evaluator';
 import type { JsqOptions } from './types/cli';
 
 describe('Native JavaScript Compatibility Tests', () => {

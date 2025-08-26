@@ -57,6 +57,12 @@ export class OutputFormatter {
     return this.formatPretty(data);
   }
 
+  // Static method for quick formatting
+  static format(data: unknown, options: JsqOptions = {}): string {
+    const formatter = new OutputFormatter(options);
+    return formatter.format(data);
+  }
+
   private formatOneline(data: unknown): string {
     return this.formatCompact(data);
   }
@@ -165,11 +171,5 @@ export class OutputFormatter {
     }
 
     return result;
-  }
-
-  // Static method for quick formatting
-  static format(data: unknown, options: JsqOptions = {}): string {
-    const formatter = new OutputFormatter(options);
-    return formatter.format(data);
   }
 }

@@ -6,14 +6,14 @@ import type { LodashMethods, MethodImplementation } from '../types/common-method
  */
 
 // Helper function to create methods for both VM and non-VM environments
-function createMethods<T>(value: T, constructor: any) {
+function createMethods<T>(value: T, ctor: any) {
   const methods = {
     _value: value,
-    constructor: constructor,
+    constructor: ctor,
   };
 
   // Bind all methods from the prototype to the instance with proper context
-  const proto = constructor.prototype;
+  const proto = ctor.prototype;
   Object.getOwnPropertyNames(proto).forEach(name => {
     if (name !== 'constructor' && typeof proto[name] === 'function') {
       (methods as any)[name] = proto[name].bind(methods);

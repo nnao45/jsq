@@ -1,7 +1,7 @@
 import type { JsqOptions, ProcessingResult } from '@/types/cli';
+import { type StreamProcessingOptions, StreamProcessor } from '../stream/stream-processor';
 import { ExpressionEvaluator } from './evaluator';
 import { JsonParser } from './parser';
-import { type StreamProcessingOptions, StreamProcessor } from './stream/stream-processor';
 
 export class JsqProcessor {
   private parser: JsonParser;
