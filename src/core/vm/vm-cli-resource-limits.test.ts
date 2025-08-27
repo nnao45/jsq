@@ -1,4 +1,4 @@
-import { describe, expect } from '@jest/globals';
+import { describe, expect } from 'vitest';
 import { describeWithVM, testWithVM } from '@/test/vm-helpers';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from '../lib/evaluator';

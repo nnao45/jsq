@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, afterEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { JsqProcessor } from './processor';
 
@@ -340,10 +340,10 @@ describe('JsqProcessor', () => {
     it('should handle stream processing without errors', async () => {
       const mockStream = {
         readable: true,
-        on: jest.fn(),
-        once: jest.fn(),
-        removeListener: jest.fn(),
-        pipe: jest.fn(),
+        on: vi.fn(),
+        once: vi.fn(),
+        removeListener: vi.fn(),
+        pipe: vi.fn(),
       } as NodeJS.ReadableStream;
       const expression = '$.test';
 

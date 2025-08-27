@@ -4,7 +4,8 @@ import {
   type QuickJSRuntime, 
   type QuickJSWASMModule,
   VmCallResult,
-  getQuickJS
+  getQuickJS,
+  getQuickJSSync
 } from 'quickjs-emscripten';
 import type {
   VMEngine,
@@ -22,8 +23,13 @@ export class QuickJSExecutionContext implements VMExecutionContext {
   
   constructor(
     private vm: QuickJSContext,
+    private runtime: QuickJSRuntime,
     private marshaller: ValueMarshaller
   ) {}
+  
+  private addHandle(handle: QuickJSHandle): void {
+    this.handles.push(handle);
+  }
 
   async setGlobal(name: string, value: unknown): Promise<void> {
     
@@ -78,12 +84,11 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       // Set the parsed value as global property
       this.vm.setProp(globalHandle, name, result.value);
       
-      // Clean up handles
+      // Clean up handles immediately after setting property
       result.value.dispose();
       jsonHandle.dispose();
       nameHandle.dispose();
     } catch (error) {
-      console.error(`Failed to set global ${name}:`, error);
       throw error;
     }
   }
@@ -106,7 +111,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
           }
           errorTypeProp.dispose();
         } catch (e) {
-          console.error('Failed to get error type:', e);
+          // Failed to get error type
         }
         
         try {
@@ -134,7 +139,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
             }
             msgProp.dispose();
           } catch (e2) {
-            console.error('Failed to get error message:', e2);
+            // Failed to get error message
           }
         }
         
@@ -146,6 +151,57 @@ export class QuickJSExecutionContext implements VMExecutionContext {
         throw new Error(`${errorType}: ${errorMsg}\nCode: ${codeSnippet}${errorDetails ? '\nStack: ' + errorDetails : ''}`);
       }
       
+      // Try to dump the result directly
+      try {
+        const value = this.vm.dump(result.value);
+        result.value.dispose();
+        return value;
+      } catch (dumpError) {
+        // If dump fails, it might be a Promise - try to resolve it
+        if (dumpError instanceof Error && dumpError.message.includes('Lifetime not alive')) {
+          // Execute pending jobs to resolve promises
+          const maxIterations = 100;
+          let lastJobCount = -1;
+          
+          for (let i = 0; i < maxIterations; i++) {
+            const jobCount = this.runtime.executePendingJobs();
+            
+            if (jobCount === 0) {
+              // No more jobs to execute
+              break;
+            }
+            
+            if (jobCount < 0) {
+              // Error executing jobs
+              result.value.dispose();
+              throw new Error('Error executing pending jobs');
+            }
+            
+            // Prevent infinite loop
+            if (jobCount === lastJobCount) {
+              break;
+            }
+            lastJobCount = jobCount;
+          }
+          
+          // Try to dump again after executing jobs
+          try {
+            const value = this.vm.dump(result.value);
+            result.value.dispose();
+            return value;
+          } catch (secondDumpError) {
+            // Still can't dump - likely unresolved promise
+            result.value.dispose();
+            throw new Error(`Failed to resolve async operation: ${secondDumpError}`);
+          }
+        } else {
+          // Other dump error
+          result.value.dispose();
+          throw dumpError;
+        }
+      }
+      
+      // For non-async code, just dump and return
       const value = this.vm.dump(result.value);
       result.value.dispose();
       return value;
@@ -156,11 +212,22 @@ export class QuickJSExecutionContext implements VMExecutionContext {
   }
 
   release(): void {
+    // ディスポーズ前に全てのハンドルを解放
+    for (const handle of this.handles) {
+      try {
+        handle.dispose();
+      } catch {
+        // エラーは無視
+      }
+    }
+    this.handles = [];
+    
+    // その後VMを破棄
     this.vm.dispose();
   }
 }
 
-// Singleton to manage QuickJS instances
+// Singleton to manage QuickJS WASM module (NOT runtime)
 class QuickJSManager {
   private static instance: QuickJSManager | null = null;
   private quickjs: QuickJSWASMModule | null = null;
@@ -181,6 +248,14 @@ class QuickJSManager {
     
     if (!this.quickjs || !this.initialized) {
       try {
+        // Try sync version first (works better with Jest)
+        if (typeof getQuickJSSync === 'function') {
+          this.quickjs = getQuickJSSync();
+          this.initialized = true;
+          return this.quickjs;
+        }
+        
+        // Fallback to async version
         this.quickjs = await getQuickJS();
         this.initialized = true;
       } catch (error) {
@@ -192,7 +267,7 @@ class QuickJSManager {
             this.initError = new Error(
               'QuickJS cannot be initialized in the current environment. ' +
               'Jest tests require --experimental-vm-modules flag. ' +
-              'Use JSQ_VM_ENGINE=isolated-vm for tests or run with NODE_OPTIONS=--experimental-vm-modules'
+              'Run with NODE_OPTIONS=--experimental-vm-modules'
             );
           } else {
             this.initError = error;
@@ -212,6 +287,7 @@ export class QuickJSEngine implements VMEngine {
   private runtime: QuickJSRuntime | null = null;
   private config: VMSandboxConfig | null = null;
   private marshaller = new QuickJSMarshaller();
+  private activeContexts: QuickJSExecutionContext[] = [];
 
   async initialize(config: VMSandboxConfig): Promise<void> {
     this.config = config;
@@ -243,7 +319,9 @@ export class QuickJSEngine implements VMEngine {
     
     // TODO: コンソールサポートは後で追加
     
-    return new QuickJSExecutionContext(vm, this.marshaller);
+    const context = new QuickJSExecutionContext(vm, this.runtime, this.marshaller);
+    this.activeContexts.push(context);
+    return context;
   }
 
   async execute(
@@ -296,6 +374,17 @@ export class QuickJSEngine implements VMEngine {
   }
 
   async dispose(): Promise<void> {
+    // First dispose all active contexts
+    for (const context of this.activeContexts) {
+      try {
+        context.release();
+      } catch {
+        // Ignore errors during context disposal
+      }
+    }
+    this.activeContexts = [];
+    
+    // Then dispose runtime
     if (this.runtime) {
       this.runtime.dispose();
       this.runtime = null;

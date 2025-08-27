@@ -1,9 +1,18 @@
 // Test setup and configuration
-import { jest } from '@jest/globals';
+import { beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { getQuickJS } from 'quickjs-emscripten';
 
 // Global test setup
-beforeAll(() => {
+beforeAll(async () => {
   // Setup global test environment
+  
+  // Always initialize QuickJS (isolated-vm is deprecated)
+  try {
+    await getQuickJS();
+    console.log('QuickJS initialized for sync access');
+  } catch (error) {
+    console.warn('Failed to initialize QuickJS:', error);
+  }
 });
 
 afterAll(() => {
@@ -12,15 +21,15 @@ afterAll(() => {
 
 beforeEach(() => {
   // Reset mocks before each test
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 // Mock console methods in tests to avoid noise
 global.console = {
   ...console,
   // Uncomment to silence console logs in tests
-  // log: jest.fn(),
-  // error: jest.fn(),
-  // warn: jest.fn(),
-  // info: jest.fn(),
+  // log: vi.fn(),
+  // error: vi.fn(),
+  // warn: vi.fn(),
+  // info: vi.fn(),
 };

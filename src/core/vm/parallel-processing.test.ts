@@ -1,5 +1,5 @@
 import { Readable, Transform } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { JsqProcessor } from '../lib/processor';
 import type { StreamProcessingOptions } from '../stream/stream-processor';
@@ -8,12 +8,12 @@ import type { StreamProcessingOptions } from '../stream/stream-processor';
 const originalConsoleError = console.error;
 
 // Mock WorkerPool to avoid import.meta.url issues in Jest
-jest.mock('./worker-pool', () => {
+vi.mock('./worker-pool', () => {
   return {
-    WorkerPool: jest.fn().mockImplementation(() => {
+    WorkerPool: vi.fn().mockImplementation(() => {
       return {
-        initialize: jest.fn().mockResolvedValue(undefined),
-        processTask: jest.fn().mockImplementation(async (batch: string[], expression: string) => {
+        initialize: vi.fn().mockResolvedValue(undefined),
+        processTask: vi.fn().mockImplementation(async (batch: string[], expression: string) => {
           // Simulate parallel processing by processing each line
           const results = batch
             .map(line => {
@@ -34,12 +34,12 @@ jest.mock('./worker-pool', () => {
             .filter(result => result !== null);
           return results;
         }),
-        getStats: jest.fn().mockReturnValue({
+        getStats: vi.fn().mockReturnValue({
           totalWorkers: 4,
           busyWorkers: 2,
           queueLength: 0,
         }),
-        shutdown: jest.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockResolvedValue(undefined),
       };
     }),
   };
@@ -57,7 +57,7 @@ describe('Parallel Processing', () => {
     processor = new JsqProcessor(options);
 
     // Mock console.error to reduce test noise
-    console.error = jest.fn();
+    console.error = vi.fn();
   });
 
   afterEach(async () => {

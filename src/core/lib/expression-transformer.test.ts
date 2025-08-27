@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { ExpressionTransformer, transformExpression } from './expression-transformer';
 
 describe('Expression Transformer Tests', () => {

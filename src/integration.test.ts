@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from '@jest/globals';
+import { afterEach, describe, expect, it } from 'vitest';
 
 describe('Integration Tests', () => {
   const jsqBinary = path.join(__dirname, '../dist/index.js');

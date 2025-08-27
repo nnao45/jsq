@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 import { JsqProcessor } from './processor';
 

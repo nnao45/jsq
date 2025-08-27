@@ -1,28 +1,37 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock process.stdin at the module level
-const mockStdin = {
-  isTTY: false,
-  readable: true,
-  destroyed: false,
-  once: jest.fn(),
-  on: jest.fn(),
-  setEncoding: jest.fn(),
-  removeAllListeners: jest.fn(),
-  off: jest.fn(),
-  removeListener: jest.fn(),
-};
-
-jest.mock('node:process', () => ({
-  stdin: mockStdin,
-}));
+// vi.mock must be at the top level before any imports
+vi.mock('node:process', () => {
+  const mockStdin = {
+    isTTY: false,
+    readable: true,
+    destroyed: false,
+    once: vi.fn(),
+    on: vi.fn(),
+    setEncoding: vi.fn(),
+    removeAllListeners: vi.fn(),
+    off: vi.fn(),
+    removeListener: vi.fn(),
+  };
+  
+  return {
+    default: {
+      stdin: mockStdin,
+    },
+    stdin: mockStdin,
+  };
+});
 
 // Now import the functions to test
 import { getStdinStream, isStdinAvailable, readStdin } from './input';
+import process from 'node:process';
+
+// Access mockStdin from the mocked module
+const mockStdin = process.stdin as any;
 
 describe('Input Utils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset default values
     mockStdin.isTTY = false;
     mockStdin.readable = true;
@@ -30,7 +39,7 @@ describe('Input Utils', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('isStdinAvailable', () => {

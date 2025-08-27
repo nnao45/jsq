@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from '@jest/globals';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 describe.skip('Unsafe Mode CLI Integration Tests', () => {
   const binPath = join(__dirname, '../../bin/jsq');

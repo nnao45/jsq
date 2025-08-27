@@ -1,9 +1,10 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { describeWithVM, isIsolatedVMAvailable, testWithVM } from '@/test/vm-helpers';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from '../lib/evaluator';
 
 // Mock console.error to capture security warnings
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 afterEach(() => {
   mockConsoleError.mockClear();

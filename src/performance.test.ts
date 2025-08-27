@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ExpressionEvaluator } from './core/lib/evaluator';
 import { JsqProcessor } from './core/lib/processor';
 import type { JsqOptions } from './types/cli';

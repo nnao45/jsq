@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import type { MethodTestCase } from '../../types/common-methods';
 import { _ } from '../lodash/lodash-non-vm';
 import { type ChainableWrapper, createSmartDollar } from '../smart-dollar/smart-dollar-non-vm';
