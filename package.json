@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.1.23",
+  "version": "0.1.25",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "main": "dist/index.js",
   "bin": {
@@ -18,7 +18,7 @@
     "dev:deno": "deno run --allow-all src/index.ts",
     "dev:web": "vite",
     "preview:web": "vite preview",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:quickjs": "FORCE_QUICKJS=true vitest",
     "test:bun": "bun test",
     "test:deno": "deno test --allow-all",
@@ -41,7 +41,7 @@
     "start:deno": "deno run --allow-all dist/index-deno.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run format && npm run lint:fix && npm run lint && npm run check && npm run build && npm run test",
-    "relase:patch": "./bump-version.sh patch &&  npm run check:fix && npm publish --access public"
+    "relase:patch": "./bump-version.sh patch && npm publish --access public"
   },
   "keywords": [
     "json",
