@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ matrix.node-version }}-
+          
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run type checking
+      run: npm run typecheck
+      
+    - name: Run linting
+      run: npm run lint
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Build project
+      run: npm run build
+      
+  build-multi-platform:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+        
+    - name: Setup Deno
+      uses: denoland/setup-deno@v1
+      with:
+        deno-version: v1.x
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build for Node.js
+      run: npm run build
+      
+    - name: Build for Bun
+      run: npm run build:bun
+      
+    - name: Build for Deno
+      run: npm run build:deno
+      
+  test-examples:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Cache web-ui dependencies
+      uses: actions/cache@v4
+      with:
+        path: examples/web-ui/node_modules
+        key: ${{ runner.os }}-web-ui-${{ hashFiles('examples/web-ui/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-web-ui-
+          
+    - name: Build web-ui example
+      working-directory: examples/web-ui
+      run: |
+        npm ci
+        npm run build
+        
+  test-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Cache docs-site dependencies
+      uses: actions/cache@v4
+      with:
+        path: docs-site/node_modules
+        key: ${{ runner.os }}-docs-site-${{ hashFiles('docs-site/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-docs-site-
+          
+    - name: Build documentation site
+      working-directory: docs-site
+      run: |
+        npm ci
+        npm run build
