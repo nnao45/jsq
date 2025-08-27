@@ -14,7 +14,7 @@ import type { VMEngine } from './interfaces/VMEngine';
  */
 export class VMSandboxQuickJS {
   private config: VMSandboxConfig;
-  private engine: VMEngine | null = null;
+  // private engine: VMEngine | null = null;
 
   constructor(options: Partial<VMSandboxConfig> = {}) {
     this.config = {
@@ -30,16 +30,14 @@ export class VMSandboxQuickJS {
     };
   }
 
-  private async getEngine(): Promise<VMEngine> {
-    if (!this.engine) {
-      const factory = new VMEngineFactory();
-      this.engine = factory.create('quickjs');
-      await this.engine.initialize({
-        memoryLimit: this.config.memoryLimit * 1024 * 1024, // Convert MB to bytes
-      });
-    }
-    return this.engine;
-  }
+  // private async getEngine(): Promise<VMEngine> {
+  //   if (!this.engine) {
+  //     const factory = new VMEngineFactory();
+  //     this.engine = factory.create('quickjs');
+  //     await this.engine.initialize(this.config);
+  //   }
+  //   return this.engine;
+  // }
 
   async execute<T = unknown>(
     code: string,
@@ -47,7 +45,7 @@ export class VMSandboxQuickJS {
     options: VMOptions = {}
   ): Promise<VMResult<T>> {
     
-    const startTime = Date.now();
+    // const startTime = Date.now();
     let execContext: any = null;
     let engine: VMEngine | null = null;
 
@@ -55,9 +53,7 @@ export class VMSandboxQuickJS {
       // QuickJSでは毎回新しいエンジンを作成する（メモリリークを防ぐため）
       const factory = new VMEngineFactory();
       engine = factory.create('quickjs');
-      await engine.initialize({
-        memoryLimit: this.config.memoryLimit * 1024 * 1024, // Convert MB to bytes
-      });
+      await engine.initialize(this.config);
       
       // Create a new execution context
       execContext = await engine.createContext();
@@ -65,13 +61,25 @@ export class VMSandboxQuickJS {
       // Set up console first (QuickJS needs this for debugging)
       // We need to create console inside the QuickJS context
       try {
+        // Set up a way to collect console calls
         await execContext.eval(`
+          globalThis.__consoleCalls = [];
           globalThis.console = {
-            log: function() {},
-            error: function() {},
-            warn: function() {},
-            info: function() {},
-            debug: function() {}
+            log: function(...args) {
+              globalThis.__consoleCalls.push({ method: 'log', args: args });
+            },
+            error: function(...args) {
+              globalThis.__consoleCalls.push({ method: 'error', args: args });
+            },
+            warn: function(...args) {
+              globalThis.__consoleCalls.push({ method: 'warn', args: args });
+            },
+            info: function(...args) {
+              globalThis.__consoleCalls.push({ method: 'info', args: args });
+            },
+            debug: function(...args) {
+              globalThis.__consoleCalls.push({ method: 'debug', args: args });
+            }
           };
         `);
       } catch (err) {
@@ -81,8 +89,8 @@ export class VMSandboxQuickJS {
       // Set up context variables
       let needsLodash = false;
       for (const [key, value] of Object.entries(context)) {
-        // Skip built-in globals that are already set up
-        if (['console', 'JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)) {
+        // Skip built-in globals that are already set up, except console which we want to override
+        if (['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)) {
           continue;
         }
 
@@ -102,10 +110,18 @@ export class VMSandboxQuickJS {
         // Load lodash code
         const { createVMLodashCode } = await import('../lodash/lodash-vm');
         await execContext.eval(createVMLodashCode());
-        await execContext.eval(`
-          globalThis._ = createLodash();
-        `);
+        // Note: createVMLodashCode already sets up globalThis._ correctly
+        // No need to override it here
       }
+
+      // Store the host console reference for later use
+      const hostConsole = {
+        log: (...args: any[]) => console.log(...args),
+        error: (...args: any[]) => console.error(...args),
+        warn: (...args: any[]) => console.warn(...args),
+        info: (...args: any[]) => console.info(...args),
+        debug: (...args: any[]) => console.debug(...args),
+      };
 
       // Execute the code using the engine
       // Note: We've already set up the context variables, so pass empty bindings
@@ -120,6 +136,23 @@ export class VMSandboxQuickJS {
           timeout: options.timeout ?? this.config.timeout,
         }
       );
+
+      // Process console calls after execution
+      try {
+        const consoleCalls = await execContext.eval('globalThis.__consoleCalls');
+        if (Array.isArray(consoleCalls)) {
+          for (const call of consoleCalls) {
+            if (call && typeof call === 'object' && 'method' in call && 'args' in call) {
+              const method = call.method as keyof typeof hostConsole;
+              if (method in hostConsole && Array.isArray(call.args)) {
+                hostConsole[method](...call.args);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore console processing errors
+      }
 
       // Unwrap SmartDollar objects in the VM context
       let finalValue = result.value;
@@ -151,7 +184,7 @@ export class VMSandboxQuickJS {
         }
       }
 
-      const executionTime = Math.max(1, Date.now() - startTime);
+      // const executionTime = Math.max(1, Date.now() - startTime);
 
       // Don't release context here - it will be released with engine disposal
 
@@ -161,7 +194,7 @@ export class VMSandboxQuickJS {
         memoryUsed: result.memoryUsed || 0, // QuickJS may return undefined
       };
     } catch (error) {
-      const executionTime = Math.max(1, Date.now() - startTime);
+      // const executionTime = Math.max(1, Date.now() - startTime);
       
       // Debug: Log the original error only in verbose mode
       if (process.env.NODE_ENV !== 'test' && process.env.DEBUG) {
@@ -184,11 +217,11 @@ export class VMSandboxQuickJS {
             'QuickJS requires --experimental-vm-modules flag which may not be compatible with your Node.js version. ' +
             'Run tests with NODE_OPTIONS=--experimental-vm-modules.'
           );
-          throw this.createSandboxError(initError, executionTime);
+          throw this.createSandboxError(initError, 0);
         }
       }
       
-      throw this.createSandboxError(error, executionTime);
+      throw this.createSandboxError(error, 0);
     } finally {
       // エンジンも破棄する（QuickJSのメモリリーク防止）
       if (engine) {
@@ -242,25 +275,128 @@ export class VMSandboxQuickJS {
     await context.eval(setupCode);
   }
 
+  private hasTopLevelSemicolon(expression: string): boolean {
+    let inString = false;
+    let stringChar: string | undefined = undefined;
+    let parenDepth = 0;
+    let braceDepth = 0;
+    let bracketDepth = 0;
+    
+    for (let i = 0; i < expression.length; i++) {
+      const char = expression.charAt(i);
+      const prevChar = i > 0 ? expression.charAt(i - 1) : '';
+      
+      // Handle string state
+      if (!inString && (char === '"' || char === "'" || char === '`')) {
+        inString = true;
+        stringChar = char;
+        continue;
+      }
+      
+      if (inString && char === stringChar && prevChar !== '\\') {
+        inString = false;
+        stringChar = undefined;
+        continue;
+      }
+      
+      if (inString) continue;
+      
+      // Handle bracket depth
+      if (char === '(') parenDepth++;
+      if (char === ')') parenDepth--;
+      if (char === '{') braceDepth++;
+      if (char === '}') braceDepth--;
+      if (char === '[') bracketDepth++;
+      if (char === ']') bracketDepth--;
+      
+      // Check for semicolon at top level
+      if (char === ';' && parenDepth === 0 && braceDepth === 0 && bracketDepth === 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private splitBySemicolon(expression: string): string[] {
+    const parts: string[] = [];
+    let current = '';
+    let inString = false;
+    let stringChar: string | undefined = undefined;
+    let parenDepth = 0;
+    let braceDepth = 0;
+    let bracketDepth = 0;
+    
+    for (let i = 0; i < expression.length; i++) {
+      const char = expression.charAt(i);
+      const prevChar = i > 0 ? expression.charAt(i - 1) : '';
+      
+      // Handle string state
+      if (!inString && (char === '"' || char === "'" || char === '`')) {
+        inString = true;
+        stringChar = char;
+        current += char;
+        continue;
+      }
+      
+      if (inString && char === stringChar && prevChar !== '\\') {
+        inString = false;
+        stringChar = undefined;
+        current += char;
+        continue;
+      }
+      
+      current += char;
+      if (inString) continue;
+      
+      // Handle bracket depth
+      if (char === '(') parenDepth++;
+      if (char === ')') parenDepth--;
+      if (char === '{') braceDepth++;
+      if (char === '}') braceDepth--;
+      if (char === '[') bracketDepth++;
+      if (char === ']') bracketDepth--;
+      
+      // Split at semicolon if at top level
+      if (char === ';' && parenDepth === 0 && braceDepth === 0 && bracketDepth === 0) {
+        current = current.slice(0, -1); // Remove the semicolon
+        if (current.trim()) {
+          parts.push(current.trim());
+        }
+        current = '';
+      }
+    }
+    
+    if (current.trim()) {
+      parts.push(current.trim());
+    }
+    
+    return parts;
+  }
+
   private wrapCode(code: string): string {
-    const trimmedCode = code.trim();
+    // const trimmedCode = code.trim();
     const needsAsync = code.includes('await') || code.includes('async') || code.includes('Promise.');
 
     // For QuickJS, we need simpler wrapping since it handles JavaScript more directly
     if (needsAsync) {
-      // QuickJS handles async code natively, just ensure proper unwrapping
+      // Directly execute the async code without double wrapping
       return `(async () => {
-        const __result = await (async () => { return ${code}; })();
-        // Unwrap SmartDollar if needed
-        if (__result && __result.__isSmartDollar) {
-          return __result._value || __result.value;
+        try {
+          const result = ${code};
+          // Unwrap SmartDollar if needed
+          if (result && result.__isSmartDollar) {
+            return result._value || result.value;
+          }
+          return result;
+        } catch (e) {
+          throw e;
         }
-        return __result;
-      })()`; 
-      }
+      })()`;
     } else {
       // Check if this is a simple expression or statement
-      const isExpression = !code.includes(';') && !code.includes('\n') && 
+      // Need to check for semicolons not inside strings
+      const hasTopLevelSemicolon = this.hasTopLevelSemicolon(code);
+      const isExpression = !hasTopLevelSemicolon && !code.includes('\n') && 
                           !code.startsWith('if') && !code.startsWith('for') && 
                           !code.startsWith('while') && !code.startsWith('function');
       
@@ -277,27 +413,55 @@ export class VMSandboxQuickJS {
         })()`;
       } else {
         // For statements, we need to capture the last expression
-        const statements = code.split(';').map(s => s.trim()).filter(s => s);
+        const statements = this.splitBySemicolon(code).map(s => s.trim()).filter(s => s);
         if (statements.length > 1) {
           const lastStatement = statements[statements.length - 1];
+          if (!lastStatement) {
+            return code; // 安全のためそのまま返す
+          }
           const otherStatements = statements.slice(0, -1);
           
           // Build the code with proper handling of each statement
-          const statementsCode = otherStatements.map((stmt, idx) => {
+          const statementsCode = otherStatements.map((stmt) => {
             return `${stmt};`;
           }).join('\n              ');
           
-          return `(() => {
-            try {
-              ${statementsCode}
-              return ${lastStatement};
-            } catch (error) {
-              if (error instanceof Error) {
-                throw new Error(error.message);
+          // Check if last statement is an expression or statement
+          const isLastStatementExpression = !lastStatement.trim().startsWith('if') && 
+                                           !lastStatement.trim().startsWith('for') && 
+                                           !lastStatement.trim().startsWith('while') &&
+                                           !lastStatement.trim().startsWith('function') &&
+                                           !lastStatement.trim().startsWith('let') &&
+                                           !lastStatement.trim().startsWith('const') &&
+                                           !lastStatement.trim().startsWith('var') &&
+                                           !lastStatement.trim().includes('\n{');
+          
+          if (isLastStatementExpression) {
+            return `(() => {
+              try {
+                ${statementsCode}
+                return ${lastStatement};
+              } catch (error) {
+                if (error instanceof Error) {
+                  throw new Error(error.message);
+                }
+                throw error;
               }
-              throw error;
-            }
-          })()`;
+            })()`;
+          } else {
+            return `(() => {
+              try {
+                ${statementsCode}
+                ${lastStatement};
+                return undefined;
+              } catch (error) {
+                if (error instanceof Error) {
+                  throw new Error(error.message);
+                }
+                throw error;
+              }
+            })()`;
+          }
         } else if (statements.length === 1) {
           // Single statement - just wrap it
           return `(() => {
@@ -365,7 +529,7 @@ export class VMSandboxQuickJS {
   async dispose(): Promise<void> {
     // QuickJSでは毎回新しいエンジンを作成しているので、
     // ここでは特にdisposeする必要はない
-    this.engine = null;
+    // this.engine = null;
   }
 
   getConfig(): VMSandboxConfig {

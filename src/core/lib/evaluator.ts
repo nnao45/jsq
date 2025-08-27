@@ -141,11 +141,10 @@ export class ExpressionEvaluator {
       const result = await this.executeExpression(transformedExpression, secureContext);
       return this.unwrapResult(result);
     } catch (error) {
-      // Re-throw VM/security errors as-is, wrap others
+      // Re-throw security errors as-is, wrap others
       if (
         error instanceof Error &&
-        (error.message.includes('isolated-vm package not found') ||
-          error.message.includes('Security validation failed'))
+        error.message.includes('Security validation failed')
       ) {
         throw error;
       }
@@ -368,7 +367,7 @@ export class ExpressionEvaluator {
         throw new Error('VM configuration not available');
       }
       // Check which VM engine to use
-      const engineType = getVMEngineType ? getVMEngineType() : 'isolated-vm';
+      const engineType = getVMEngineType ? getVMEngineType() : 'quickjs';
       
       if (engineType === 'quickjs' && VMSandboxQuickJS) {
         this.vmSandbox = new VMSandboxQuickJS(vmConfig);
@@ -378,7 +377,7 @@ export class ExpressionEvaluator {
       } else if (VMSandboxSimple) {
         this.vmSandbox = new VMSandboxSimple(vmConfig);
         if (this.options.verbose) {
-          console.error('Using isolated-vm engine (on-demand)');
+          console.error('Using VM engine (on-demand)');
         }
       } else {
         throw new Error('No VM sandbox available');
@@ -432,7 +431,7 @@ export class ExpressionEvaluator {
         
         if (error.message.includes('Cannot find module')) {
           throw new Error(
-            'isolated-vm package not found. Please install isolated-vm for sandbox support: npm install isolated-vm'
+            'VM module not found. Please ensure all dependencies are properly installed.'
           );
         }
         // Format VM errors with detailed position if possible

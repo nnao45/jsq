@@ -1,12 +1,14 @@
 // Test setup and configuration
-import { beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { getQuickJS } from 'quickjs-emscripten';
+
+// We'll initialize QuickJS in beforeAll hook since sync initialization is not working
 
 // Global test setup
 beforeAll(async () => {
   // Setup global test environment
   
-  // Always initialize QuickJS (isolated-vm is deprecated)
+  // Always initialize QuickJS
   try {
     await getQuickJS();
     console.log('QuickJS initialized for sync access');
@@ -17,11 +19,22 @@ beforeAll(async () => {
 
 afterAll(() => {
   // Cleanup after all tests
+  // Force garbage collection if available
+  if (global.gc) {
+    global.gc();
+  }
 });
 
 beforeEach(() => {
   // Reset mocks before each test
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  // Force garbage collection after each test to prevent memory leaks
+  if (global.gc) {
+    global.gc();
+  }
 });
 
 // Mock console methods in tests to avoid noise

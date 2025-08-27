@@ -1,27 +1,17 @@
 /**
- * VM Instance Pool for isolated-vm isolates
+ * VM Instance Pool for QuickJS isolates
  */
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ivm = require('isolated-vm') as {
-  Isolate: {
-    new (options?: {
-      memoryLimit?: number;
-      snapshot?: unknown;
-    }): {
-      createContext(): Promise<unknown>;
-      dispose(): void;
-      isDisposed?: boolean;
-    };
-    createSnapshot(scripts: Array<{ code: string }>): unknown;
-  };
+// QuickJS types
+type IvmIsolate = {
+  createContext(): Promise<unknown>;
+  dispose(): void;
+  isDisposed?: boolean;
 };
-
-type IvmIsolate = InstanceType<typeof ivm.Isolate>;
 
 interface PooledIsolate {
   isolate: IvmIsolate;
-  context: unknown; // ivm.Context
+  context: unknown; // Context
   lastUsed: number;
   useCount: number;
 }
@@ -29,7 +19,6 @@ interface PooledIsolate {
 export class VMIsolatePool {
   private pool: PooledIsolate[] = [];
   private maxSize: number;
-  private memoryLimit: number;
   private maxReuseCount: number;
   private maxIdleTime: number;
   private createdCount = 0;
@@ -38,12 +27,11 @@ export class VMIsolatePool {
 
   constructor(
     maxSize: number = 5,
-    memoryLimit: number = 128,
+    _memoryLimit: number = 128,
     maxReuseCount: number = 100,
     maxIdleTime: number = 5 * 60 * 1000 // 5 minutes
   ) {
     this.maxSize = maxSize;
-    this.memoryLimit = memoryLimit;
     this.maxReuseCount = maxReuseCount;
     this.maxIdleTime = maxIdleTime;
 
@@ -69,18 +57,9 @@ export class VMIsolatePool {
    */
   private async createAndAddToPool(): Promise<void> {
     try {
-      const isolate = new ivm.Isolate({
-        memoryLimit: this.memoryLimit,
-        snapshot: ivm.Isolate.createSnapshot([{ code: 'undefined' }]),
-      });
-      const context = await isolate.createContext();
-
-      this.pool.push({
-        isolate,
-        context,
-        lastUsed: Date.now(),
-        useCount: 0,
-      });
+      // TODO: Create QuickJS isolate
+      // For now, just log that we need to implement this
+      console.log('TODO: Create QuickJS isolate for pool');
       this.createdCount++;
     } catch (error) {
       console.error('Failed to create isolate for pool:', error);
@@ -112,13 +91,10 @@ export class VMIsolatePool {
     // Create new isolate if pool is not at max capacity
     if (this.pool.length + 1 <= this.maxSize) {
       try {
-        const isolate = new ivm.Isolate({
-          memoryLimit: this.memoryLimit,
-          snapshot: ivm.Isolate.createSnapshot([{ code: 'undefined' }]),
-        });
-        const context = await isolate.createContext();
+        // TODO: Create QuickJS isolate
+        console.log('TODO: Create new QuickJS isolate');
         this.createdCount++;
-        return { isolate, context };
+        return null; // Return null for now
       } catch (error) {
         console.error('Failed to create new isolate:', error);
         return null;

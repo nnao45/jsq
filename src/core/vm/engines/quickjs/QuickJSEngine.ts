@@ -3,7 +3,7 @@ import {
   QuickJSHandle, 
   type QuickJSRuntime, 
   type QuickJSWASMModule,
-  VmCallResult,
+  // VmCallResult,
   getQuickJS,
   getQuickJSSync
 } from 'quickjs-emscripten';
@@ -12,7 +12,7 @@ import type {
   VMExecutionContext,
   MemoryInfo,
   ValueMarshaller,
-  SerializedValue,
+  // SerializedValue,
   EvalOptions
 } from '../../interfaces/VMEngine';
 import type { VMContext, VMOptions, VMResult, VMSandboxConfig } from '../../../../types/sandbox';
@@ -24,12 +24,12 @@ export class QuickJSExecutionContext implements VMExecutionContext {
   constructor(
     private vm: QuickJSContext,
     private runtime: QuickJSRuntime,
-    private marshaller: ValueMarshaller
+    _marshaller: ValueMarshaller // 将来的に使う可能性があるので残しておく
   ) {}
   
-  private addHandle(handle: QuickJSHandle): void {
-    this.handles.push(handle);
-  }
+  // private addHandle(_handle: QuickJSHandle): void {
+  //   this.handles.push(_handle);
+  // }
 
   async setGlobal(name: string, value: unknown): Promise<void> {
     
@@ -60,6 +60,23 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       return;
     }
     
+    // Date オブジェクトの特別扱い
+    if (value instanceof Date) {
+      const isoString = value.toISOString();
+      const dateCode = `new Date('${isoString}')`;
+      const result = this.vm.evalCode(dateCode);
+      
+      if ('error' in result && result.error) {
+        const errorMsg = this.vm.dump(result.error);
+        result.error.dispose();
+        throw new Error(`Failed to create Date for global ${name}: ${errorMsg}`);
+      }
+      
+      this.vm.setProp(this.vm.global, name, result.value);
+      result.value.dispose();
+      return;
+    }
+    
     // オブジェクトや配列の場合はJSONを使う
     try {
       const jsonString = JSON.stringify(value);
@@ -73,7 +90,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       const parseCode = `JSON.parse('${jsonString.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')`;
       const result = this.vm.evalCode(parseCode);
       
-      if ('error' in result) {
+      if ('error' in result && result.error) {
         const errorMsg = this.vm.dump(result.error);
         result.error.dispose();
         jsonHandle.dispose();
@@ -97,7 +114,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
     try {
       const result = this.vm.evalCode(code, options?.filename);
 
-      if ('error' in result) {
+      if ('error' in result && result.error) {
         let errorMsg = 'Unknown error';
         let errorDetails = '';
         let errorType = 'Unknown';
@@ -133,7 +150,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
         } catch (e) {
           // dumpが失敗した場合はmessageプロパティを試す
           try {
-            const msgProp = this.vm.getProp(result.error, 'message');
+            const msgProp = this.vm.getProp(result.error!, 'message');
             if (this.vm.typeof(msgProp) === 'string') {
               errorMsg = this.vm.getString(msgProp);
             }
@@ -144,67 +161,65 @@ export class QuickJSExecutionContext implements VMExecutionContext {
         }
         
         // Dispose the error handle
-        result.error.dispose();
+        if (result.error) {
+          result.error.dispose();
+        }
         
         // Include code snippet for debugging
         const codeSnippet = code.length > 100 ? code.substring(0, 100) + '...' : code;
         throw new Error(`${errorType}: ${errorMsg}\nCode: ${codeSnippet}${errorDetails ? '\nStack: ' + errorDetails : ''}`);
       }
       
-      // Try to dump the result directly
+      // result.valueが存在することを確認
+      if (!result.value) {
+        throw new Error('No result value from eval');
+      }
+      
+      // Execute pending jobs first for async code
+      const maxIterations = 100;
+      let lastJobCount = -1;
+      
+      for (let i = 0; i < maxIterations; i++) {
+        const jobResult = this.runtime.executePendingJobs();
+        
+        if ('error' in jobResult && jobResult.error) {
+          // Error executing jobs
+          result.value.dispose();
+          jobResult.error.dispose();
+          jobResult.dispose();
+          throw new Error('Error executing pending jobs');
+        }
+        
+        const jobCount = jobResult.value;
+        jobResult.dispose();
+        
+        if (jobCount === 0) {
+          // No more jobs to execute
+          break;
+        }
+        
+        // Prevent infinite loop
+        if (jobCount === lastJobCount) {
+          break;
+        }
+        lastJobCount = jobCount;
+      }
+      
+      // Try to dump the result after executing jobs
       try {
         const value = this.vm.dump(result.value);
         result.value.dispose();
         return value;
       } catch (dumpError) {
-        // If dump fails, it might be a Promise - try to resolve it
+        // If dump still fails, handle the error
+        result.value.dispose();
+        
         if (dumpError instanceof Error && dumpError.message.includes('Lifetime not alive')) {
-          // Execute pending jobs to resolve promises
-          const maxIterations = 100;
-          let lastJobCount = -1;
-          
-          for (let i = 0; i < maxIterations; i++) {
-            const jobCount = this.runtime.executePendingJobs();
-            
-            if (jobCount === 0) {
-              // No more jobs to execute
-              break;
-            }
-            
-            if (jobCount < 0) {
-              // Error executing jobs
-              result.value.dispose();
-              throw new Error('Error executing pending jobs');
-            }
-            
-            // Prevent infinite loop
-            if (jobCount === lastJobCount) {
-              break;
-            }
-            lastJobCount = jobCount;
-          }
-          
-          // Try to dump again after executing jobs
-          try {
-            const value = this.vm.dump(result.value);
-            result.value.dispose();
-            return value;
-          } catch (secondDumpError) {
-            // Still can't dump - likely unresolved promise
-            result.value.dispose();
-            throw new Error(`Failed to resolve async operation: ${secondDumpError}`);
-          }
+          throw new Error(`Failed to resolve async operation: Promise may have been resolved but handle was disposed`);
         } else {
-          // Other dump error
-          result.value.dispose();
-          throw dumpError;
+          throw new Error(`Failed to dump result: ${dumpError}`);
         }
       }
-      
-      // For non-async code, just dump and return
-      const value = this.vm.dump(result.value);
-      result.value.dispose();
-      return value;
     } catch (error) {
       console.error('QuickJS eval failed with code:', code);
       throw error;
@@ -215,15 +230,17 @@ export class QuickJSExecutionContext implements VMExecutionContext {
     // ディスポーズ前に全てのハンドルを解放
     for (const handle of this.handles) {
       try {
-        handle.dispose();
+        if (handle && typeof handle.dispose === 'function') {
+          handle.dispose();
+        }
       } catch {
         // エラーは無視
       }
     }
     this.handles = [];
     
-    // その後VMを破棄
-    this.vm.dispose();
+    // vmは親のQuickJSEngineで管理されているので、ここではdisposeしない
+    // this.vm.dispose(); // これはやらない
   }
 }
 
@@ -248,16 +265,22 @@ class QuickJSManager {
     
     if (!this.quickjs || !this.initialized) {
       try {
-        // Try sync version first (works better with Jest)
-        if (typeof getQuickJSSync === 'function') {
-          this.quickjs = getQuickJSSync();
-          this.initialized = true;
-          return this.quickjs;
-        }
-        
-        // Fallback to async version
+        // Always initialize async version first
         this.quickjs = await getQuickJS();
         this.initialized = true;
+        
+        // Try sync version for subsequent calls if available
+        if (typeof getQuickJSSync === 'function') {
+          try {
+            // This should now work after async initialization
+            const syncQuickjs = getQuickJSSync();
+            if (syncQuickjs) {
+              this.quickjs = syncQuickjs;
+            }
+          } catch {
+            // Sync version failed, but we have async version
+          }
+        }
       } catch (error) {
         // Cache the error so we don't retry
         if (error instanceof Error) {
@@ -297,9 +320,9 @@ export class QuickJSEngine implements VMEngine {
       this.quickjs = await manager.getQuickJS();
       this.runtime = this.quickjs.newRuntime();
       
-      // メモリ制限を設定
+      // メモリ制限を設定（MB to bytes）
       if (config.memoryLimit) {
-        this.runtime.setMemoryLimit(config.memoryLimit);
+        this.runtime.setMemoryLimit(config.memoryLimit * 1024 * 1024);
       }
       
       // 最大スタック制限 - Use a reasonable fixed size instead of scaling with memory
@@ -366,10 +389,18 @@ export class QuickJSEngine implements VMEngine {
     }
     
     const stats = this.runtime.computeMemoryUsage();
+    // quickjs-emscriptenの新しいAPIでは直接数値を返す場合がある
+    if (typeof stats === 'number') {
+      return {
+        used: stats,
+        limit: this.config?.memoryLimit || 0
+      };
+    }
+    // オブジェクトの場合（古いAPI）
     return {
-      used: stats.memory_used_size,
+      used: (stats as any).memory_used_size || 0,
       limit: this.config?.memoryLimit || 0,
-      external: stats.malloc_size
+      external: (stats as any).malloc_size
     };
   }
 
@@ -384,8 +415,26 @@ export class QuickJSEngine implements VMEngine {
     }
     this.activeContexts = [];
     
-    // Then dispose runtime
+    // Execute all pending jobs before disposing runtime
     if (this.runtime) {
+      let jobCount = 1; // Initialize to non-zero to enter the loop
+      while (jobCount > 0) {
+        const jobResult = this.runtime.executePendingJobs();
+        if ('error' in jobResult && jobResult.error) {
+          jobResult.error.dispose();
+          jobResult.dispose();
+          break; // Exit on error
+        }
+        jobCount = jobResult.value;
+        jobResult.dispose();
+      }
+      
+      // Force garbage collection before disposing if available
+      // QuickJSRuntimeではcollectGarbageメソッドを使う
+      if ('collectGarbage' in this.runtime && typeof (this.runtime as any).collectGarbage === 'function') {
+        (this.runtime as any).collectGarbage();
+      }
+      
       this.runtime.dispose();
       this.runtime = null;
     }

@@ -42,5 +42,5 @@ export interface VMEngine {
 }
 
 export interface VMEngineFactory {
-  create(type: 'isolated-vm' | 'quickjs'): VMEngine;
+  create(type: 'quickjs'): VMEngine;
 }

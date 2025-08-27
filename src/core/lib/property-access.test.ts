@@ -1,11 +1,11 @@
 import { afterEach, beforeAll, beforeEach, expect } from 'vitest';
-import { describeWithVM, isIsolatedVMAvailable, testWithVM } from '@/test/vm-helpers';
+import { describeWithVM, isQuickJSAvailable, testWithVM } from '@/test/vm-helpers';
 import { VMSandboxSimple } from '../vm/vm-sandbox-simple';
 
 describeWithVM('Property Access Tests', () => {
   beforeAll(() => {
-    if (!isIsolatedVMAvailable()) {
-      console.log('⚠️  isolated-vm not available - property access tests will be skipped');
+    if (!isQuickJSAvailable()) {
+      console.log('⚠️  VM not available - property access tests will be skipped');
     }
   });
 

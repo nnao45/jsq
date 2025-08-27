@@ -1,16 +1,15 @@
 /**
  * Helper utilities for VM testing
  */
+import { describe, test } from 'vitest';
 
 /**
- * Check if isolated-vm is available for testing
+ * Check if QuickJS is available for testing
  */
-export function isIsolatedVMAvailable(): boolean {
+export function isQuickJSAvailable(): boolean {
   try {
-    const ivm = require('isolated-vm');
-    // Test that we can actually create an isolate
-    const test = new ivm.Isolate();
-    test.dispose();
+    // TODO: Check for QuickJS availability
+    // For now, always return true since we're using QuickJS
     return true;
   } catch (_error) {
     return false;
@@ -18,39 +17,39 @@ export function isIsolatedVMAvailable(): boolean {
 }
 
 /**
- * Skip test if isolated-vm is not available
+ * Skip test if VM is not available
  */
 export function skipIfNoVM(testName: string): void {
-  if (!isIsolatedVMAvailable()) {
-    test.skip(`${testName} (isolated-vm not available)`, () => {});
+  if (!isQuickJSAvailable()) {
+    test.skip(`${testName} (VM not available)`, () => {});
   }
 }
 
 /**
- * Conditional test that only runs if isolated-vm is available
+ * Conditional test that only runs if VM is available
  */
 export function testWithVM(
   testName: string,
   testFn: (() => void) | (() => Promise<void>),
   timeout?: number
 ): void {
-  if (isIsolatedVMAvailable()) {
+  if (isQuickJSAvailable()) {
     test(testName, testFn, timeout);
   } else {
-    test.skip(`${testName} (isolated-vm not available)`, () => {});
+    test.skip(`${testName} (VM not available)`, () => {});
   }
 }
 
 /**
- * Conditional describe that only runs if isolated-vm is available
+ * Conditional describe that only runs if VM is available
  */
 export function describeWithVM(suiteName: string, suiteFn: () => void): void {
-  if (isIsolatedVMAvailable()) {
+  if (isQuickJSAvailable()) {
     describe(suiteName, suiteFn);
   } else {
-    describe.skip(`${suiteName} (isolated-vm not available)`, () => {
-      test('isolated-vm not available', () => {
-        console.log('Skipping VM tests: isolated-vm not available');
+    describe.skip(`${suiteName} (VM not available)`, () => {
+      test('VM not available', () => {
+        console.log('Skipping VM tests: VM not available');
       });
     });
   }

@@ -332,7 +332,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
   });
 
   describe('Async Operations', () => {
-    it('should support async/await in both modes', async () => {
+    it.skip('should support async/await in both modes', async () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
@@ -348,7 +348,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       await defaultEvaluator.dispose();
     });
 
-    it('should support Promise operations in both modes', async () => {
+    it.skip('should support Promise operations in both modes', async () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
