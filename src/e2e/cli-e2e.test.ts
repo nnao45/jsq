@@ -131,6 +131,7 @@ describe('CLI E2E Tests', () => {
       const child = spawn('node', [jsqBinary, ...args], {
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: options.cwd || process.cwd(),
+        env: { ...process.env, NODE_ENV: 'test' }, // Force isolated-vm in test environment
       });
 
       let stdout = '';

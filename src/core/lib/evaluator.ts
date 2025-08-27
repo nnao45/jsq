@@ -12,6 +12,12 @@ import { createSmartDollar } from './jquery-wrapper';
 let VMSandboxSimple: any;
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let VMSandboxSimpleClass: any;
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
+let VMSandboxQuickJS: any;
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
+let VMSandboxQuickJSClass: any;
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
+let getVMEngineType: any;
 
 try {
   // Only import VM modules when actually needed
@@ -20,7 +26,23 @@ try {
   VMSandboxSimple = VMSandboxSimpleClass;
 } catch (vmError) {
   // VM modules not available, sandbox functionality will be disabled
-  console.debug('VM modules not available:', (vmError as Error).message);
+}
+
+try {
+  // Import QuickJS VM module
+  const quickJSModule = require('../vm/vm-sandbox-quickjs');
+  VMSandboxQuickJSClass = quickJSModule.VMSandboxQuickJS;
+  VMSandboxQuickJS = VMSandboxQuickJSClass;
+} catch (quickJSError) {
+  // QuickJS VM module not available
+}
+
+try {
+  // Import VM engine type selector
+  const vmFactoryModule = require('../vm/VMEngineFactory');
+  getVMEngineType = vmFactoryModule.getVMEngineType;
+} catch (factoryError) {
+  // VM factory not available
 }
 
 export class ExpressionEvaluator {
@@ -36,8 +58,15 @@ export class ExpressionEvaluator {
     // Initialize VM sandbox if needed
     if (this.securityManager.shouldUseVM()) {
       const vmConfig = this.securityManager.getVMConfig();
-      if (vmConfig && VMSandboxSimple) {
-        this.vmSandbox = new VMSandboxSimple(vmConfig);
+      if (vmConfig) {
+        // Check which VM engine to use
+        const engineType = getVMEngineType ? getVMEngineType() : 'isolated-vm';
+        
+        if (engineType === 'quickjs' && VMSandboxQuickJS) {
+          this.vmSandbox = new VMSandboxQuickJS(vmConfig);
+        } else if (VMSandboxSimple) {
+          this.vmSandbox = new VMSandboxSimple(vmConfig);
+        }
       }
     }
 
@@ -97,7 +126,8 @@ export class ExpressionEvaluator {
       }
 
       // For VM mode, don't create the smart dollar - just use data
-      const $ = this.securityManager.shouldUseVM() ? data : createSmartDollar(data);
+      const shouldUseVM = this.securityManager.shouldUseVM();
+      const $ = shouldUseVM ? data : createSmartDollar(data);
       const baseContext = await this.createEvaluationContext($, data);
       const secureContext = this.securityManager.createEvaluationContext(baseContext);
       const result = await this.executeExpression(transformedExpression, secureContext);
@@ -326,10 +356,22 @@ export class ExpressionEvaluator {
       if (!vmConfig) {
         throw new Error('VM configuration not available');
       }
-      if (!VMSandboxSimple) {
-        throw new Error('VM sandbox not available - isolated-vm module not found');
+      // Check which VM engine to use
+      const engineType = getVMEngineType ? getVMEngineType() : 'isolated-vm';
+      
+      if (engineType === 'quickjs' && VMSandboxQuickJS) {
+        this.vmSandbox = new VMSandboxQuickJS(vmConfig);
+        if (this.options.verbose) {
+          console.error('Using QuickJS VM engine (on-demand)');
+        }
+      } else if (VMSandboxSimple) {
+        this.vmSandbox = new VMSandboxSimple(vmConfig);
+        if (this.options.verbose) {
+          console.error('Using isolated-vm engine (on-demand)');
+        }
+      } else {
+        throw new Error('No VM sandbox available');
       }
-      this.vmSandbox = new VMSandboxSimple(vmConfig);
     }
 
     try {
@@ -370,6 +412,13 @@ export class ExpressionEvaluator {
     } catch (error) {
       // Re-throw VM errors with more context
       if (error instanceof Error) {
+        // Debug: Log the original error
+        if (this.options.verbose) {
+          console.error('VM execution error:', error.message);
+          console.error('Expression:', expression);
+          console.error('Stack:', error.stack);
+        }
+        
         if (error.message.includes('Cannot find module')) {
           throw new Error(
             'isolated-vm package not found. Please install isolated-vm for sandbox support: npm install isolated-vm'
@@ -377,6 +426,11 @@ export class ExpressionEvaluator {
         }
         // Format VM errors with detailed position if possible
         const formattedError = ErrorFormatter.parseExpressionError(error, expression);
+        // Check if it's a QuickJS initialization error
+        if (error.message.includes('QuickJS initialization failed')) {
+          throw error; // Re-throw the descriptive error as-is
+        }
+        
         formattedError.type = 'runtime';
         formattedError.message = 'VM execution failed';
         formattedError.detail = error.message;

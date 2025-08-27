@@ -11,6 +11,10 @@ describe('No Input CLI Integration Tests', () => {
     return new Promise(resolve => {
       const child = spawn('node', [binPath, expression], {
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          NODE_ENV: 'test'
+        }
       });
 
       let stdout = '';

@@ -32,7 +32,7 @@ jest.mock('./worker-pool', () => {
               }
             })
             .filter(result => result !== null);
-          return { id: 1, results };
+          return results;
         }),
         getStats: jest.fn().mockReturnValue({
           totalWorkers: 4,

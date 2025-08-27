@@ -1,9 +1,17 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { ChainableWrapper } from '../chainable/chainable';
 import { JsqProcessor } from './processor';
 
 describe('Simple integration tests for new methods', () => {
-  const processor = new JsqProcessor({ verbose: false });
+  let processor: JsqProcessor;
+
+  beforeEach(() => {
+    processor = new JsqProcessor({ verbose: false });
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
+  });
 
   describe('Basic method functionality', () => {
     it('should use chunk method', async () => {
@@ -166,9 +174,5 @@ describe('Simple integration tests for new methods', () => {
       const result = wrapper.invert();
       expect(result.value).toEqual({ '1': 'a', '2': 'b', '3': 'c' });
     });
-  });
-
-  afterAll(async () => {
-    await processor.dispose();
   });
 });

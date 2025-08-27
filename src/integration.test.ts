@@ -23,6 +23,10 @@ describe('Integration Tests', () => {
       const args = [...options, expression];
       childProcess = spawn('node', [jsqBinary, ...args], {
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          NODE_ENV: 'test'
+        }
       });
 
       let stdout = '';

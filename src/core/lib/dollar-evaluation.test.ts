@@ -1,14 +1,24 @@
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { JsqProcessor } from './processor';
 
 describe('Dollar ($) Evaluation Tests', () => {
-  const processor = new JsqProcessor({ verbose: false });
+  let processor: JsqProcessor;
+  let processJSON: (expression: string, data: any) => Promise<any>;
 
-  // Helper function to process with JSON input
-  const processJSON = async (expression: string, data: any) => {
-    const input = JSON.stringify(data);
-    const result = await processor.process(expression, input);
-    return result.data;
-  };
+  beforeEach(() => {
+    processor = new JsqProcessor({ verbose: false });
+    
+    // Helper function to process with JSON input
+    processJSON = async (expression: string, data: any) => {
+      const input = JSON.stringify(data);
+      const result = await processor.process(expression, input);
+      return result.data;
+    };
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
+  });
 
   describe('Single $ evaluation', () => {
     it('should return the entire data when evaluating just $', async () => {
