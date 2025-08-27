@@ -365,15 +365,18 @@ describe('共通メソッドの一貫性テスト', () => {
         const $input = createSmartDollar($inputData);
         const $result = ($input as any)[testCase.method](...testCase.args);
 
-        // Check if result is a ChainableWrapper instance (has _value property)
+
+        // Check if result is a ChainableWrapper instance
         const $value =
-          $result && $result._value !== undefined
-            ? $result._value
-            : $result && typeof $result.value === 'function'
-              ? $result.value()
-              : $result && typeof $result.toJSON === 'function'
-                ? $result.toJSON()
-                : $result;
+          $result && $result.data !== undefined
+            ? $result.data
+            : $result && $result._value !== undefined
+              ? $result._value
+              : $result && typeof $result.value === 'function'
+                ? $result.value()
+                : $result && typeof $result.toJSON === 'function'
+                  ? $result.toJSON()
+                  : $result;
 
         // lodash記法でのテスト
         const lodashResult = (_ as any)[testCase.method](lodashInputData, ...testCase.args);

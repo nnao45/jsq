@@ -1,8 +1,16 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { JsqProcessor } from './processor';
 
 describe('Semicolon Sequential Execution Tests', () => {
-  const processor = new JsqProcessor({ verbose: false });
+  let processor: JsqProcessor;
+
+  beforeEach(() => {
+    processor = new JsqProcessor({ verbose: false });
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
+  });
 
   describe('Basic semicolon functionality', () => {
     it.skip('should execute expressions sequentially and return the last value', async () => {
@@ -126,9 +134,5 @@ describe('Semicolon Sequential Execution Tests', () => {
       );
       expect(result.data).toBe(3); // count of even numbers
     });
-  });
-
-  afterAll(async () => {
-    await processor.dispose();
   });
 });

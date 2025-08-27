@@ -6,9 +6,6 @@ globalThis.lodashMethods = {
     if (this._value === null || this._value === undefined) {
       return new this.constructor([]);
     }
-    if (this._value === null || this._value === undefined) {
-      return [];
-    }
     const arr = Array.from(this._value);
     const filtered = [];
     for (let i = 0; i < arr.length; i++) {
@@ -23,9 +20,6 @@ globalThis.lodashMethods = {
     if (this._value === null || this._value === undefined) {
       return new this.constructor([]);
     }
-    if (this._value === null || this._value === undefined) {
-      return [];
-    }
     const arr = Array.from(this._value);
     const mapped = [];
     for (let i = 0; i < arr.length; i++) {
@@ -36,7 +30,7 @@ globalThis.lodashMethods = {
   
   find: function(predicate) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     for (let i = 0; i < arr.length; i++) {
@@ -49,7 +43,7 @@ globalThis.lodashMethods = {
   
   findIndex: function(predicate) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return -1;
     }
     const arr = Array.from(this._value);
     for (let i = 0; i < arr.length; i++) {
@@ -63,9 +57,6 @@ globalThis.lodashMethods = {
   reduce: function(iteratee, accumulator) {
     if (this._value === null || this._value === undefined) {
       return accumulator;
-    }
-    if (this._value === null || this._value === undefined) {
-      return [];
     }
     const arr = Array.from(this._value);
     let result = accumulator;
@@ -82,7 +73,7 @@ globalThis.lodashMethods = {
   // Lodash specific array methods
   where: function(properties) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const filtered = [];
@@ -105,7 +96,7 @@ globalThis.lodashMethods = {
   
   pluck: function(property) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const plucked = [];
@@ -117,7 +108,7 @@ globalThis.lodashMethods = {
   
   sortBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const sorted = [];
@@ -144,7 +135,7 @@ globalThis.lodashMethods = {
     const orderArr = Array.isArray(orders) ? orders : [orders];
     
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const sorted = [];
@@ -185,7 +176,7 @@ globalThis.lodashMethods = {
   
   groupBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor({});
     }
     const arr = Array.from(this._value);
     const grouped = {};
@@ -200,7 +191,7 @@ globalThis.lodashMethods = {
   
   countBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor({});
     }
     const arr = Array.from(this._value);
     const counted = {};
@@ -214,7 +205,7 @@ globalThis.lodashMethods = {
   
   keyBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor({});
     }
     const arr = Array.from(this._value);
     const keyed = {};
@@ -228,7 +219,7 @@ globalThis.lodashMethods = {
   
   take: function(n) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const taken = [];
@@ -240,7 +231,7 @@ globalThis.lodashMethods = {
   
   skip: function(n) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const skipped = [];
@@ -256,7 +247,7 @@ globalThis.lodashMethods = {
   
   takeWhile: function(predicate) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const taken = [];
@@ -269,7 +260,7 @@ globalThis.lodashMethods = {
   
   dropWhile: function(predicate) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     let dropIndex = 0;
@@ -288,7 +279,7 @@ globalThis.lodashMethods = {
   
   uniq: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const unique = [];
@@ -306,7 +297,7 @@ globalThis.lodashMethods = {
   
   uniqBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const seen = {};
@@ -325,7 +316,7 @@ globalThis.lodashMethods = {
   
   sample: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return undefined;
@@ -334,7 +325,7 @@ globalThis.lodashMethods = {
   
   sampleSize: function(n) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const shuffled = [];
@@ -357,7 +348,7 @@ globalThis.lodashMethods = {
   
   shuffle: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const shuffled = [];
@@ -376,7 +367,7 @@ globalThis.lodashMethods = {
   
   flatten: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const flattened = [];
@@ -418,7 +409,7 @@ globalThis.lodashMethods = {
   
   compact: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const compacted = [];
@@ -432,7 +423,7 @@ globalThis.lodashMethods = {
   
   chunk: function(size) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const chunks = [];
@@ -448,7 +439,7 @@ globalThis.lodashMethods = {
   
   reverse: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return new this.constructor([]);
     }
     const arr = Array.from(this._value);
     const reversed = [];
@@ -461,7 +452,7 @@ globalThis.lodashMethods = {
   // Math methods
   sum: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return 0;
     }
     const arr = Array.from(this._value);
     let sum = 0;
@@ -482,16 +473,20 @@ globalThis.lodashMethods = {
   
   mean: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return NaN;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return NaN;
-    return this.sum() / arr.length;
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      sum += Number(arr[i]) || 0;
+    }
+    return sum / arr.length;
   },
   
   min: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return undefined;
@@ -505,7 +500,7 @@ globalThis.lodashMethods = {
   
   max: function() {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return undefined;
@@ -519,7 +514,7 @@ globalThis.lodashMethods = {
   
   minBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return undefined;
@@ -538,7 +533,7 @@ globalThis.lodashMethods = {
   
   maxBy: function(iteratee) {
     if (this._value === null || this._value === undefined) {
-      return [];
+      return undefined;
     }
     const arr = Array.from(this._value);
     if (arr.length === 0) return undefined;

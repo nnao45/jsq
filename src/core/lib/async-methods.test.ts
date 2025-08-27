@@ -1,8 +1,16 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { JsqProcessor } from './processor';
 
 describe('Async Array Methods Tests', () => {
-  const processor = new JsqProcessor({ verbose: false });
+  let processor: JsqProcessor;
+
+  beforeEach(() => {
+    processor = new JsqProcessor({ verbose: false });
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
+  });
 
   describe('forEachAsync (parallel execution)', () => {
     it.skip('should execute async functions in parallel', async () => {

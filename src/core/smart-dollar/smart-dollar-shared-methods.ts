@@ -506,7 +506,11 @@ if (typeof smartDollarMethods === 'undefined') {
   mean: function() {
     const arr = Array.from(this._value);
     if (arr.length === 0) return NaN;
-    return this.sum() / arr.length;
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      sum += Number(arr[i]) || 0;
+    }
+    return sum / arr.length;
   },
   
   size: function() {

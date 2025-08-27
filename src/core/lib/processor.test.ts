@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, afterEach, describe, expect, it } from '@jest/globals';
 import type { JsqOptions } from '@/types/cli';
 import { JsqProcessor } from './processor';
 
@@ -13,6 +13,10 @@ describe('JsqProcessor', () => {
       unsafe: false,
     };
     processor = new JsqProcessor(mockOptions);
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
   });
 
   describe('Basic processing', () => {
@@ -104,6 +108,8 @@ describe('JsqProcessor', () => {
       expect(result.metadata.steps).toContain('Parse JSON');
       expect(result.metadata.steps).toContain('Evaluate expression');
       expect(result.metadata.steps).toContain('Format output');
+      
+      await debugProcessor.dispose();
     });
 
     it('should measure processing time accurately', async () => {
@@ -356,6 +362,8 @@ describe('JsqProcessor', () => {
 
       expect(result.data).toBe('data');
       expect(result.metadata).toBeDefined();
+      
+      await verboseProcessor.dispose();
     });
 
     it('should work correctly in unsafe mode', async () => {
@@ -366,6 +374,8 @@ describe('JsqProcessor', () => {
       const result = await unsafeProcessor.process(expression, input);
 
       expect(result.data).toBe(15);
+      
+      await unsafeProcessor.dispose();
     });
 
     it('should work correctly with debug metadata', async () => {
@@ -378,6 +388,8 @@ describe('JsqProcessor', () => {
       expect(result.data).toBe(3);
       expect(result.metadata.steps).toBeDefined();
       expect(result.metadata.steps.length).toBeGreaterThan(0);
+      
+      await debugProcessor.dispose();
     });
   });
 });

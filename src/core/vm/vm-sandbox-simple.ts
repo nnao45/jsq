@@ -325,7 +325,6 @@ export class VMSandboxSimple {
           ...(needsAsync ? { promise: true } : {}),
         });
       } catch (runError) {
-        console.error('Script run error:', runError);
         throw runError;
       }
 
@@ -1313,6 +1312,7 @@ export class VMSandboxSimple {
 
   async dispose(): Promise<void> {
     // Nothing to clean up in simplified version
+    // The global vmPool's cleanup interval is unref'd to allow process exit
   }
 
   /**

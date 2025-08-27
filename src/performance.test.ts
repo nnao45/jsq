@@ -246,5 +246,6 @@ describe('Performance Tests', () => {
 
   afterEach(async () => {
     await evaluator.dispose();
+    await processor.dispose();
   });
 });

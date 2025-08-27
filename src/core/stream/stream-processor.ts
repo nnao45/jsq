@@ -587,6 +587,11 @@ export class StreamProcessor {
   ): Promise<unknown[]> {
     try {
       const results = await workerPool.processTask(batch, expression, this.options);
+      // Ensure results is an array
+      if (!Array.isArray(results)) {
+        console.error('Worker pool returned non-array result:', results);
+        return await this.fallbackSequentialProcessing(expression, batch);
+      }
       return results;
     } catch (error) {
       this.logParallelProcessingError(error);

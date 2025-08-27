@@ -93,13 +93,13 @@ Object.entries(methods).forEach(([name, fn]) => {
 
       const wrapped = new Lodash(dataToWrap);
       const method = wrapped[name as keyof Lodash] as (...args: unknown[]) => unknown;
-      const result = method(...args.slice(1));
+      const result = method.call(wrapped, ...args.slice(1));
       // Special case: chain method should return the Lodash instance
       if (name === 'chain') {
         return result;
       }
       // If result is a Lodash instance, unwrap it for static methods
-      if (result && typeof result === 'object' && (result as { __isLodash?: boolean }).__isLodash) {
+      if (result && typeof result === 'object' && (result as any).__isLodash === true) {
         return (result as Lodash)._value;
       }
       return result;

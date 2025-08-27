@@ -1,8 +1,16 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { JsqProcessor } from './processor';
 
 describe('No Input Execution Tests', () => {
-  const processor = new JsqProcessor({ verbose: false });
+  let processor: JsqProcessor;
+
+  beforeEach(() => {
+    processor = new JsqProcessor({ verbose: false });
+  });
+
+  afterEach(async () => {
+    await processor.dispose();
+  });
 
   describe('Lodash utility functions without input', () => {
     it('should execute _.range(5) without input data', async () => {
@@ -180,9 +188,5 @@ describe('No Input Execution Tests', () => {
       const result = await processor.process('$ && $.map ? $.map(x => x * 2) : []', 'null');
       expect(result.data).toEqual([]);
     });
-  });
-
-  afterAll(async () => {
-    await processor.dispose();
   });
 });

@@ -49,6 +49,8 @@ export class VMIsolatePool {
 
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000); // Every minute
+    // Allow the process to exit even if this interval is still active
+    this.cleanupInterval.unref();
   }
 
   /**

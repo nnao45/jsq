@@ -49,8 +49,20 @@ Object.entries(methods).forEach(([name, fn]) => {
     this: ChainableWrapper,
     ...args: unknown[]
   ) {
-    // Use 'this' context with the method
-    return (fn as (...args: any[]) => any).apply(this, args);
+    // Create a context object that mimics VM SmartDollar instance
+    const context = {
+      _value: this.data,
+      constructor: ChainableWrapper
+    };
+    // Use the context with the method
+    const result = (fn as (...args: any[]) => any).apply(context, args);
+    
+    // If the result has _value property, it's likely a ChainableWrapper from the VM methods
+    if (result && typeof result === 'object' && '_value' in result) {
+      return new ChainableWrapper(result._value);
+    }
+    
+    return result;
   };
 });
 
