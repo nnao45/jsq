@@ -1,3 +1,4 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import type { SecurityManager } from '../security/security-manager';
 import { ExpressionEvaluator } from './evaluator';
@@ -18,7 +19,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -52,7 +53,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
   describe('Network Access', () => {
     it('should NOT have fetch functions available in VM mode by default', async () => {
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // Check that fetch functions are NOT available by default
       const result = await defaultEvaluator.evaluate(
@@ -80,7 +81,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
     it('should have fetch functions available when unsafe mode is enabled', async () => {
       const unsafeEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // In unsafe mode, it doesn't use VM so native fetch is available
       const result = await unsafeEvaluator.evaluate(
@@ -151,7 +152,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         const defaultEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
 
         // Mock process.exit
-        process.exit = jest.fn() as unknown as (code?: number) => never;
+        process.exit = vi.fn() as unknown as (code?: number) => never;
 
         await defaultEvaluator.evaluate('process.exit(0)', null);
         expect(process.exit).toHaveBeenCalledWith(0);
@@ -269,7 +270,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
       const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
       // Test console availability differently since VM may not expose it the same way
       const consoleTest1 = await sandboxEvaluator.evaluate('typeof console', null);

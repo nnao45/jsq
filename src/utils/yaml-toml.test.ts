@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { detectFormatFromExtension, parseTOMLToJSON, parseYAMLToJSON } from './format-parsers';
 
 describe('YAML and TOML Support', () => {

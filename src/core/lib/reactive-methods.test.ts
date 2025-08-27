@@ -1,8 +1,8 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it, jest } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 
 // Mock timers for testing time-based operations
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 describe('Reactive Methods (RxJS-style operators)', () => {
   describe('Time-based Operators', () => {
@@ -12,7 +12,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const delayPromise = wrapper.delay(100);
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         const result = await delayPromise;
         expect(result.value).toEqual([1, 2, 3]);
@@ -23,7 +23,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const delayPromise = wrapper.delay(50);
-        jest.advanceTimersByTime(50);
+        vi.advanceTimersByTime(50);
 
         const result = await delayPromise;
         expect(result.value).toBe(42);
@@ -36,7 +36,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const debouncePromise = wrapper.debounceTime(100);
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         const result = await debouncePromise;
         expect(result.value).toBe(5); // Last value
@@ -47,7 +47,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const debouncePromise = wrapper.debounceTime(50);
-        jest.advanceTimersByTime(50);
+        vi.advanceTimersByTime(50);
 
         const result = await debouncePromise;
         expect(result.value).toBe(42);
@@ -58,7 +58,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const debouncePromise = wrapper.debounceTime(100);
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         const result = await debouncePromise;
         expect(result.value).toEqual([]);
@@ -71,7 +71,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const throttlePromise = wrapper.throttleTime(100);
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         const result = await throttlePromise;
         expect(result.value).toBe(1); // First value
@@ -100,7 +100,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         const wrapper = new ChainableWrapper(data);
 
         const timeoutPromise = wrapper.timeout(100);
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
 
         // For this simple case, it should resolve, not timeout
         // In real scenarios, timeout would be used with async operations
@@ -111,7 +111,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
     describe('interval', () => {
       it('should emit array elements at intervals', async () => {
-        jest.useRealTimers(); // Use real timers for async generators
+        vi.useRealTimers(); // Use real timers for async generators
 
         const data = [1, 2, 3];
         const wrapper = new ChainableWrapper(data);
@@ -127,11 +127,11 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
         expect(results).toEqual([1, 2, 3]);
 
-        jest.useFakeTimers(); // Restore fake timers
+        vi.useFakeTimers(); // Restore fake timers
       }, 15000); // Increase timeout
 
       it('should handle single values', async () => {
-        jest.useRealTimers();
+        vi.useRealTimers();
 
         const data = 42;
         const wrapper = new ChainableWrapper(data);
@@ -142,13 +142,13 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         expect(next.value?.value).toBe(42);
         expect(next.done).toBe(false);
 
-        jest.useFakeTimers();
+        vi.useFakeTimers();
       });
     });
 
     describe('timer', () => {
       it('should delay initial emission and then emit at intervals', async () => {
-        jest.useRealTimers();
+        vi.useRealTimers();
 
         const data = [1, 2];
         const wrapper = new ChainableWrapper(data);
@@ -164,7 +164,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
         expect(results).toEqual([1, 2]);
 
-        jest.useFakeTimers();
+        vi.useFakeTimers();
       }, 15000);
     });
   });
@@ -439,9 +439,9 @@ describe('Reactive Methods (RxJS-style operators)', () => {
           return 'success';
         };
 
-        jest.useRealTimers();
+        vi.useRealTimers();
         const result = await wrapper.retry(3, operation);
-        jest.useFakeTimers();
+        vi.useFakeTimers();
 
         expect(result.value).toBe('success');
         expect(attempts).toBe(3);
@@ -522,7 +522,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
       const data = [1, 2, 3, 4, 5];
       const wrapper = new ChainableWrapper(data);
 
-      const tapFn = jest.fn();
+      const tapFn = vi.fn();
       const result = wrapper.distinctUntilChanged().takeLast(3).startWith(0).tap(tapFn);
 
       expect(result.value).toEqual([0, 3, 4, 5]);
@@ -534,7 +534,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
     });
 
     it('should allow mixing sync and async methods', async () => {
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       const data = [1, 2, 3];
       const wrapper = new ChainableWrapper(data);
@@ -543,7 +543,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
       expect(result.value).toEqual([0, 1, 2, 3]);
 
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should work with transformation operators', async () => {
@@ -558,7 +558,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
   describe('Real-world Scenarios', () => {
     it('should simulate debounced search', async () => {
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       const searchTerms = ['a', 'ap', 'app', 'appl', 'apple'];
       const wrapper = new ChainableWrapper(searchTerms);
@@ -568,11 +568,11 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
       expect(result.value).toBe('apple');
 
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should simulate throttled API calls', async () => {
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       const requests = ['req1', 'req2', 'req3', 'req4'];
       const wrapper = new ChainableWrapper(requests);
@@ -582,11 +582,11 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
       expect(result.value).toBe('req1');
 
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should simulate streaming data processing', async () => {
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       const data = [1, 2, 3, 4, 5];
       const wrapper = new ChainableWrapper(data);
@@ -605,7 +605,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
 
       expect(processed).toEqual([2, 4, 6]);
 
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     }, 15000);
 
     it('should simulate data transformation pipeline', () => {

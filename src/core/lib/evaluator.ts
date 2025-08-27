@@ -19,30 +19,48 @@ let VMSandboxQuickJSClass: any;
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let getVMEngineType: any;
 
-try {
-  // Only import VM modules when actually needed
-  const vmModule = require('../vm/vm-sandbox-simple');
-  VMSandboxSimpleClass = vmModule.VMSandboxSimple;
-  VMSandboxSimple = VMSandboxSimpleClass;
-} catch (vmError) {
-  // VM modules not available, sandbox functionality will be disabled
-}
+// Use dynamic imports for better compatibility with test environments
+let vmModulesLoaded = false;
 
-try {
-  // Import QuickJS VM module
-  const quickJSModule = require('../vm/vm-sandbox-quickjs');
-  VMSandboxQuickJSClass = quickJSModule.VMSandboxQuickJS;
-  VMSandboxQuickJS = VMSandboxQuickJSClass;
-} catch (quickJSError) {
-  // QuickJS VM module not available
-}
+async function loadVMModules() {
+  if (vmModulesLoaded) return;
+  
+  try {
+    // Only import VM modules when actually needed
+    const vmModule = await import('../vm/vm-sandbox-simple');
+    VMSandboxSimpleClass = vmModule.VMSandboxSimple;
+    VMSandboxSimple = VMSandboxSimpleClass;
+  } catch (vmError) {
+    // VM modules not available, sandbox functionality will be disabled
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to load vm-sandbox-simple module:', vmError);
+    }
+  }
 
-try {
-  // Import VM engine type selector
-  const vmFactoryModule = require('../vm/VMEngineFactory');
-  getVMEngineType = vmFactoryModule.getVMEngineType;
-} catch (factoryError) {
-  // VM factory not available
+  try {
+    // Import QuickJS VM module
+    const quickJSModule = await import('../vm/vm-sandbox-quickjs');
+    VMSandboxQuickJSClass = quickJSModule.VMSandboxQuickJS;
+    VMSandboxQuickJS = VMSandboxQuickJSClass;
+  } catch (quickJSError) {
+    // QuickJS VM module not available
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to load vm-sandbox-quickjs module:', quickJSError);
+    }
+  }
+
+  try {
+    // Import VM engine type selector
+    const vmFactoryModule = await import('../vm/VMEngineFactory');
+    getVMEngineType = vmFactoryModule.getVMEngineType;
+  } catch (factoryError) {
+    // VM factory not available
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to load VMEngineFactory module:', factoryError);
+    }
+  }
+  
+  vmModulesLoaded = true;
 }
 
 export class ExpressionEvaluator {
@@ -54,21 +72,8 @@ export class ExpressionEvaluator {
   constructor(options: JsqOptions) {
     this.options = options;
     this.securityManager = new SecurityManager(options);
-
-    // Initialize VM sandbox if needed
-    if (this.securityManager.shouldUseVM()) {
-      const vmConfig = this.securityManager.getVMConfig();
-      if (vmConfig) {
-        // Check which VM engine to use
-        const engineType = getVMEngineType ? getVMEngineType() : 'isolated-vm';
-        
-        if (engineType === 'quickjs' && VMSandboxQuickJS) {
-          this.vmSandbox = new VMSandboxQuickJS(vmConfig);
-        } else if (VMSandboxSimple) {
-          this.vmSandbox = new VMSandboxSimple(vmConfig);
-        }
-      }
-    }
+    
+    // Note: VM sandbox initialization moved to async methods since module loading is now async
 
     // Show warning if --safe flag is used (no longer supported) - only once
     if (options.safe && !ExpressionEvaluator.warningShown) {
@@ -99,6 +104,9 @@ export class ExpressionEvaluator {
   }
 
   async evaluate(expression: string, data: unknown): Promise<unknown> {
+    // Ensure VM modules are loaded
+    await loadVMModules();
+    
     try {
       this.showSecurityWarnings();
 
@@ -350,6 +358,9 @@ export class ExpressionEvaluator {
     expression: string,
     context: Record<string, unknown>
   ): Promise<unknown> {
+    // Ensure VM modules are loaded
+    await loadVMModules();
+    
     if (!this.vmSandbox) {
       // Create VM sandbox on demand if not already created
       const vmConfig = this.securityManager.getVMConfig();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 import { ExpressionEvaluator } from './evaluator';
 import { createSmartDollar } from './jquery-wrapper';

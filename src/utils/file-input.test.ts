@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createFileStream,
   createFormatStream,
@@ -12,13 +12,13 @@ import {
 } from './file-input';
 
 // Mock fs and other modules
-jest.mock('node:fs/promises', () => ({
-  access: jest.fn(),
-  readFile: jest.fn(),
-  stat: jest.fn(),
+vi.mock('node:fs/promises', () => ({
+  access: vi.fn(),
+  readFile: vi.fn(),
+  stat: vi.fn(),
 }));
-jest.mock('node:fs', () => ({
-  createReadStream: jest.fn(),
+vi.mock('node:fs', () => ({
+  createReadStream: vi.fn(),
   constants: {
     R_OK: 4,
     W_OK: 2,
@@ -26,9 +26,9 @@ jest.mock('node:fs', () => ({
     F_OK: 0,
   },
   promises: {
-    access: jest.fn(),
-    readFile: jest.fn(),
-    stat: jest.fn(),
+    access: vi.fn(),
+    readFile: vi.fn(),
+    stat: vi.fn(),
     constants: {
       R_OK: 4,
       W_OK: 2,
@@ -37,24 +37,24 @@ jest.mock('node:fs', () => ({
     },
   },
 }));
-jest.mock('node:path', () => ({
-  extname: jest.fn((filePath: string) => {
+vi.mock('node:path', () => ({
+  extname: vi.fn((filePath: string) => {
     const parts = filePath.split('.');
     return parts.length > 1 ? `.${parts[parts.length - 1]}` : '';
   }),
-  resolve: jest.fn((...args) => args.join('/')),
+  resolve: vi.fn((...args) => args.join('/')),
 }));
 
-const mockFs = fs as jest.Mocked<typeof fs>;
-const _mockPath = path as jest.Mocked<typeof path>;
+const mockFs = fs as vi.Mocked<typeof fs>;
+const _mockPath = path as vi.Mocked<typeof path>;
 
 describe('File Input Utils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('validateFile', () => {
@@ -236,10 +236,10 @@ describe('File Input Utils', () => {
   describe.skip('createFileStream', () => {
     it('should create readable stream from file', () => {
       const mockStream = new Readable();
-      const mockCreateReadStream = jest.fn().mockReturnValue(mockStream);
+      const mockCreateReadStream = vi.fn().mockReturnValue(mockStream);
 
       // Mock fs.createReadStream
-      jest.doMock('fs', () => ({
+      vi.doMock('fs', () => ({
         createReadStream: mockCreateReadStream,
       }));
 
@@ -253,9 +253,9 @@ describe('File Input Utils', () => {
         mockStream.emit('error', new Error('ENOENT: no such file or directory'));
       };
 
-      const mockCreateReadStream = jest.fn().mockReturnValue(mockStream);
+      const mockCreateReadStream = vi.fn().mockReturnValue(mockStream);
 
-      jest.doMock('fs', () => ({
+      vi.doMock('fs', () => ({
         createReadStream: mockCreateReadStream,
       }));
 

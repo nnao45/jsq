@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 
 describe('No Input CLI Integration Tests', () => {
   const binPath = join(__dirname, '../../bin/jsq');

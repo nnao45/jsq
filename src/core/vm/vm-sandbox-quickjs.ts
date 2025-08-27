@@ -65,12 +65,15 @@ export class VMSandboxQuickJS {
       // Set up console first (QuickJS needs this for debugging)
       // We need to create console inside the QuickJS context
       try {
-        await execContext.eval('globalThis.console = {}');
-        await execContext.eval('globalThis.console.log = function() {}');
-        await execContext.eval('globalThis.console.error = function() {}');
-        await execContext.eval('globalThis.console.warn = function() {}');
-        await execContext.eval('globalThis.console.info = function() {}');
-        await execContext.eval('globalThis.console.debug = function() {}');
+        await execContext.eval(`
+          globalThis.console = {
+            log: function() {},
+            error: function() {},
+            warn: function() {},
+            info: function() {},
+            debug: function() {}
+          };
+        `);
       } catch (err) {
         // Continue without console - not critical
       }
@@ -118,42 +121,58 @@ export class VMSandboxQuickJS {
         }
       );
 
-      const executionTime = Math.max(1, Date.now() - startTime);
-
-      // Release the execution context after successful execution
-      if (execContext) {
+      // Unwrap SmartDollar objects in the VM context
+      let finalValue = result.value;
+      
+      if (finalValue !== null && finalValue !== undefined && typeof finalValue === 'object') {
+        // Check if it's a SmartDollar object by evaluating in the VM
         try {
-          execContext.release();
-        } catch {
-          // Ignore release errors
+          const unwrapCode = `
+            (function(obj) {
+              if (obj && obj.__isSmartDollar) {
+                return obj._value || obj.value;
+              }
+              return obj;
+            })(globalThis.__result__)
+          `;
+          
+          // Store result temporarily
+          await execContext.setGlobal('__result__', finalValue);
+          
+          // Unwrap if it's a SmartDollar
+          const unwrappedResult = await execContext.eval(unwrapCode);
+          finalValue = unwrappedResult;
+          
+          // Clean up
+          await execContext.eval('delete globalThis.__result__');
+        } catch (e) {
+          // If unwrapping fails, use original value
+          console.error('Failed to unwrap SmartDollar:', e);
         }
       }
 
+      const executionTime = Math.max(1, Date.now() - startTime);
+
+      // Don't release context here - it will be released with engine disposal
+
       return {
-        value: result.value as T,
+        value: finalValue as T,
         executionTime: result.executionTime,
         memoryUsed: result.memoryUsed || 0, // QuickJS may return undefined
       };
     } catch (error) {
       const executionTime = Math.max(1, Date.now() - startTime);
       
-      // Debug: Log the original error
-      console.error('VMSandboxQuickJS execute error:', error);
-      console.error('Error type:', typeof error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-      }
-      console.error('Code being executed:', code);
-      
-      // Make sure to release context on error too
-      if (execContext) {
-        try {
-          execContext.release();
-        } catch {
-          // Ignore release errors
+      // Debug: Log the original error only in verbose mode
+      if (process.env.NODE_ENV !== 'test' && process.env.DEBUG) {
+        console.error('VMSandboxQuickJS execute error:', error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
         }
       }
+      
+      // Don't release context here - it will be released with engine disposal
       
       // Check for specific initialization errors
       if (error instanceof Error) {
@@ -163,7 +182,7 @@ export class VMSandboxQuickJS {
           const initError = new Error(
             'QuickJS initialization failed: Dynamic imports are not supported in the current Jest environment. ' +
             'QuickJS requires --experimental-vm-modules flag which may not be compatible with your Node.js version. ' +
-            'Consider using JSQ_VM_ENGINE=isolated-vm for tests or running tests with NODE_OPTIONS=--experimental-vm-modules.'
+            'Run tests with NODE_OPTIONS=--experimental-vm-modules.'
           );
           throw this.createSandboxError(initError, executionTime);
         }
@@ -229,16 +248,16 @@ export class VMSandboxQuickJS {
 
     // For QuickJS, we need simpler wrapping since it handles JavaScript more directly
     if (needsAsync) {
+      // QuickJS handles async code natively, just ensure proper unwrapping
       return `(async () => {
-        try {
-          return await (async () => { ${code} })();
-        } catch (error) {
-          if (error instanceof Error) {
-            throw new Error(error.message);
-          }
-          throw error;
+        const __result = await (async () => { return ${code}; })();
+        // Unwrap SmartDollar if needed
+        if (__result && __result.__isSmartDollar) {
+          return __result._value || __result.value;
         }
-      })()`;
+        return __result;
+      })()`; 
+      }
     } else {
       // Check if this is a simple expression or statement
       const isExpression = !code.includes(';') && !code.includes('\n') && 

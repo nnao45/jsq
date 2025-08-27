@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { type StreamProcessingOptions, StreamProcessor } from './stream-processor';
 

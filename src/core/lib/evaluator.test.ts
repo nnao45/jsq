@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
 
@@ -205,7 +205,7 @@ describe('ExpressionEvaluator', () => {
 
   describe('Console handling', () => {
     it('should always allow console.log', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
       await evaluator.evaluate('console.log("test"); $.value', data);
@@ -217,7 +217,7 @@ describe('ExpressionEvaluator', () => {
 
     it('should return correct value with console.log', async () => {
       const verboseEvaluator = new ExpressionEvaluator({ ...mockOptions, verbose: true });
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
       const result = await verboseEvaluator.evaluate('console.log("test"); $.value', data);

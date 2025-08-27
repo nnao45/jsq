@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it, jest } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 
 describe('forEach and each methods', () => {
@@ -139,7 +139,7 @@ describe('forEach and each methods', () => {
     });
 
     it('should work with console.log mock', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
       const data = [1, 2, 3];
       const wrapper = new ChainableWrapper(data);
 

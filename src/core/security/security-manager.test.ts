@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { SecurityManager } from './security-manager';
 
