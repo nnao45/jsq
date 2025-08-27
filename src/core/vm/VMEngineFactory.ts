@@ -1,5 +1,5 @@
-import type { VMEngine, VMEngineFactory as IVMEngineFactory } from './interfaces/VMEngine';
 import { QuickJSEngine } from './engines/quickjs/QuickJSEngine';
+import type { VMEngineFactory as IVMEngineFactory, VMEngine } from './interfaces/VMEngine';
 
 export class VMEngineFactory implements IVMEngineFactory {
   create(_type: 'quickjs'): VMEngine {

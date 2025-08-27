@@ -5,16 +5,18 @@ import { ExpressionEvaluator } from '../lib/evaluator';
 
 describeWithVM('VM CLI Resource Limits', () => {
   describe('Memory Limits via CLI options', () => {
-    testWithVM('should pass memory limit from CLI options to VM', async () => {
-      const options: JsqOptions = {
-        sandbox: true,
-        memoryLimit: 5, // 5MB limit - smaller for more reliable test
-      };
+    testWithVM(
+      'should pass memory limit from CLI options to VM',
+      async () => {
+        const options: JsqOptions = {
+          sandbox: true,
+          memoryLimit: 5, // 5MB limit - smaller for more reliable test
+        };
 
-      const evaluator = new ExpressionEvaluator(options);
+        const evaluator = new ExpressionEvaluator(options);
 
-      // Try to allocate more than 5MB - create large arrays
-      const code = `
+        // Try to allocate more than 5MB - create large arrays
+        const code = `
         // Create multiple large arrays to exceed memory limit
         const arrays = [];
         try {
@@ -28,19 +30,21 @@ describeWithVM('VM CLI Resource Limits', () => {
         }
       `;
 
-      // This should either throw or return a value
-      // QuickJSのメモリリミット実装は環境により動作が異なるため、
-      // エラーか成功どちらでも許容する
-      try {
-        const result = await evaluator.evaluate(code, {});
-        // もし成功したら、配列の長さが返ってくるはず
-        expect(typeof result).toBe('number');
-      } catch (error) {
-        // エラーが発生した場合はOK
-        expect(error).toBeDefined();
-      }
-      await evaluator.dispose();
-    }, 60000); // 60秒のタイムアウトを設定
+        // This should either throw or return a value
+        // QuickJSのメモリリミット実装は環境により動作が異なるため、
+        // エラーか成功どちらでも許容する
+        try {
+          const result = await evaluator.evaluate(code, {});
+          // もし成功したら、配列の長さが返ってくるはず
+          expect(typeof result).toBe('number');
+        } catch (error) {
+          // エラーが発生した場合はOK
+          expect(error).toBeDefined();
+        }
+        await evaluator.dispose();
+      },
+      60000
+    ); // 60秒のタイムアウトを設定
 
     testWithVM('should work with default memory limit', async () => {
       const options: JsqOptions = {

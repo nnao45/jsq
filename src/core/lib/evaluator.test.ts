@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from './evaluator';
 

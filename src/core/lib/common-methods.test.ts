@@ -365,7 +365,6 @@ describe('共通メソッドの一貫性テスト', () => {
         const $input = createSmartDollar($inputData);
         const $result = ($input as any)[testCase.method](...testCase.args);
 
-
         // Check if result is a ChainableWrapper instance
         const $value =
           $result && $result.data !== undefined

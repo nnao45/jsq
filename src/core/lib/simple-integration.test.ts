@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 import { JsqProcessor } from './processor';
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { JsqProcessor } from './processor';
 
 describe('Dollar ($) Evaluation Tests', () => {
@@ -7,7 +7,7 @@ describe('Dollar ($) Evaluation Tests', () => {
 
   beforeEach(() => {
     processor = new JsqProcessor({ verbose: false });
-    
+
     // Helper function to process with JSON input
     processJSON = async (expression: string, data: any) => {
       const input = JSON.stringify(data);

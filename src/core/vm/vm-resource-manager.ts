@@ -296,10 +296,8 @@ export class VMResourceManager {
       try {
         // Get heap statistics if available
         const heapStats = await this.getHeapStatistics(isolate);
-        if (heapStats && heapStats.used_heap_size > this.limits.memoryLimit * 1024 * 1024) {
-          console.warn(
-            `Isolate approaching memory limit: ${heapStats.used_heap_size / 1024 / 1024}MB`
-          );
+        if (heapStats && heapStats.used > this.limits.memoryLimit * 1024 * 1024) {
+          console.warn(`Isolate approaching memory limit: ${heapStats.used / 1024 / 1024}MB`);
         }
       } catch {
         // Monitoring failed, probably because isolate was disposed
@@ -312,16 +310,16 @@ export class VMResourceManager {
     setTimeout(() => clearInterval(monitor), this.limits.wallTimeLimit + 5000);
   }
 
-  private async getHeapStatistics(_isolate: IvmIsolate): Promise<any> {
+  private async getHeapStatistics(_isolate: IvmIsolate): Promise<{ used: number; limit: number }> {
     try {
       // Try to get heap statistics from the isolate
       // This is a simplified version - real implementation would use V8 APIs
       return {
-        used_heap_size: process.memoryUsage().heapUsed,
-        heap_size_limit: this.limits.memoryLimit * 1024 * 1024,
+        used: process.memoryUsage().heapUsed,
+        limit: this.limits.memoryLimit * 1024 * 1024,
       };
     } catch {
-      return null;
+      throw new Error('Failed to get heap statistics');
     }
   }
 

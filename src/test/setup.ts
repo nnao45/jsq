@@ -1,13 +1,14 @@
 // Test setup and configuration
-import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+
 import { getQuickJS } from 'quickjs-emscripten';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // We'll initialize QuickJS in beforeAll hook since sync initialization is not working
 
 // Global test setup
 beforeAll(async () => {
   // Setup global test environment
-  
+
   // Always initialize QuickJS
   try {
     await getQuickJS();
