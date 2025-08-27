@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSQ Browser - 本物のJSQをブラウザで！</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 JSQ Browser Edition</h1>
+      <p class="subtitle">本物のJSQコードがブラウザで動作！</p>
+      <div id="init-status" class="init-status">初期化中...</div>
+    </header>
+
+    <div class="main-content">
+      <div class="input-section">
+        <div class="section-header">
+          <h2>入力データ (JSON)</h2>
+          <button id="load-sample-data" class="btn-secondary">サンプルデータを読み込む</button>
+        </div>
+        <textarea id="json-input" placeholder='{"users": [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]}' spellcheck="false">{
+  "users": [
+    {"name": "Alice", "age": 25, "city": "Tokyo"},
+    {"name": "Bob", "age": 30, "city": "Osaka"},
+    {"name": "Charlie", "age": 35, "city": "Tokyo"}
+  ],
+  "products": [
+    {"name": "Laptop", "price": 120000, "category": "Electronics"},
+    {"name": "Coffee", "price": 500, "category": "Beverage"},
+    {"name": "Book", "price": 2000, "category": "Media"}
+  ]
+}</textarea>
+      </div>
+
+      <div class="expression-section">
+        <div class="section-header">
+          <h2>JSQ式</h2>
+          <div class="example-buttons">
+            <button class="example-btn" data-example="$.users.filter(u => u.age > 28)">フィルター例</button>
+            <button class="example-btn" data-example="$.users.map(u => u.name)">マップ例</button>
+            <button class="example-btn" data-example="$.users | _.groupBy('city')">グループ化例</button>
+            <button class="example-btn" data-example="$.products | _.sumBy('price')">集計例</button>
+            <button class="example-btn" data-example="$.users.name">SmartDollar例</button>
+          </div>
+        </div>
+        <textarea id="expression-input" placeholder="$.users.filter(u => u.age > 25)" spellcheck="false">$.users.filter(u => u.age > 25)</textarea>
+        <button id="evaluate-btn" class="btn-primary" disabled>実行 (Ctrl+Enter)</button>
+      </div>
+
+      <div class="output-section">
+        <div class="section-header">
+          <h2>結果</h2>
+          <div class="output-controls">
+            <button id="copy-result" class="btn-secondary">結果をコピー</button>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-transformed" />
+              変換後の式を表示
+            </label>
+          </div>
+        </div>
+        <div id="transformed-expression" class="transformed-expression" style="display: none;"></div>
+        <pre id="result-output"><code class="language-json"></code></pre>
+        <div id="error-output" class="error-message" style="display: none;"></div>
+      </div>
+
+      <div class="console-section">
+        <div class="section-header">
+          <h2>コンソール出力</h2>
+          <button id="clear-console" class="btn-secondary">クリア</button>
+        </div>
+        <div id="console-output"></div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="info-section">
+        <h3>使い方</h3>
+        <ul>
+          <li><code>$</code> - 入力データ全体にアクセス（SmartDollar記法）</li>
+          <li><code>_</code> - Lodashユーティリティ関数</li>
+          <li><code>console.log()</code> - デバッグ出力</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> - 式を実行</li>
+          <li>パイプ演算子 <code>|</code> をサポート</li>
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h3>このバージョンについて</h3>
+        <ul>
+          <li>本物のJSQコアエンジンを使用</li>
+          <li>QuickJS WASMによるセキュアな実行環境</li>
+          <li>式変換・SmartDollar・Lodashすべて本物</li>
+          <li>Node.js版と同じ評価結果を提供</li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  
+  <!-- JSQバンドルされたJavaScript -->
+  <script>
+    // JSQの初期化とUI制御
+    let jsqReady = false;
+    
+    window.addEventListener('DOMContentLoaded', () => {
+      // JSQの初期化を待つ
+      const checkInterval = setInterval(() => {
+        if (window.jsq && typeof window.jsq.evaluate === 'function') {
+          jsqReady = true;
+          clearInterval(checkInterval);
+          document.getElementById('init-status').textContent = '✅ JSQ準備完了！';
+          document.getElementById('init-status').style.color = '#10b981';
+          document.getElementById('evaluate-btn').disabled = false;
+          setupEventListeners();
+        }
+      }, 100);
+      
+      // タイムアウト処理
+      setTimeout(() => {
+        if (!jsqReady) {
+          clearInterval(checkInterval);
+          document.getElementById('init-status').textContent = '❌ 初期化に失敗しました';
+          document.getElementById('init-status').style.color = '#ef4444';
+        }
+      }, 10000);
+    });
+    
+    // 評価関数
+    async function evaluate() {
+      if (!jsqReady) {
+        showError('JSQがまだ初期化されていません');
+        return;
+      }
+      
+      const jsonInput = document.getElementById('json-input').value;
+      const expression = document.getElementById('expression-input').value;
+      const resultOutput = document.getElementById('result-output').querySelector('code');
+      const errorOutput = document.getElementById('error-output');
+      const transformedDiv = document.getElementById('transformed-expression');
+      
+      // UIをリセット
+      errorOutput.style.display = 'none';
+      transformedDiv.textContent = '';
+      clearConsole();
+      document.getElementById('evaluate-btn').classList.add('loading');
+      
+      try {
+        // JSONパース
+        let data;
+        try {
+          data = JSON.parse(jsonInput);
+        } catch (e) {
+          throw new Error('JSONのパースに失敗しました: ' + e.message);
+        }
+        
+        // 変換後の式を表示（オプション）
+        if (document.getElementById('show-transformed').checked) {
+          try {
+            const transformed = window.jsq.transform(expression);
+            transformedDiv.textContent = '変換後: ' + transformed;
+            transformedDiv.style.display = 'block';
+          } catch (e) {
+            console.error('Transform failed:', e);
+          }
+        }
+        
+        // JSQで評価
+        const result = await window.jsq.evaluate(expression, data, {
+          verbose: false,
+          sandbox: true
+        });
+        
+        // 結果を表示
+        resultOutput.textContent = JSON.stringify(result, null, 2);
+        if (window.Prism) {
+          Prism.highlightElement(resultOutput);
+        }
+        
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        document.getElementById('evaluate-btn').classList.remove('loading');
+      }
+    }
+    
+    // エラー表示
+    function showError(message) {
+      const errorOutput = document.getElementById('error-output');
+      errorOutput.textContent = 'エラー: ' + message;
+      errorOutput.style.display = 'block';
+      
+      const resultOutput = document.getElementById('result-output').querySelector('code');
+      resultOutput.textContent = '';
+    }
+    
+    // コンソールクリア
+    function clearConsole() {
+      document.getElementById('console-output').innerHTML = '';
+    }
+    
+    // イベントリスナーの設定
+    function setupEventListeners() {
+      // 評価ボタン
+      document.getElementById('evaluate-btn').addEventListener('click', evaluate);
+      
+      // Ctrl+Enterで実行
+      document.getElementById('expression-input').addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter' && jsqReady) {
+          evaluate();
+        }
+      });
+      
+      // 変換表示チェックボックス
+      document.getElementById('show-transformed').addEventListener('change', (e) => {
+        const transformedDiv = document.getElementById('transformed-expression');
+        if (!e.target.checked) {
+          transformedDiv.style.display = 'none';
+        }
+      });
+      
+      // サンプルデータ読み込み
+      document.getElementById('load-sample-data').addEventListener('click', () => {
+        const sampleData = {
+          users: [
+            { id: 1, name: "Alice", age: 25, city: "Tokyo", active: true },
+            { id: 2, name: "Bob", age: 30, city: "Osaka", active: false },
+            { id: 3, name: "Charlie", age: 35, city: "Tokyo", active: true },
+            { id: 4, name: "David", age: 28, city: "Kyoto", active: true }
+          ],
+          products: [
+            { id: 1, name: "Laptop", price: 120000, category: "Electronics", inStock: true },
+            { id: 2, name: "Coffee", price: 500, category: "Beverage", inStock: true },
+            { id: 3, name: "Book", price: 2000, category: "Media", inStock: false },
+            { id: 4, name: "Headphones", price: 15000, category: "Electronics", inStock: true }
+          ],
+          stats: {
+            totalUsers: 4,
+            totalProducts: 4,
+            metrics: {
+              revenue: 137500,
+              growth: 15.5
+            }
+          }
+        };
+        
+        document.getElementById('json-input').value = JSON.stringify(sampleData, null, 2);
+      });
+      
+      // 例ボタン
+      document.querySelectorAll('.example-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('expression-input').value = btn.dataset.example;
+          if (jsqReady) evaluate();
+        });
+      });
+      
+      // 結果コピー
+      document.getElementById('copy-result').addEventListener('click', () => {
+        const result = document.getElementById('result-output').textContent;
+        navigator.clipboard.writeText(result).then(() => {
+          const btn = document.getElementById('copy-result');
+          const originalText = btn.textContent;
+          btn.textContent = 'コピーしました！';
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
+        });
+      });
+      
+      // コンソールクリア
+      document.getElementById('clear-console').addEventListener('click', clearConsole);
+      
+      // 初期実行
+      if (jsqReady) evaluate();
+    }
+    
+    // コンソール出力をキャプチャ（グローバル）
+    const originalConsole = {
+      log: console.log,
+      error: console.error,
+      warn: console.warn
+    };
+    
+    function addConsoleOutput(type, args) {
+      const consoleOutput = document.getElementById('console-output');
+      const logDiv = document.createElement('div');
+      logDiv.className = `console-log console-${type}`;
+      
+      const text = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      
+      logDiv.textContent = text;
+      consoleOutput.appendChild(logDiv);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+    
+    // console.logをオーバーライド
+    console.log = function(...args) {
+      originalConsole.log.apply(console, args);
+      if (document.getElementById('console-output')) {
+        addConsoleOutput('log', args);
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { describeWithVM, isIsolatedVMAvailable, testWithVM } from '@/test/vm-helpers';
+import { describeWithVM, isQuickJSAvailable, testWithVM } from '@/test/vm-helpers';
 import type { JsqOptions } from '@/types/cli';
 import { ExpressionEvaluator } from '../lib/evaluator';
 
@@ -19,8 +19,8 @@ describe('Security Integration Tests', () => {
     // Enable security warnings for these tests
     process.env.SHOW_SECURITY_WARNINGS = 'true';
 
-    if (!isIsolatedVMAvailable()) {
-      console.log('⚠️  isolated-vm not available - some VM tests will be skipped');
+    if (!isQuickJSAvailable()) {
+      console.log('⚠️  VM not available - some VM tests will be skipped');
     }
   });
 
@@ -37,8 +37,7 @@ describe('Security Integration Tests', () => {
       expect(result).toEqual([2, 4, 6]);
     });
 
-    // VM mode warnings are now disabled by default
-    // Test removed as warnings are no longer shown
+    // VM mode warnings are disabled by default
   });
 
   describeWithVM('Sandbox Mode', () => {
@@ -46,7 +45,7 @@ describe('Security Integration Tests', () => {
       const options: JsqOptions = { sandbox: true };
       const evaluator = new ExpressionEvaluator(options);
 
-      // Test that VM mode works with real isolated-vm
+      // Test that VM mode works
       const result = await evaluator.evaluate('$.length', [1, 2, 3]);
       expect(result).toBe(3);
 

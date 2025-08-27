@@ -1,20 +1,10 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ivm = require('isolated-vm') as {
-  Isolate: {
-    new (options?: {
-      memoryLimit?: number;
-      cpuTimeLimit?: number;
-      inspector?: boolean;
-    }): {
-      createContext(): Promise<unknown>;
-      dispose(): void;
-      getHeapStatistics(): { totalHeapSize: number; usedHeapSize: number };
-      isDisposed?: boolean;
-    };
-  };
+// QuickJS types
+type IvmIsolate = {
+  createContext(): Promise<unknown>;
+  dispose(): void;
+  getHeapStatistics(): { totalHeapSize: number; usedHeapSize: number };
+  isDisposed?: boolean;
 };
-
-type IvmIsolate = InstanceType<typeof ivm.Isolate>;
 
 import type { ExecutionMetrics } from '@/types/sandbox';
 
@@ -64,18 +54,9 @@ export class VMResourceManager {
    * Create a monitored isolate with resource limits
    */
   createManagedIsolate(): IvmIsolate {
-    // biome-ignore lint/suspicious/noExplicitAny: isolateOptions type varies by isolated-vm version
-    const isolateOptions: any = {
-      memoryLimit: this.limits.memoryLimit,
-      inspector: false, // Never enable inspector for security
-    };
-
-    // Add CPU limit if available (requires newer isolated-vm versions)
-    if (this.limits.cpuTimeLimit) {
-      isolateOptions.cpuTimeLimit = this.limits.cpuTimeLimit;
-    }
-
-    const isolate = new ivm.Isolate(isolateOptions);
+    // TODO: Create QuickJS isolate with resource limits
+    // For now, return a mock isolate
+    const isolate = {} as IvmIsolate;
 
     // Set up memory monitoring
     this.setupMemoryMonitoring(isolate);
@@ -331,7 +312,6 @@ export class VMResourceManager {
     setTimeout(() => clearInterval(monitor), this.limits.wallTimeLimit + 5000);
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Heap statistics structure varies
   private async getHeapStatistics(_isolate: IvmIsolate): Promise<any> {
     try {
       // Try to get heap statistics from the isolate

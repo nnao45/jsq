@@ -30,6 +30,9 @@ export function transformExpression(expression: string): string {
   }
   // Handle semicolon operations (sequential execution)
   else if (hasSemicolonOperator(trimmed)) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Transforming semicolon expression:', trimmed);
+    }
     result = transformSemicolonExpression(trimmed);
   }
   // Handle variable declaration with pipeline (const a = 'xx' | a.toString())
@@ -551,6 +554,9 @@ function hasSemicolonOperator(expression: string): boolean {
       state.braceDepth === 0 &&
       state.bracketDepth === 0
     ) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Found semicolon operator at position', i, 'in expression:', expression);
+      }
       return true;
     }
   }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ExpressionEvaluator } from './core/lib/evaluator';
 import type { JsqOptions } from './types/cli';
 
@@ -191,6 +191,11 @@ describe('Native JavaScript Compatibility Tests', () => {
     it('Math.min with spread', async () => {
       const result = await evaluator.evaluate('Math.min(...$)', [1, 5, 3, 9, 2]);
       expect(result).toBe(1);
+    });
+
+    it('Math.min with array', async () => {
+      const result = await evaluator.evaluate('Math.min($)', [1, 5, 3, 9, 2]);
+      expect(result).toBe(Number.NaN);
     });
 
     it('Math.floor with map', async () => {

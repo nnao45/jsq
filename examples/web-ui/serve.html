@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>JSQ Web UI サーバー起動ガイド</title>
+  <style>
+    body {
+      font-family: -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .method {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .method h3 {
+      margin-top: 0;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 JSQ Web Playground - ローカルサーバー起動方法</h1>
+  
+  <p>QuickJS WASMを使用するため、<code>file://</code>プロトコルでは動作しません。<br>
+  以下のいずれかの方法でローカルサーバーを起動してください。</p>
+
+  <div class="method">
+    <h3>方法1: Python (推奨)</h3>
+    <pre><code># Python 3
+python -m http.server 8000
+
+# Python 2 (古い環境の場合)
+python -m SimpleHTTPServer 8000</code></pre>
+    <p>起動後: <a href="http://localhost:8000">http://localhost:8000</a> にアクセス</p>
+  </div>
+
+  <div class="method">
+    <h3>方法2: Node.js</h3>
+    <pre><code># npx を使用（インストール不要）
+npx serve .
+
+# または http-server を使用
+npx http-server -p 8000
+
+# グローバルインストール済みの場合
+serve .
+# または
+http-server -p 8000</code></pre>
+  </div>
+
+  <div class="method">
+    <h3>方法3: VS Code拡張機能</h3>
+    <p>「Live Server」拡張機能をインストール後、<code>index.html</code>を右クリック → 「Open with Live Server」</p>
+  </div>
+
+  <div class="method">
+    <h3>方法4: その他の方法</h3>
+    <pre><code># Ruby
+ruby -run -e httpd . -p 8000
+
+# PHP
+php -S localhost:8000
+
+# Deno
+deno run --allow-net --allow-read https://deno.land/std/http/file_server.ts</code></pre>
+  </div>
+
+  <hr>
+  <p>サーバーが起動したら、<strong>http://localhost:8000</strong> でJSQ Web Playgroundにアクセスできます！</p>
+</body>
+</html>
