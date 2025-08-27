@@ -24,7 +24,7 @@ let vmModulesLoaded = false;
 
 async function loadVMModules() {
   if (vmModulesLoaded) return;
-  
+
   try {
     // Only import VM modules when actually needed
     const vmModule = await import('../vm/vm-sandbox-simple');
@@ -59,7 +59,7 @@ async function loadVMModules() {
       console.error('Failed to load VMEngineFactory module:', factoryError);
     }
   }
-  
+
   vmModulesLoaded = true;
 }
 
@@ -72,7 +72,7 @@ export class ExpressionEvaluator {
   constructor(options: JsqOptions) {
     this.options = options;
     this.securityManager = new SecurityManager(options);
-    
+
     // Note: VM sandbox initialization moved to async methods since module loading is now async
 
     // Show warning if --safe flag is used (no longer supported) - only once
@@ -106,7 +106,7 @@ export class ExpressionEvaluator {
   async evaluate(expression: string, data: unknown): Promise<unknown> {
     // Ensure VM modules are loaded
     await loadVMModules();
-    
+
     try {
       this.showSecurityWarnings();
 
@@ -142,10 +142,7 @@ export class ExpressionEvaluator {
       return this.unwrapResult(result);
     } catch (error) {
       // Re-throw security errors as-is, wrap others
-      if (
-        error instanceof Error &&
-        error.message.includes('Security validation failed')
-      ) {
+      if (error instanceof Error && error.message.includes('Security validation failed')) {
         throw error;
       }
       throw new Error(
@@ -359,7 +356,7 @@ export class ExpressionEvaluator {
   ): Promise<unknown> {
     // Ensure VM modules are loaded
     await loadVMModules();
-    
+
     if (!this.vmSandbox) {
       // Create VM sandbox on demand if not already created
       const vmConfig = this.securityManager.getVMConfig();
@@ -368,7 +365,7 @@ export class ExpressionEvaluator {
       }
       // Check which VM engine to use
       const engineType = getVMEngineType ? getVMEngineType() : 'quickjs';
-      
+
       if (engineType === 'quickjs' && VMSandboxQuickJS) {
         this.vmSandbox = new VMSandboxQuickJS(vmConfig);
         if (this.options.verbose) {
@@ -428,7 +425,7 @@ export class ExpressionEvaluator {
           console.error('Expression:', expression);
           console.error('Stack:', error.stack);
         }
-        
+
         if (error.message.includes('Cannot find module')) {
           throw new Error(
             'VM module not found. Please ensure all dependencies are properly installed.'
@@ -440,7 +437,7 @@ export class ExpressionEvaluator {
         if (error.message.includes('QuickJS initialization failed')) {
           throw error; // Re-throw the descriptive error as-is
         }
-        
+
         formattedError.type = 'runtime';
         formattedError.message = 'VM execution failed';
         formattedError.detail = error.message;

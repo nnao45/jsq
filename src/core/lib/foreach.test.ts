@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ChainableWrapper } from '../chainable/chainable';
 
 describe('forEach and each methods', () => {

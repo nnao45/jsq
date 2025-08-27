@@ -13,7 +13,7 @@ vi.mock('node:process', () => {
     off: vi.fn(),
     removeListener: vi.fn(),
   };
-  
+
   return {
     default: {
       stdin: mockStdin,
@@ -22,9 +22,9 @@ vi.mock('node:process', () => {
   };
 });
 
+import process from 'node:process';
 // Now import the functions to test
 import { getStdinStream, isStdinAvailable, readStdin } from './input';
-import process from 'node:process';
 
 // Access mockStdin from the mocked module
 const mockStdin = process.stdin as any;

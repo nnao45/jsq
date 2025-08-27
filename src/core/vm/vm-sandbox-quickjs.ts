@@ -5,8 +5,8 @@ import type {
   VMResult,
   VMSandboxConfig,
 } from '@/types/sandbox';
+import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine';
 import { VMEngineFactory } from './VMEngineFactory';
-import type { VMEngine } from './interfaces/VMEngine';
 
 /**
  * QuickJS-based VM Sandbox implementation
@@ -44,9 +44,8 @@ export class VMSandboxQuickJS {
     context: VMContext = {},
     options: VMOptions = {}
   ): Promise<VMResult<T>> {
-    
     // const startTime = Date.now();
-    let execContext: any = null;
+    let execContext: VMExecutionContext | null = null;
     let engine: VMEngine | null = null;
 
     try {
@@ -54,7 +53,7 @@ export class VMSandboxQuickJS {
       const factory = new VMEngineFactory();
       engine = factory.create('quickjs');
       await engine.initialize(this.config);
-      
+
       // Create a new execution context
       execContext = await engine.createContext();
 
@@ -82,7 +81,7 @@ export class VMSandboxQuickJS {
             }
           };
         `);
-      } catch (err) {
+      } catch (_err) {
         // Continue without console - not critical
       }
 
@@ -90,7 +89,9 @@ export class VMSandboxQuickJS {
       let needsLodash = false;
       for (const [key, value] of Object.entries(context)) {
         // Skip built-in globals that are already set up, except console which we want to override
-        if (['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)) {
+        if (
+          ['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)
+        ) {
           continue;
         }
 
@@ -116,17 +117,17 @@ export class VMSandboxQuickJS {
 
       // Store the host console reference for later use
       const hostConsole = {
-        log: (...args: any[]) => console.log(...args),
-        error: (...args: any[]) => console.error(...args),
-        warn: (...args: any[]) => console.warn(...args),
-        info: (...args: any[]) => console.info(...args),
-        debug: (...args: any[]) => console.debug(...args),
+        log: (...args: unknown[]) => console.log(...args),
+        error: (...args: unknown[]) => console.error(...args),
+        warn: (...args: unknown[]) => console.warn(...args),
+        info: (...args: unknown[]) => console.info(...args),
+        debug: (...args: unknown[]) => console.debug(...args),
       };
 
       // Execute the code using the engine
       // Note: We've already set up the context variables, so pass empty bindings
       const wrappedCode = this.wrapCode(code);
-      
+
       const result = await engine.execute(
         execContext,
         wrappedCode,
@@ -150,13 +151,13 @@ export class VMSandboxQuickJS {
             }
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore console processing errors
       }
 
       // Unwrap SmartDollar objects in the VM context
       let finalValue = result.value;
-      
+
       if (finalValue !== null && finalValue !== undefined && typeof finalValue === 'object') {
         // Check if it's a SmartDollar object by evaluating in the VM
         try {
@@ -168,14 +169,14 @@ export class VMSandboxQuickJS {
               return obj;
             })(globalThis.__result__)
           `;
-          
+
           // Store result temporarily
           await execContext.setGlobal('__result__', finalValue);
-          
+
           // Unwrap if it's a SmartDollar
           const unwrappedResult = await execContext.eval(unwrapCode);
           finalValue = unwrappedResult;
-          
+
           // Clean up
           await execContext.eval('delete globalThis.__result__');
         } catch (e) {
@@ -195,7 +196,7 @@ export class VMSandboxQuickJS {
       };
     } catch (error) {
       // const executionTime = Math.max(1, Date.now() - startTime);
-      
+
       // Debug: Log the original error only in verbose mode
       if (process.env.NODE_ENV !== 'test' && process.env.DEBUG) {
         console.error('VMSandboxQuickJS execute error:', error);
@@ -204,23 +205,25 @@ export class VMSandboxQuickJS {
           console.error('Error stack:', error.stack);
         }
       }
-      
+
       // Don't release context here - it will be released with engine disposal
-      
+
       // Check for specific initialization errors
       if (error instanceof Error) {
-        if (error.message.includes('dynamic import callback') || 
-            error.message.includes('experimental-vm-modules') ||
-            error.message.includes('ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING_FLAG')) {
+        if (
+          error.message.includes('dynamic import callback') ||
+          error.message.includes('experimental-vm-modules') ||
+          error.message.includes('ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING_FLAG')
+        ) {
           const initError = new Error(
             'QuickJS initialization failed: Dynamic imports are not supported in the current Jest environment. ' +
-            'QuickJS requires --experimental-vm-modules flag which may not be compatible with your Node.js version. ' +
-            'Run tests with NODE_OPTIONS=--experimental-vm-modules.'
+              'QuickJS requires --experimental-vm-modules flag which may not be compatible with your Node.js version. ' +
+              'Run tests with NODE_OPTIONS=--experimental-vm-modules.'
           );
           throw this.createSandboxError(initError, 0);
         }
       }
-      
+
       throw this.createSandboxError(error, 0);
     } finally {
       // エンジンも破棄する（QuickJSのメモリリーク防止）
@@ -234,9 +237,7 @@ export class VMSandboxQuickJS {
     }
   }
 
-
-  private async setupSmartDollar(context: any, value: unknown): Promise<void> {
-    
+  private async setupSmartDollar(context: VMExecutionContext, value: unknown): Promise<void> {
     // Get the actual data from the $ value
     let dataToSerialize: unknown;
     if (Array.isArray(value)) {
@@ -277,30 +278,30 @@ export class VMSandboxQuickJS {
 
   private hasTopLevelSemicolon(expression: string): boolean {
     let inString = false;
-    let stringChar: string | undefined = undefined;
+    let stringChar: string | undefined;
     let parenDepth = 0;
     let braceDepth = 0;
     let bracketDepth = 0;
-    
+
     for (let i = 0; i < expression.length; i++) {
       const char = expression.charAt(i);
       const prevChar = i > 0 ? expression.charAt(i - 1) : '';
-      
+
       // Handle string state
       if (!inString && (char === '"' || char === "'" || char === '`')) {
         inString = true;
         stringChar = char;
         continue;
       }
-      
+
       if (inString && char === stringChar && prevChar !== '\\') {
         inString = false;
         stringChar = undefined;
         continue;
       }
-      
+
       if (inString) continue;
-      
+
       // Handle bracket depth
       if (char === '(') parenDepth++;
       if (char === ')') parenDepth--;
@@ -308,7 +309,7 @@ export class VMSandboxQuickJS {
       if (char === '}') braceDepth--;
       if (char === '[') bracketDepth++;
       if (char === ']') bracketDepth--;
-      
+
       // Check for semicolon at top level
       if (char === ';' && parenDepth === 0 && braceDepth === 0 && bracketDepth === 0) {
         return true;
@@ -321,15 +322,15 @@ export class VMSandboxQuickJS {
     const parts: string[] = [];
     let current = '';
     let inString = false;
-    let stringChar: string | undefined = undefined;
+    let stringChar: string | undefined;
     let parenDepth = 0;
     let braceDepth = 0;
     let bracketDepth = 0;
-    
+
     for (let i = 0; i < expression.length; i++) {
       const char = expression.charAt(i);
       const prevChar = i > 0 ? expression.charAt(i - 1) : '';
-      
+
       // Handle string state
       if (!inString && (char === '"' || char === "'" || char === '`')) {
         inString = true;
@@ -337,17 +338,17 @@ export class VMSandboxQuickJS {
         current += char;
         continue;
       }
-      
+
       if (inString && char === stringChar && prevChar !== '\\') {
         inString = false;
         stringChar = undefined;
         current += char;
         continue;
       }
-      
+
       current += char;
       if (inString) continue;
-      
+
       // Handle bracket depth
       if (char === '(') parenDepth++;
       if (char === ')') parenDepth--;
@@ -355,7 +356,7 @@ export class VMSandboxQuickJS {
       if (char === '}') braceDepth--;
       if (char === '[') bracketDepth++;
       if (char === ']') bracketDepth--;
-      
+
       // Split at semicolon if at top level
       if (char === ';' && parenDepth === 0 && braceDepth === 0 && bracketDepth === 0) {
         current = current.slice(0, -1); // Remove the semicolon
@@ -365,17 +366,18 @@ export class VMSandboxQuickJS {
         current = '';
       }
     }
-    
+
     if (current.trim()) {
       parts.push(current.trim());
     }
-    
+
     return parts;
   }
 
   private wrapCode(code: string): string {
     // const trimmedCode = code.trim();
-    const needsAsync = code.includes('await') || code.includes('async') || code.includes('Promise.');
+    const needsAsync =
+      code.includes('await') || code.includes('async') || code.includes('Promise.');
 
     // For QuickJS, we need simpler wrapping since it handles JavaScript more directly
     if (needsAsync) {
@@ -396,10 +398,14 @@ export class VMSandboxQuickJS {
       // Check if this is a simple expression or statement
       // Need to check for semicolons not inside strings
       const hasTopLevelSemicolon = this.hasTopLevelSemicolon(code);
-      const isExpression = !hasTopLevelSemicolon && !code.includes('\n') && 
-                          !code.startsWith('if') && !code.startsWith('for') && 
-                          !code.startsWith('while') && !code.startsWith('function');
-      
+      const isExpression =
+        !hasTopLevelSemicolon &&
+        !code.includes('\n') &&
+        !code.startsWith('if') &&
+        !code.startsWith('for') &&
+        !code.startsWith('while') &&
+        !code.startsWith('function');
+
       if (isExpression) {
         return `(() => {
           try {
@@ -413,29 +419,34 @@ export class VMSandboxQuickJS {
         })()`;
       } else {
         // For statements, we need to capture the last expression
-        const statements = this.splitBySemicolon(code).map(s => s.trim()).filter(s => s);
+        const statements = this.splitBySemicolon(code)
+          .map(s => s.trim())
+          .filter(s => s);
         if (statements.length > 1) {
           const lastStatement = statements[statements.length - 1];
           if (!lastStatement) {
             return code; // 安全のためそのまま返す
           }
           const otherStatements = statements.slice(0, -1);
-          
+
           // Build the code with proper handling of each statement
-          const statementsCode = otherStatements.map((stmt) => {
-            return `${stmt};`;
-          }).join('\n              ');
-          
+          const statementsCode = otherStatements
+            .map(stmt => {
+              return `${stmt};`;
+            })
+            .join('\n              ');
+
           // Check if last statement is an expression or statement
-          const isLastStatementExpression = !lastStatement.trim().startsWith('if') && 
-                                           !lastStatement.trim().startsWith('for') && 
-                                           !lastStatement.trim().startsWith('while') &&
-                                           !lastStatement.trim().startsWith('function') &&
-                                           !lastStatement.trim().startsWith('let') &&
-                                           !lastStatement.trim().startsWith('const') &&
-                                           !lastStatement.trim().startsWith('var') &&
-                                           !lastStatement.trim().includes('\n{');
-          
+          const isLastStatementExpression =
+            !lastStatement.trim().startsWith('if') &&
+            !lastStatement.trim().startsWith('for') &&
+            !lastStatement.trim().startsWith('while') &&
+            !lastStatement.trim().startsWith('function') &&
+            !lastStatement.trim().startsWith('let') &&
+            !lastStatement.trim().startsWith('const') &&
+            !lastStatement.trim().startsWith('var') &&
+            !lastStatement.trim().includes('\n{');
+
           if (isLastStatementExpression) {
             return `(() => {
               try {

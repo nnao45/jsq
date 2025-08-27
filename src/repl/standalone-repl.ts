@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { render } from 'ink/build/index.js';
+import { render } from 'ink';
 import React from 'react';
 import type { JsqOptions } from '../types/cli';
 import { detectFileFormat, readFileByFormat, validateFile } from '../utils/file-input';

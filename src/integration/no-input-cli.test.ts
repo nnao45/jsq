@@ -13,8 +13,8 @@ describe('No Input CLI Integration Tests', () => {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          NODE_ENV: 'test'
-        }
+          NODE_ENV: 'test',
+        },
       });
 
       let stdout = '';

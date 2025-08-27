@@ -41,9 +41,9 @@ import type {
   VMResult,
   VMSandboxConfig,
 } from '@/types/sandbox';
-import { vmPool } from './vm-pool';
+import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine';
 import { VMEngineFactory } from './VMEngineFactory';
-import type { VMEngine } from './interfaces/VMEngine';
+import { vmPool } from './vm-pool';
 
 /**
  * VM Sandbox implementation using QuickJS
@@ -79,15 +79,15 @@ export class VMSandboxSimple {
     options: VMOptions = {}
   ): Promise<VMResult<T>> {
     const startTime = Date.now();
-    let execContext: any = null;
+    let execContext: VMExecutionContext | null = null;
     let engine: VMEngine | null = null;
-    
+
     try {
       // Create a new QuickJS engine for each execution (to prevent memory leaks)
       const factory = new VMEngineFactory();
       engine = factory.create('quickjs');
       await engine.initialize(this.config);
-      
+
       // Create a new execution context
       execContext = await engine.createContext();
 
@@ -114,14 +114,26 @@ export class VMSandboxSimple {
             }
           };
         `);
-      } catch (err) {
+      } catch (_err) {
         // Continue without console - not critical
       }
 
       // Set up context variables
       for (const [key, value] of Object.entries(context)) {
         // Skip built-in globals
-        if (['console', 'JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)) {
+        if (
+          [
+            'console',
+            'JSON',
+            'Math',
+            'Date',
+            'Array',
+            'Object',
+            'String',
+            'Number',
+            'Boolean',
+          ].includes(key)
+        ) {
           continue;
         }
         await execContext.setGlobal(key, value);
@@ -129,11 +141,11 @@ export class VMSandboxSimple {
 
       // Store the host console reference for later use
       const hostConsole = {
-        log: (...args: any[]) => console.log(...args),
-        error: (...args: any[]) => console.error(...args),
-        warn: (...args: any[]) => console.warn(...args),
-        info: (...args: any[]) => console.info(...args),
-        debug: (...args: any[]) => console.debug(...args),
+        log: (...args: unknown[]) => console.log(...args),
+        error: (...args: unknown[]) => console.error(...args),
+        warn: (...args: unknown[]) => console.warn(...args),
+        info: (...args: unknown[]) => console.info(...args),
+        debug: (...args: unknown[]) => console.debug(...args),
       };
 
       // Execute the code
@@ -160,7 +172,7 @@ export class VMSandboxSimple {
             }
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore console processing errors
       }
 
@@ -178,15 +190,15 @@ export class VMSandboxSimple {
       // Clean up
       if (execContext) {
         try {
-          await execContext.dispose();
-        } catch (e) {
+          execContext.release();
+        } catch (_e) {
           // Ignore disposal errors
         }
       }
       if (engine) {
         try {
           await engine.dispose();
-        } catch (e) {
+        } catch (_e) {
           // Ignore disposal errors
         }
       }

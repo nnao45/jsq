@@ -99,7 +99,12 @@ Object.entries(methods).forEach(([name, fn]) => {
         return result;
       }
       // If result is a Lodash instance, unwrap it for static methods
-      if (result && typeof result === 'object' && (result as any).__isLodash === true) {
+      if (
+        result &&
+        typeof result === 'object' &&
+        '__isLodash' in result &&
+        result.__isLodash === true
+      ) {
         return (result as Lodash)._value;
       }
       return result;
