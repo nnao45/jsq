@@ -5,4 +5,4 @@ if [ -L "$SCRIPT_PATH" ]; then
     SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"
 fi
 DIR="$(dirname "$SCRIPT_PATH")"
-exec deno run --allow-all --unstable-sloppy-imports --unstable-detect-cjs "$DIR/../dist/index.js" "$@"
+exec deno run --allow-all --unstable-sloppy-imports --unstable-detect-cjs "$DIR/../dist/index-deno.js" "$@"
