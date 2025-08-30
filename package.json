@@ -43,7 +43,8 @@
     "start": "node dist/index.js",
     "start:bun": "bun dist/index-bun.js",
     "start:deno": "deno run --allow-all dist/index-deno.js",
-    "prepare": "npm run build",
+    "prepare": "npm run build && npm run build:bin",
+    "build:bin": "echo '#!/usr/bin/env node' > bin/jsq && echo \"import '../dist/index.js';\" >> bin/jsq && chmod +x bin/jsq",
     "prepublishOnly": "npm run format && npm run lint:fix && npm run lint && npm run check && npm run build && npm run test",
     "relase:patch": "./bump-version.sh patch && npm publish --access public"
   },
