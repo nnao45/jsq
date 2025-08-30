@@ -54,8 +54,7 @@ export class VMSandboxQuickJS {
     // Disable debug output during normal execution to avoid interfering with JSON output
     const shouldDebug = process.env.DEBUG && process.env.NODE_ENV !== 'production';
     if (shouldDebug) {
-      console.error('[VMSandboxQuickJS] execute called with context keys:', Object.keys(context));
-      console.error('[VMSandboxQuickJS] _ value in context:', context._);
+      // Debug logs removed
     }
 
     try {
@@ -101,8 +100,7 @@ export class VMSandboxQuickJS {
       // Set up context variables
       let needsLodash = false;
       if (shouldDebug) {
-        console.error('[VMSandboxQuickJS] Context keys:', Object.keys(context));
-        console.error('[VMSandboxQuickJS] _ value:', context._);
+        // Debug logs removed
       }
       for (const [key, value] of Object.entries(context)) {
         // Skip built-in globals that are already set up, except console which we want to override
@@ -119,7 +117,7 @@ export class VMSandboxQuickJS {
           // Always set up lodash for _ key (can be null or function)
           needsLodash = true;
           if (shouldDebug) {
-            console.error('[VMSandboxQuickJS] Found _ marker for Lodash setup');
+            // Debug log removed
           }
         } else {
           await execContext.setGlobal(key, value);
@@ -129,7 +127,7 @@ export class VMSandboxQuickJS {
       // Setup lodash if needed
       if (needsLodash) {
         if (shouldDebug) {
-          console.error('[VMSandboxQuickJS] Setting up Lodash in VM');
+          // Debug log removed
         }
         // Use the full lodash VM implementation
         const { createVMLodashCode } = await import('../lodash/lodash-vm');
@@ -138,8 +136,8 @@ export class VMSandboxQuickJS {
 
         // Verify lodash was set up
         if (shouldDebug) {
-          const lodashCheck = await execContext.eval('typeof globalThis._');
-          console.error('[VMSandboxQuickJS] Lodash check after setup:', lodashCheck);
+          await execContext.eval('typeof globalThis._');
+          // Debug log removed
         }
       }
 
@@ -150,7 +148,7 @@ export class VMSandboxQuickJS {
       const wrappedCode = this.wrapCode(code);
 
       if (shouldDebug) {
-        console.error('[VMSandboxQuickJS] Wrapped code:', wrappedCode);
+        // Debug log removed
       }
 
       const result = await engine.execute(

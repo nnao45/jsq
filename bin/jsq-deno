@@ -1,0 +1,8 @@
+#!/bin/sh
+# Resolve symlinks to get the real path
+SCRIPT_PATH="$0"
+if [ -L "$SCRIPT_PATH" ]; then
+    SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"
+fi
+DIR="$(dirname "$SCRIPT_PATH")"
+exec deno run --allow-all --unstable-sloppy-imports --unstable-detect-cjs "$DIR/../dist/index.js" "$@"
