@@ -7,9 +7,17 @@ export function createVMSmartDollarCodeV2(): string {
 (function() {
   ${SMART_DOLLAR_METHODS}
   
+  // Forward declare createSmartDollar
+  let createSmartDollar;
+  
   // Define SmartDollar class
   class SmartDollar {
     constructor(value) {
+      // If createSmartDollar is available and we're not already in it, use it
+      if (createSmartDollar && !this.__bypassProxy) {
+        return createSmartDollar(value);
+      }
+      
       this._value = value;
       this.__isSmartDollar = true;
     }
@@ -56,6 +64,10 @@ export function createVMSmartDollarCodeV2(): string {
     }
   }
   
+  
+  // Add static method to create instances (will be defined after createSmartDollar)
+  SmartDollar.createInstance = null;
+  
   // Apply all shared methods to SmartDollar prototype
   // smartDollarMethods should be defined by SMART_DOLLAR_METHODS above
   if (typeof globalThis.smartDollarMethods !== 'undefined') {
@@ -65,11 +77,15 @@ export function createVMSmartDollarCodeV2(): string {
   }
   
   // Create $ function with Proxy wrapper
-  const createSmartDollar = function(data) {
+  createSmartDollar = function(data) {
     if (data === null || data === undefined) {
       return data;
     }
-    const smartDollar = new SmartDollar(data);
+    
+    // Create raw instance without proxy
+    const smartDollar = Object.create(SmartDollar.prototype);
+    smartDollar._value = data;
+    smartDollar.__isSmartDollar = true;
     
     // Create proxy to handle property access
     return new Proxy(smartDollar, {
@@ -77,7 +93,16 @@ export function createVMSmartDollarCodeV2(): string {
         // Special properties that should always come from SmartDollar
         const smartDollarOnlyProps = ['_value', '__isSmartDollar', 'constructor', 'length', Symbol.iterator, Symbol.toPrimitive];
         
-        // Handle numeric indices for arrays first
+        // Check SmartDollar-only properties FIRST
+        if (smartDollarOnlyProps.includes(prop)) {
+          const value = target[prop];
+          if (typeof value === 'function') {
+            return value.bind(target);
+          }
+          return value;
+        }
+        
+        // Handle numeric indices for arrays
         if (typeof prop === 'string' && !isNaN(Number(prop))) {
           const index = Number(prop);
           if (Array.isArray(target._value) && index >= 0 && index < target._value.length) {
@@ -88,19 +113,35 @@ export function createVMSmartDollarCodeV2(): string {
           }
         }
         
-        // Check wrapped value properties before SmartDollar methods
-        // This ensures properties like 'values' on the data object take precedence
+        // Check wrapped value properties FIRST for non-method properties
+        // This ensures properties like 'value' on the data object are accessible
         if (target._value !== null && target._value !== undefined && typeof target._value === 'object' && prop in target._value) {
-          const value = target._value[prop];
-          if (value !== undefined) {
-            return value !== null && typeof value === 'object'
-              ? createSmartDollar(value)
-              : value;
+          const valueFromData = target._value[prop];
+          
+          // If it's a method on SmartDollar AND a property on the data,
+          // prioritize SmartDollar methods ONLY for array/collection methods
+          const smartDollarMethod = target[prop];
+          const isArrayMethod = ['filter', 'map', 'reduce', 'find', 'some', 'every', 'forEach', 
+                                'pluck', 'where', 'sortBy', 'groupBy', 'countBy', 'take', 'skip',
+                                'uniqBy', 'flatten', 'compact', 'chunk', 'orderBy', 'keyBy',
+                                'takeWhile', 'dropWhile', 'flattenDeep', 'reverse', 'sum',
+                                'mean', 'min', 'max', 'minBy', 'maxBy', 'sample', 'sampleSize',
+                                'size', 'isEmpty', 'includes', 'flatMap'].includes(prop);
+          
+          if (smartDollarMethod && typeof smartDollarMethod === 'function' && isArrayMethod) {
+            return smartDollarMethod.bind(target);
+          }
+          
+          // Otherwise, return the data property
+          if (valueFromData !== undefined) {
+            return valueFromData !== null && typeof valueFromData === 'object'
+              ? createSmartDollar(valueFromData)
+              : valueFromData;
           }
         }
         
-        // Check if property exists on SmartDollar instance
-        if (prop in target || smartDollarOnlyProps.includes(prop)) {
+        // Then check if property exists on SmartDollar instance (methods)
+        if (prop in target) {
           const value = target[prop];
           if (typeof value === 'function') {
             return value.bind(target);
@@ -109,6 +150,15 @@ export function createVMSmartDollarCodeV2(): string {
         }
         
         return undefined;
+      },
+      
+      set(target, prop, value) {
+        // Allow setting properties on the wrapped value
+        if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+          target._value[prop] = value;
+          return true;
+        }
+        return false;
       },
       
       has(target, prop) {
@@ -136,6 +186,9 @@ export function createVMSmartDollarCodeV2(): string {
       }
     });
   };
+  
+  // Now that createSmartDollar is defined, set the static method
+  SmartDollar.createInstance = createSmartDollar;
   
   // Return the creator function and class
   return { createSmartDollar, SmartDollar };

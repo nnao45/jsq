@@ -81,6 +81,11 @@ describe('Integration Tests', () => {
 
       const result = await runJsq(expression, input);
 
+      // Debug output
+      console.log('stdout:', result.stdout);
+      console.log('stderr:', result.stderr);
+      console.log('exitCode:', result.exitCode);
+
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Alice', 'Charlie']);
     }, 10000);
@@ -476,6 +481,11 @@ describe('Integration Tests', () => {
       const expression = '$.values.sum()';
 
       const result = await runJsq(expression, input);
+
+      // Debug output
+      console.log('stdout:', result.stdout);
+      console.log('stderr:', result.stderr);
+      console.log('exitCode:', result.exitCode);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toBe(150);

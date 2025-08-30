@@ -67,12 +67,7 @@ export class VMSandboxSimple {
       isolatePoolSize: this.validatePositiveNumber(options.isolatePoolSize, 1),
     };
 
-    // Pre-warm the pool if recycling is enabled
-    if (this.config.recycleIsolates && this.config.isolatePoolSize > 0) {
-      this.appContext.vmPool.prewarm(Math.min(2, this.config.isolatePoolSize)).catch(err => {
-        console.error('Failed to pre-warm VM pool:', err);
-      });
-    }
+    // VM pool has been removed - recycling is no longer supported
   }
 
   async execute<T = unknown>(

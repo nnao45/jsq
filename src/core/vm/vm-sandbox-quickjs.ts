@@ -229,11 +229,6 @@ export class VMSandboxQuickJS {
         await execContext.eval(`
           delete globalThis.__result__;
           delete globalThis.__consoleCalls;
-          delete globalThis.$;
-          delete globalThis._;
-          delete globalThis.smartDollarModule;
-          delete globalThis.createSmartDollar;
-          delete globalThis.SmartDollar;
         `);
       } catch (_e) {
         // Ignore cleanup errors
@@ -316,8 +311,9 @@ export class VMSandboxQuickJS {
       const { createSmartDollar, SmartDollar } = smartDollarModule;
       const $_data = ${JSON.stringify(dataToSerialize)};
       
-      // Store SmartDollar class globally for cleanup
+      // Store SmartDollar class and creator globally for cleanup and method access
       globalThis.SmartDollar = SmartDollar;
+      globalThis.createSmartDollar = createSmartDollar;
       
       // Override Object.keys to handle SmartDollar objects
       const originalObjectKeys = Object.keys;

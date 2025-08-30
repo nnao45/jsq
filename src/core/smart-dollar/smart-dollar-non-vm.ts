@@ -1,15 +1,32 @@
 import { ASYNC_METHODS, SMART_DOLLAR_METHODS } from './smart-dollar-shared-methods';
 
-// Extract method definitions from the string
-const methodsMatch = SMART_DOLLAR_METHODS.match(/globalThis\.smartDollarMethods = ({[\s\S]*});/);
-if (!methodsMatch || !methodsMatch[1]) {
-  throw new Error('Failed to extract methods from SMART_DOLLAR_METHODS');
+// Extract the entire code including helper functions
+const codeMatch = SMART_DOLLAR_METHODS.match(
+  /if \(typeof smartDollarMethods === 'undefined'\) \{[\s\S]*\}/
+);
+if (!codeMatch) {
+  throw new Error('Failed to extract code from SMART_DOLLAR_METHODS');
 }
-const methodsCode = methodsMatch[1];
 
-// Create function to evaluate the methods object
-const createMethods = new Function(`return ${methodsCode}`);
-const methods = createMethods();
+// Evaluate the entire code to get methods and helpers
+const evalCode = new Function(`
+  ${codeMatch[0]}
+  return globalThis.smartDollarMethods;
+`);
+const methods = evalCode();
+
+// Extract the createNewInstance helper
+const createNewInstanceMatch = SMART_DOLLAR_METHODS.match(
+  /const createNewInstance = function\(data\) \{[\s\S]*?\n {2}\};/
+);
+if (!createNewInstanceMatch) {
+  throw new Error('Failed to extract createNewInstance function');
+}
+
+// Create a proper createNewInstance function for non-VM context
+const createNewInstance = function (this: any, data: unknown) {
+  return new ChainableWrapper(data);
+};
 
 export class ChainableWrapper {
   readonly data: unknown;
@@ -54,15 +71,29 @@ Object.entries(methods).forEach(([name, fn]) => {
       _value: this.data,
       constructor: ChainableWrapper,
     };
-    // Use the context with the method
-    const result = (fn as (...args: any[]) => any).apply(context, args);
 
-    // If the result has _value property, it's likely a ChainableWrapper from the VM methods
-    if (result && typeof result === 'object' && '_value' in result) {
-      return new ChainableWrapper(result._value);
+    // Make createNewInstance available in the method context
+    const originalGlobalCreateNewInstance = (globalThis as any).createNewInstance;
+    (globalThis as any).createNewInstance = createNewInstance;
+
+    try {
+      // Use the context with the method
+      const result = (fn as (...args: any[]) => any).apply(context, args);
+
+      // If the result has _value property, it's likely a ChainableWrapper from the VM methods
+      if (result && typeof result === 'object' && '_value' in result) {
+        return new ChainableWrapper(result._value);
+      }
+
+      return result;
+    } finally {
+      // Restore original state
+      if (originalGlobalCreateNewInstance !== undefined) {
+        (globalThis as any).createNewInstance = originalGlobalCreateNewInstance;
+      } else {
+        (globalThis as any).createNewInstance = undefined;
+      }
     }
-
-    return result;
   };
 });
 

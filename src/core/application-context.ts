@@ -4,18 +4,12 @@
  */
 
 import type { QuickJSWASMModule } from 'quickjs-emscripten';
-import { ChainableWrapperPool } from './chainable/chainable-pool';
 import { LRUCache } from './lib/expression-cache';
-import { VMIsolatePool } from './vm/vm-pool';
 
 export class ApplicationContext {
   // Expression caches
   public readonly expressionCache: LRUCache<string, string>;
   public readonly compiledFunctionCache: LRUCache<string, (...args: unknown[]) => unknown>;
-
-  // Object pools
-  public readonly chainablePool: ChainableWrapperPool;
-  public readonly vmPool: VMIsolatePool;
 
   // QuickJS WASM module (singleton per context)
   private quickjsModule: QuickJSWASMModule | null = null;
@@ -26,8 +20,6 @@ export class ApplicationContext {
     // Initialize all "global" instances as instance variables
     this.expressionCache = new LRUCache<string, string>();
     this.compiledFunctionCache = new LRUCache<string, (...args: unknown[]) => unknown>();
-    this.chainablePool = new ChainableWrapperPool();
-    this.vmPool = new VMIsolatePool();
   }
 
   /**
@@ -91,10 +83,6 @@ export class ApplicationContext {
     // Clear caches
     this.expressionCache.clear();
     this.compiledFunctionCache.clear();
-
-    // Clear pools
-    this.chainablePool.clear();
-    this.vmPool.dispose();
 
     // QuickJS WASM module doesn't have a dispose method
     // Just clear the reference
