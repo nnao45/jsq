@@ -1,9 +1,12 @@
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 describe('CLI E2E Tests', () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
   const testDataDir = path.join(__dirname, '../../test-e2e-data');
   const jsqBinary = path.join(__dirname, '../../dist/index.js');
 

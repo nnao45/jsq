@@ -1,9 +1,12 @@
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 describe.skip('Unsafe Mode CLI Integration Tests', () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
   const binPath = join(__dirname, '../../bin/jsq');
   const testDir = join(__dirname, 'test-output');
 

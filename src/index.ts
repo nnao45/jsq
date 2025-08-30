@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { type ChildProcess, spawn } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
@@ -25,38 +25,6 @@ function exitCleanly(code: number): void {
 
 // Set up process exit handlers to prevent QuickJS GC issues
 setupProcessExitHandlers();
-
-function findPackageRoot(): string {
-  const fs = require('node:fs');
-
-  // Try to find package root from the script location
-  let currentDir = dirname(__filename || process.argv[1] || '.');
-
-  while (currentDir !== dirname(currentDir)) {
-    const packageJsonPath = join(currentDir, 'package.json');
-    if (fs.existsSync(packageJsonPath)) {
-      try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        if (packageJson.name === '@nnao45/jsq') {
-          return currentDir;
-        }
-      } catch {
-        // Continue searching
-      }
-    }
-    currentDir = dirname(currentDir);
-  }
-
-  // If we can't find it, try from the dist directory upwards
-  // This handles the case where we're running from dist/index.js
-  currentDir = join(dirname(__filename || process.argv[1] || '.'), '..');
-  if (fs.existsSync(join(currentDir, 'package.json'))) {
-    return currentDir;
-  }
-
-  // Final fallback
-  return join(__dirname, '..');
-}
 
 const program = new Command();
 
@@ -147,129 +115,12 @@ addCommonOptions(mainCommand).action(
   }
 );
 
-// Bun subcommand
-const bunCommand = program
-  .command('bun')
-  .description('Run jsq with Bun runtime')
-  .argument('[expression]', 'JavaScript expression to evaluate');
-
-addCommonOptions(bunCommand).action(async (expression: string | undefined, options: JsqOptions) => {
-  // Check if already running in Bun
-  const currentRuntime = detectRuntime();
-  if (currentRuntime === 'bun') {
-    // Already in Bun, just run normally
-    await mainCommand.parseAsync(['', '', expression || '', ...process.argv.slice(3)]);
-  } else {
-    // Need to switch to Bun
-    await runWithRuntime('bun', expression, options);
-  }
-});
-
-// Deno subcommand
-const denoCommand = program
-  .command('deno')
-  .description('Run jsq with Deno runtime')
-  .argument('[expression]', 'JavaScript expression to evaluate');
-
-addCommonOptions(denoCommand).action(
-  async (expression: string | undefined, options: JsqOptions) => {
-    // Check if already running in Deno
-    const currentRuntime = detectRuntime();
-    if (currentRuntime === 'deno') {
-      // Already in Deno, just run normally
-      await mainCommand.parseAsync(['', '', expression || '', ...process.argv.slice(3)]);
-    } else {
-      // Need to switch to Deno
-      await runWithRuntime('deno', expression, options);
-    }
-  }
-);
-
-async function runWithRuntime(
-  runtime: 'bun' | 'deno',
-  expression: string | undefined,
-  options: JsqOptions
-): Promise<void> {
-  try {
-    const args: string[] = [];
-    const packageRoot = findPackageRoot();
-
-    if (runtime === 'bun') {
-      args.push('bun', join(packageRoot, 'dist/index.js'));
-    } else if (runtime === 'deno') {
-      args.push(
-        'deno',
-        'run',
-        '--allow-all',
-        '--unstable-sloppy-imports',
-        '--unstable-detect-cjs',
-        join(packageRoot, 'dist/index.js')
-      );
-    }
-
-    // Add expression if provided
-    if (expression) {
-      args.push(expression);
-    }
-
-    // Convert options back to CLI flags
-    if (options.debug) args.push('--debug');
-    if (options.verbose) args.push('--verbose');
-    if (options.stream) args.push('--stream');
-    if (options.jsonLines) args.push('--json-lines');
-    if (options.unsafe) args.push('--unsafe');
-    if (options.safe) args.push('--safe');
-    if (options.repl) args.push('--repl');
-    if (options.batch) args.push('--batch', String(options.batch));
-    if (options.file) args.push('--file', options.file);
-    if (options.fileFormat && options.fileFormat !== 'auto')
-      args.push('--file-format', options.fileFormat);
-    if (options.sandbox) args.push('--sandbox');
-    if (options.memoryLimit) args.push('--memory-limit', String(options.memoryLimit));
-    if (options.cpuLimit) args.push('--cpu-limit', String(options.cpuLimit));
-    if (options.watch) args.push('--watch');
-    if (options.parallel) {
-      if (typeof options.parallel === 'string' || typeof options.parallel === 'number') {
-        args.push('--parallel', String(options.parallel));
-      } else {
-        args.push('--parallel');
-      }
-    }
-    // Add output formatting options
-    if (options.oneline) args.push('--oneline');
-    if (options.color) args.push('--color');
-    if (options.noColor) args.push('--no-color');
-    if (options.indent) args.push('--indent', String(options.indent));
-    if (options.compact) args.push('--compact');
-    if (options.sortKeys) args.push('--sort-keys');
-
-    if (args.length === 0 || !args[0]) {
-      throw new Error('No runtime command specified');
-    }
-
-    const child: ChildProcess = spawn(args[0], args.slice(1), {
-      stdio: 'inherit',
-      env: process.env,
-    });
-
-    child.on('exit', (code: number | null) => {
-      process.exit(code || 0);
-    });
-
-    child.on('error', (error: Error) => {
-      console.error(`Failed to start ${runtime}:`, error.message);
-      process.exit(1);
-    });
-  } catch (error) {
-    console.error(`Error running with ${runtime}:`, error);
-    process.exit(1);
-  }
-}
-
 async function handleReplMode(options: JsqOptions): Promise<void> {
   const { spawn } = await import('node:child_process');
   const path = await import('node:path');
 
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
   const replPath = path.join(__dirname, 'repl.js');
   const replArgs = [];
 

@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 describe('No Input CLI Integration Tests', () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
   const binPath = join(__dirname, '../../bin/jsq');
 
   const runJsq = (

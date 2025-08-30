@@ -2,6 +2,7 @@
   "name": "@nnao45/jsq",
   "version": "0.1.26",
   "description": "JavaScript-Powered JSON Query CLI Tool",
+  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "jsq": "bin/jsq",
@@ -9,7 +10,7 @@
     "jsq-deno": "bin/jsq-deno"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=cjs --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=cjs --packages=external",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external",
     "build:watch": "npm run build -- --watch",
     "build:bun": "bun build src/index.ts --outfile=dist/index-bun.js --target=bun",
     "build:deno": "deno bundle src/index.ts dist/index-deno.js",
