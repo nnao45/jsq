@@ -205,5 +205,5 @@ export class VMIsolatePool {
   }
 }
 
-// Global pool instance
-export const vmPool = new VMIsolatePool();
+// Note: Global pool instance has been moved to ApplicationContext
+// Use ApplicationContext instead of global variables

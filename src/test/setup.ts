@@ -2,12 +2,16 @@
 
 import { getQuickJS } from 'quickjs-emscripten';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
+import { setupProcessExitHandlers } from '../core/vm/quickjs-gc-workaround';
 
 // We'll initialize QuickJS in beforeAll hook since sync initialization is not working
 
 // Global test setup
 beforeAll(async () => {
   // Setup global test environment
+
+  // Setup process exit handlers to prevent GC issues
+  setupProcessExitHandlers();
 
   // Always initialize QuickJS
   try {

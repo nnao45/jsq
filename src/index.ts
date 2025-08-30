@@ -4,6 +4,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
+import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
 import type { JsqOptions } from '@/types/cli';
 import type { SupportedFormat } from '@/utils/file-input';
 import {
@@ -14,6 +15,15 @@ import {
 } from '@/utils/file-input';
 import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
+
+// Helper function to exit cleanly without QuickJS GC errors
+function exitCleanly(code: number): void {
+  // The isProcessExiting flag will be set by the exit handler
+  process.exit(code);
+}
+
+// Set up process exit handlers to prevent QuickJS GC issues
+setupProcessExitHandlers();
 
 function findPackageRoot(): string {
   const fs = require('node:fs');
@@ -343,7 +353,12 @@ async function processOnce(expression: string, options: JsqOptions): Promise<voi
     }
   } finally {
     await processor.dispose();
-    process.exit(0);
+
+    // Give cleanup handlers time to run
+    await new Promise(resolve => setImmediate(resolve));
+
+    // Force exit after cleanup
+    exitCleanly(0);
   }
 }
 
@@ -656,5 +671,22 @@ function handleError(error: unknown, options: JsqOptions): void {
 
   process.exit(1);
 }
+
+// Set up exit handler to prevent QuickJS GC errors
+process.on('exit', () => {
+  // The isProcessExiting flag is set by setupProcessExitHandlers
+});
+
+// Handle uncaught exceptions gracefully
+process.on('uncaughtException', err => {
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
 
 program.parse();

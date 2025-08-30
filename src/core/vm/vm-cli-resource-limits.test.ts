@@ -1,6 +1,7 @@
 import { describe, expect } from 'vitest';
 import { describeWithVM, testWithVM } from '@/test/vm-helpers';
 import type { JsqOptions } from '@/types/cli';
+import { createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 
 describeWithVM('VM CLI Resource Limits', () => {
@@ -13,7 +14,8 @@ describeWithVM('VM CLI Resource Limits', () => {
           memoryLimit: 5, // 5MB limit - smaller for more reliable test
         };
 
-        const evaluator = new ExpressionEvaluator(options);
+        const appContext = createApplicationContext();
+        const evaluator = new ExpressionEvaluator(options, appContext);
 
         // Try to allocate more than 5MB - create large arrays
         const code = `
@@ -42,6 +44,7 @@ describeWithVM('VM CLI Resource Limits', () => {
           expect(error).toBeDefined();
         }
         await evaluator.dispose();
+        await appContext.dispose();
       },
       60000
     ); // 60秒のタイムアウトを設定
@@ -52,7 +55,8 @@ describeWithVM('VM CLI Resource Limits', () => {
         // No memoryLimit specified, should use default 128MB
       };
 
-      const evaluator = new ExpressionEvaluator(options);
+      const appContext = createApplicationContext();
+      const evaluator = new ExpressionEvaluator(options, appContext);
 
       const code = `
         const arr = [1, 2, 3, 4, 5];
@@ -62,6 +66,7 @@ describeWithVM('VM CLI Resource Limits', () => {
       const result = await evaluator.evaluate(code, {});
       expect(result).toBe(15);
       await evaluator.dispose();
+      await appContext.dispose();
     });
   });
 
@@ -73,7 +78,8 @@ describeWithVM('VM CLI Resource Limits', () => {
         verbose: true, // デバッグ用
       };
 
-      const evaluator = new ExpressionEvaluator(options);
+      const appContext = createApplicationContext();
+      const evaluator = new ExpressionEvaluator(options, appContext);
 
       // Create a simpler computation that returns a value - single expression
       const code = `(() => { let count = 0; for (let i = 0; i < 1000; i++) { count++; } return count; })()`;
@@ -83,6 +89,7 @@ describeWithVM('VM CLI Resource Limits', () => {
       const result = await evaluator.evaluate(code, {});
       expect(result).toBe(1000);
       await evaluator.dispose();
+      await appContext.dispose();
     });
 
     testWithVM('should work with default CPU limit', async () => {
@@ -91,7 +98,8 @@ describeWithVM('VM CLI Resource Limits', () => {
         // No cpuLimit specified, should use default 30000ms
       };
 
-      const evaluator = new ExpressionEvaluator(options);
+      const appContext = createApplicationContext();
+      const evaluator = new ExpressionEvaluator(options, appContext);
 
       // Single expression to ensure proper return value
       const code = `(() => { let sum = 0; for (let i = 0; i < 100; i++) { sum += i; } return sum; })()`;
@@ -99,6 +107,7 @@ describeWithVM('VM CLI Resource Limits', () => {
       const result = await evaluator.evaluate(code, {});
       expect(result).toBe(4950);
       await evaluator.dispose();
+      await appContext.dispose();
     });
   });
 
@@ -110,7 +119,8 @@ describeWithVM('VM CLI Resource Limits', () => {
         cpuLimit: 2000, // 2s
       };
 
-      const evaluator = new ExpressionEvaluator(options);
+      const appContext = createApplicationContext();
+      const evaluator = new ExpressionEvaluator(options, appContext);
 
       // Normal operation that respects both limits
       const code = `
@@ -122,6 +132,7 @@ describeWithVM('VM CLI Resource Limits', () => {
       const result = await evaluator.evaluate(code, {});
       expect(result).toBe(9900); // 2 * (0 + 1 + ... + 99)
       await evaluator.dispose();
+      await appContext.dispose();
     });
   });
 });

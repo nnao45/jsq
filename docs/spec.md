@@ -1,9 +1,13 @@
-# 英語のjsqのドキュメントを作りましょう。
+# jsqのドキュメント。
 ## 実行環境
-github pageにホスティングする予定です。
-jsqはwasmでホスティングする予定で、実装はexamples/web-ui配下を参考にしてください。
+- Reactで作りましょう。
+- github pageにホスティングする予定です。
+- jsqはwasmでホスティングする予定で、実装はexamples/web-ui配下を参考にしてください。
 
 ## ドキュメントのコンテンツ
+
+- 全て英語で作ってください。
+- WASMの実装は`examples/web-ui`を参考にしてね
 
 ### 1ページ目
 Introduction

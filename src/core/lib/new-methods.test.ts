@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createApplicationContext } from '../application-context';
 import { ChainableWrapper } from '../chainable/chainable';
 import { ExpressionEvaluator } from './evaluator';
 import { createSmartDollar } from './jquery-wrapper';
@@ -329,7 +330,8 @@ describe('Newly Added Array Methods', () => {
 });
 
 describe('Built-in _ utilities vs $ methods parity', () => {
-  const evaluator = new ExpressionEvaluator({ verbose: false });
+  const appContext = createApplicationContext();
+  const evaluator = new ExpressionEvaluator({ verbose: false }, appContext);
 
   it('should have same chunk behavior', async () => {
     const data = [1, 2, 3, 4, 5];

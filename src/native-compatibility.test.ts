@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createApplicationContext } from './core/application-context';
 import { ExpressionEvaluator } from './core/lib/evaluator';
 import type { JsqOptions } from './types/cli';
 
 describe('Native JavaScript Compatibility Tests', () => {
   let evaluator: ExpressionEvaluator;
   let options: JsqOptions;
+  let appContext: ReturnType<typeof createApplicationContext>;
 
   beforeEach(() => {
     options = {
@@ -13,11 +15,13 @@ describe('Native JavaScript Compatibility Tests', () => {
       unsafe: true,
       safe: false,
     };
-    evaluator = new ExpressionEvaluator(options);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(options, appContext);
   });
 
   afterEach(async () => {
     await evaluator.dispose();
+    await appContext.dispose();
   });
 
   describe('Array Type System Tests', () => {

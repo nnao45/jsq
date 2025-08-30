@@ -6,6 +6,7 @@ export interface VMOptions {
   heapSnapshotLimit?: number;
   enableInspector?: boolean;
   allowNetwork?: boolean;
+  enableConsole?: boolean;
 }
 
 export interface VMContext {

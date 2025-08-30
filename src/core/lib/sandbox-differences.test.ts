@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
 import type { SecurityManager } from '../security/security-manager';
 import { ExpressionEvaluator } from './evaluator';
 
@@ -7,6 +8,16 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
   // Mock dangerous operations globally
   const originalExit = process.exit;
   const originalSetTimeout = global.setTimeout;
+
+  // Helper to create evaluator with app context
+  const evaluators: Array<{ evaluator: ExpressionEvaluator; appContext: ApplicationContext }> = [];
+
+  const createEvaluator = (options: Partial<JsqOptions> = {}) => {
+    const appContext = createApplicationContext();
+    const evaluator = new ExpressionEvaluator(options as JsqOptions, appContext);
+    evaluators.push({ evaluator, appContext });
+    return evaluator;
+  };
 
   beforeAll(() => {
     // Enable security warnings for these tests
@@ -22,25 +33,29 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Restore original functions
     process.exit = originalExit;
     global.setTimeout = originalSetTimeout;
+
+    // Clean up all evaluators
+    for (const { evaluator, appContext } of evaluators) {
+      await evaluator.dispose();
+      await appContext.dispose();
+    }
+    evaluators.length = 0;
   });
 
   describe('Execution Environment', () => {
     it('should use VM isolation by default', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
-      const explicitSandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
+      const explicitSandboxEvaluator = createEvaluator({ sandbox: true });
 
       const defaultResult = await defaultEvaluator.evaluate('1 + 1', null);
       const explicitResult = await explicitSandboxEvaluator.evaluate('1 + 1', null);
 
       expect(defaultResult).toBe(2);
       expect(explicitResult).toBe(2);
-
-      await defaultEvaluator.dispose();
-      await explicitSandboxEvaluator.dispose();
     });
 
     // Security warnings are now disabled by default
@@ -52,7 +67,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
   describe('Network Access', () => {
     it('should NOT have fetch functions available in VM mode by default', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // Check that fetch functions are NOT available by default
@@ -76,11 +91,10 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       });
 
       consoleSpy.mockRestore();
-      await defaultEvaluator.dispose();
     });
 
     it('should have fetch functions available when unsafe mode is enabled', async () => {
-      const unsafeEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
+      const unsafeEvaluator = createEvaluator({ unsafe: true });
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       // In unsafe mode, it doesn't use VM so native fetch is available
@@ -96,154 +110,129 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       expect(result.hasFetch).toBe(true);
 
       consoleSpy.mockRestore();
-      await unsafeEvaluator.dispose();
     });
   });
 
   describe('Dangerous Pattern Validation', () => {
     describe('eval patterns', () => {
       it('should block eval by default in VM mode', async () => {
-        const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+        const defaultEvaluator = createEvaluator({});
 
         await expect(defaultEvaluator.evaluate('eval("1+1")', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await defaultEvaluator.dispose();
       });
     });
 
     describe('Function constructor', () => {
       it('should block Function constructor by default in VM mode', async () => {
-        const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+        const defaultEvaluator = createEvaluator({});
 
         await expect(defaultEvaluator.evaluate('new Function("return 1")()', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await defaultEvaluator.dispose();
       });
     });
 
     describe('setTimeout', () => {
       it('should block setTimeout by default in VM mode', async () => {
-        const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+        const defaultEvaluator = createEvaluator({});
 
         await expect(defaultEvaluator.evaluate('setTimeout(() => {}, 0)', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await defaultEvaluator.dispose();
       });
     });
 
     describe('process access', () => {
       it('should block process.exit in sandbox mode', async () => {
-        const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+        const sandboxEvaluator = createEvaluator({ sandbox: true });
 
         await expect(sandboxEvaluator.evaluate('process.exit(0)', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await sandboxEvaluator.dispose();
       });
 
       it('should allow process access in non-sandbox mode', async () => {
-        const defaultEvaluator = new ExpressionEvaluator({ unsafe: true } as JsqOptions);
+        const defaultEvaluator = createEvaluator({ unsafe: true });
 
         // Mock process.exit
         process.exit = vi.fn() as unknown as (code?: number) => never;
 
         await defaultEvaluator.evaluate('process.exit(0)', null);
         expect(process.exit).toHaveBeenCalledWith(0);
-
-        await defaultEvaluator.dispose();
       });
     });
 
     describe('global access', () => {
       it('should block global access in sandbox mode', async () => {
-        const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+        const sandboxEvaluator = createEvaluator({ sandbox: true });
 
         await expect(sandboxEvaluator.evaluate('global.foo = 1', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await sandboxEvaluator.dispose();
       });
     });
 
     describe('Buffer access', () => {
       it('should block Buffer in sandbox mode', async () => {
-        const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+        const sandboxEvaluator = createEvaluator({ sandbox: true });
 
         await expect(sandboxEvaluator.evaluate('Buffer.from("test")', null)).rejects.toThrow(
           'Expression evaluation failed'
         );
-
-        await sandboxEvaluator.dispose();
       });
     });
   });
 
   describe('Dynamic Imports', () => {
     it('should block require in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       await expect(sandboxEvaluator.evaluate('require("fs")', null)).rejects.toThrow(
         'Expression evaluation failed'
       );
-
-      await sandboxEvaluator.dispose();
     });
 
     it('should block dynamic import in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       await expect(sandboxEvaluator.evaluate('import("fs")', null)).rejects.toThrow(
         'Expression evaluation failed'
       );
-
-      await sandboxEvaluator.dispose();
     });
   });
 
   describe('Resource Limits', () => {
     it('should enforce timeout in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
         .securityManager;
       expect(securityManager.getTimeout()).toBe(30000);
-
-      await sandboxEvaluator.dispose();
     });
 
     it('should have default timeout in non-sandbox mode', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
 
       const securityManager = (defaultEvaluator as { securityManager: SecurityManager })
         .securityManager;
       expect(securityManager.getTimeout()).toBe(30000);
-
-      await defaultEvaluator.dispose();
     });
 
     it('should enforce memory limit in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
         .securityManager;
       expect(securityManager.getMemoryLimit()).toBe(128);
-
-      await sandboxEvaluator.dispose();
     });
   });
 
   describe('JavaScript Features', () => {
     it('should allow basic operations in both modes', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       // Test individual operations to isolate failures
       const expr1 = '1 + 1';
@@ -261,14 +250,11 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const expr4 = '[1, 2, 3].filter(x => x > 1)';
       expect(await sandboxEvaluator.evaluate(expr4, null)).toEqual([2, 3]);
       expect(await defaultEvaluator.evaluate(expr4, null)).toEqual([2, 3]);
-
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
 
     it('should have console access in both modes', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
@@ -287,36 +273,30 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       expect(consoleSpy).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
   });
 
   describe('Shell and Filesystem Access', () => {
     it('should block shell command patterns in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       await expect(sandboxEvaluator.evaluate('require("child_process")', null)).rejects.toThrow(
         'Expression evaluation failed'
       );
-
-      await sandboxEvaluator.dispose();
     });
 
     it('should block filesystem patterns in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       await expect(sandboxEvaluator.evaluate('require("fs")', null)).rejects.toThrow(
         'Expression evaluation failed'
       );
-
-      await sandboxEvaluator.dispose();
     });
   });
 
   describe('Context Isolation', () => {
     it('should isolate execution contexts in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       // First execution - use an expression that returns a value
       const result1 = await sandboxEvaluator.evaluate('42', null);
@@ -326,15 +306,13 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       // Since VM isolates each execution, global variables are not shared
       const result2 = await sandboxEvaluator.evaluate('typeof leaked', null);
       expect(result2).toBe('undefined');
-
-      await sandboxEvaluator.dispose();
     });
   });
 
   describe('Async Operations', () => {
     it.skip('should support async/await in both modes', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       const asyncCode = 'await Promise.resolve(42)';
 
@@ -343,14 +321,11 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
       expect(sandboxResult).toBe(42);
       expect(defaultResult).toBe(42);
-
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
 
     it.skip('should support Promise operations in both modes', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       const promiseCode = 'Promise.resolve([1, 2, 3]).then(arr => arr.map(x => x * 2))';
 
@@ -359,15 +334,12 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
       expect(sandboxResult).toEqual([2, 4, 6]);
       expect(defaultResult).toEqual([2, 4, 6]);
-
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
   });
 
   describe('Data Processing', () => {
     it('should process JSON data correctly in VM mode', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
 
       const data = {
         users: [
@@ -382,12 +354,10 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const result = await defaultEvaluator.evaluate(simpleExpression, data);
 
       expect(result).toEqual(['Alice', 'Bob']);
-
-      await defaultEvaluator.dispose();
     });
 
     it('should handle $ in VM mode', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
 
       const data = [1, 2, 3];
       const expression = '$.map(x => x * 2)';
@@ -395,14 +365,12 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const result = await defaultEvaluator.evaluate(expression, data);
 
       expect(result).toEqual([2, 4, 6]);
-
-      await defaultEvaluator.dispose();
     });
   });
 
   describe('Error Messages', () => {
     it('should provide clear security error messages in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
 
       try {
         await sandboxEvaluator.evaluate('eval("1+1")', null);
@@ -412,12 +380,10 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         expect((error as Error).message).toContain('Expression evaluation failed');
         expect((error as Error).message).toContain('potentially dangerous patterns');
       }
-
-      await sandboxEvaluator.dispose();
     });
 
     it('should provide runtime error messages in VM mode', async () => {
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const defaultEvaluator = createEvaluator({});
 
       try {
         await defaultEvaluator.evaluate('nonExistentVariable', null);
@@ -426,16 +392,14 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toContain('Expression evaluation failed');
       }
-
-      await defaultEvaluator.dispose();
     });
   });
 
   describe('Lodash-like Utilities', () => {
     it.skip('should provide utility functions in both modes', async () => {
       // Skip: _ utilities require createSmartDollar which is not available in VM
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       // Test that _ utilities are available
       const typeTest1 = await sandboxEvaluator.evaluate('typeof _', null);
@@ -443,15 +407,12 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
       expect(typeTest1).toBe('object');
       expect(typeTest2).toBe('object');
-
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
 
     it.skip('should handle array operations without lodash', async () => {
       // Skip: This test also triggers createSmartDollar loading in VM context
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
-      const defaultEvaluator = new ExpressionEvaluator({} as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
+      const defaultEvaluator = createEvaluator({});
 
       // Test array sum using reduce (more universal)
       const expr = '[1,2,3].reduce((a, b) => a + b, 0)';
@@ -461,15 +422,12 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
 
       expect(sandboxResult).toBe(6);
       expect(defaultResult).toBe(6);
-
-      await sandboxEvaluator.dispose();
-      await defaultEvaluator.dispose();
     });
   });
 
   describe('VM Configuration', () => {
     it('should have VM configuration in sandbox mode', async () => {
-      const sandboxEvaluator = new ExpressionEvaluator({ sandbox: true } as JsqOptions);
+      const sandboxEvaluator = createEvaluator({ sandbox: true });
       const securityManager = (sandboxEvaluator as { securityManager: SecurityManager })
         .securityManager;
 
@@ -480,8 +438,6 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
         enableProxies: false,
         maxContextSize: 10 * 1024 * 1024,
       });
-
-      await sandboxEvaluator.dispose();
     });
   });
 });

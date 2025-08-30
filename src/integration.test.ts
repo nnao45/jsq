@@ -1,10 +1,14 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 describe('Integration Tests', () => {
   const jsqBinary = path.join(__dirname, '../dist/index.js');
   let childProcess: ChildProcess | null = null;
+
+  beforeAll(() => {
+    // Tests will rely on proper cleanup through isProcessExiting flag
+  });
 
   afterEach(() => {
     if (childProcess) {
@@ -42,6 +46,10 @@ describe('Integration Tests', () => {
 
       childProcess.on('close', code => {
         resolve({ stdout, stderr, exitCode: code || 0 });
+      });
+
+      childProcess.on('error', err => {
+        resolve({ stdout: '', stderr: err.message, exitCode: 1 });
       });
 
       // Send input to stdin
@@ -420,6 +428,10 @@ describe('Integration Tests', () => {
 
       const result = await runJsq(expression, input);
 
+      if (result.stdout === '') {
+        console.error('Empty stdout. stderr:', result.stderr);
+        console.error('Exit code:', result.exitCode);
+      }
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([50000, 60000, 70000]);
     }, 10000);

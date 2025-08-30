@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createApplicationContext } from './core/application-context';
 import { ExpressionEvaluator } from './core/lib/evaluator';
 import { JsqProcessor } from './core/lib/processor';
 import type { JsqOptions } from './types/cli';
@@ -7,6 +8,7 @@ describe('Performance Tests', () => {
   let evaluator: ExpressionEvaluator;
   let processor: JsqProcessor;
   let options: JsqOptions;
+  let appContext: ReturnType<typeof createApplicationContext>;
 
   beforeEach(() => {
     options = {
@@ -15,8 +17,9 @@ describe('Performance Tests', () => {
       unsafe: true,
       safe: false,
     };
-    evaluator = new ExpressionEvaluator(options);
-    processor = new JsqProcessor(options);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(options, appContext);
+    processor = new JsqProcessor(options, appContext);
   });
 
   describe('Large Data Processing', () => {
@@ -247,5 +250,6 @@ describe('Performance Tests', () => {
   afterEach(async () => {
     await evaluator.dispose();
     await processor.dispose();
+    await appContext.dispose();
   });
 });

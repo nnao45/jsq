@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { createApplicationContext } from '../application-context';
 import { ExpressionTransformer } from './expression-transformer';
 
 describe('Variable Pipeline Declaration', () => {
+  const appContext = createApplicationContext();
   describe('hasVariablePipelineDeclaration', () => {
     it('should detect const variable pipeline', () => {
       const expr = "const a = 'hello' | a.toUpperCase()";
@@ -71,7 +73,7 @@ describe('Variable Pipeline Declaration', () => {
   describe('transformExpression integration', () => {
     it('should transform variable pipeline through main transform function', () => {
       const expr = "const x = 'test' | x.length";
-      const result = ExpressionTransformer.transform(expr);
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
 
       expect(result).toContain('(() => {');
       expect(result).toContain("let x = 'test';");
@@ -80,14 +82,14 @@ describe('Variable Pipeline Declaration', () => {
 
     it('should not interfere with regular expressions', () => {
       const expr = '$.users.map(u => u.name)';
-      const result = ExpressionTransformer.transform(expr);
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
 
       expect(result).toBe(expr);
     });
 
     it('should not interfere with regular pipe expressions', () => {
       const expr = '$.users | $.map(u => u.name)';
-      const result = ExpressionTransformer.transform(expr);
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
 
       // Should be transformed by regular pipe logic, not variable pipeline
       expect(result).not.toContain('(() => {');

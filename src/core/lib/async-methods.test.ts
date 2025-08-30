@@ -1,15 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from './processor';
 
 describe('Async Array Methods Tests', () => {
   let processor: JsqProcessor;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
-    processor = new JsqProcessor({ verbose: false });
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor({ verbose: false }, appContext);
   });
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('forEachAsync (parallel execution)', () => {
@@ -140,9 +144,5 @@ describe('Async Array Methods Tests', () => {
         expect(error).toBeDefined();
       }
     });
-  });
-
-  afterAll(async () => {
-    await processor.dispose();
   });
 });

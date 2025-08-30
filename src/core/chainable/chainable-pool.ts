@@ -63,15 +63,10 @@ export class ChainableWrapperPool {
   }
 }
 
-// Global pool instance
-export const chainablePool = new ChainableWrapperPool();
+// Note: Global pool instance has been moved to ApplicationContext
+// Use ApplicationContext instead of global variables
 
-/**
- * Factory function to create ChainableWrapper using pool
- */
-export function createChainableWrapper(data: unknown): ChainableWrapper {
-  return chainablePool.acquire(data);
-}
+// Note: createChainableWrapper has been removed - use ApplicationContext.chainablePool.acquire() instead
 
 /**
  * Helper to create wrapper with automatic pooling consideration

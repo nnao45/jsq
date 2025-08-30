@@ -87,9 +87,8 @@ export class LRUCache<K, V> {
   }
 }
 
-// Global caches for expressions and compiled functions
-export const expressionCache = new LRUCache<string, string>();
-export const compiledFunctionCache = new LRUCache<string, (...args: unknown[]) => unknown>();
+// Note: Global caches have been moved to ApplicationContext
+// Use ApplicationContext instead of global variables
 
 /**
  * Get size estimate for a string in bytes
@@ -107,20 +106,4 @@ export function getFunctionSizeInBytes(func: (...args: unknown[]) => unknown): n
   return func.toString().length * 2;
 }
 
-/**
- * Clear all caches
- */
-export function clearAllCaches(): void {
-  expressionCache.clear();
-  compiledFunctionCache.clear();
-}
-
-/**
- * Get cache statistics
- */
-export function getCacheStats() {
-  return {
-    expressionCache: expressionCache.getStats(),
-    compiledFunctionCache: compiledFunctionCache.getStats(),
-  };
-}
+// Note: clearAllCaches and getCacheStats have been moved to ApplicationContext

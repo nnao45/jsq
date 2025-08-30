@@ -1,10 +1,11 @@
 import type { JsqOptions } from '@/types/cli';
 import type { VMContext, VMOptions } from '@/types/sandbox';
 import { ErrorFormatter } from '@/utils/error-formatter';
+import type { ApplicationContext } from '../application-context';
 import type { ChainableWrapper } from '../chainable/chainable';
 import { _ } from '../lodash/lodash-non-vm';
 import { SecurityManager } from '../security/security-manager';
-import { ExpressionTransformer } from './expression-transformer';
+import { transformExpression } from './expression-transformer';
 import { createSmartDollar } from './jquery-wrapper';
 
 // Conditional VM imports to avoid issues in test environments
@@ -65,12 +66,14 @@ async function loadVMModules() {
 
 export class ExpressionEvaluator {
   private options: JsqOptions;
+  private appContext: ApplicationContext;
   private securityManager: SecurityManager;
   private vmSandbox: typeof VMSandboxSimple | null = null;
   private static warningShown = false;
 
-  constructor(options: JsqOptions) {
+  constructor(options: JsqOptions, appContext: ApplicationContext) {
     this.options = options;
+    this.appContext = appContext;
     this.securityManager = new SecurityManager(options);
 
     // Note: VM sandbox initialization moved to async methods since module loading is now async
@@ -152,7 +155,7 @@ export class ExpressionEvaluator {
   }
 
   private transformExpression(expression: string): string {
-    const transformedExpression = ExpressionTransformer.transform(expression);
+    const transformedExpression = transformExpression(expression, this.appContext?.expressionCache);
 
     if (this.options.verbose && transformedExpression !== expression) {
       console.error('Transformed expression:', transformedExpression);
@@ -262,6 +265,11 @@ export class ExpressionEvaluator {
       return this.unwrapChainableWrapper(result);
     }
 
+    // Handle SmartDollar objects
+    if (this.isSmartDollar(result)) {
+      return this.unwrapSmartDollar(result);
+    }
+
     return result;
   }
 
@@ -319,6 +327,27 @@ export class ExpressionEvaluator {
     return unwrapped;
   }
 
+  private isSmartDollar(result: unknown): boolean {
+    return (
+      result !== null &&
+      typeof result === 'object' &&
+      '__isSmartDollar' in result &&
+      (result as { __isSmartDollar: boolean }).__isSmartDollar === true
+    );
+  }
+
+  private unwrapSmartDollar(result: unknown): unknown {
+    if (this.options.verbose) {
+      console.error('Debug: Unwrapping SmartDollar object');
+    }
+    const smartDollar = result as { _value?: unknown; value?: unknown };
+    const unwrapped = smartDollar._value !== undefined ? smartDollar._value : smartDollar.value;
+    if (this.options.verbose) {
+      console.error('Debug: Unwrapped SmartDollar value type:', typeof unwrapped);
+    }
+    return unwrapped;
+  }
+
   private async safeEval(expression: string, context: Record<string, unknown>): Promise<unknown> {
     // Create a safe evaluation environment
     const contextKeys = Object.keys(context);
@@ -367,12 +396,12 @@ export class ExpressionEvaluator {
       const engineType = getVMEngineType ? getVMEngineType() : 'quickjs';
 
       if (engineType === 'quickjs' && VMSandboxQuickJS) {
-        this.vmSandbox = new VMSandboxQuickJS(vmConfig);
+        this.vmSandbox = new VMSandboxQuickJS(this.appContext, vmConfig);
         if (this.options.verbose) {
           console.error('Using QuickJS VM engine (on-demand)');
         }
       } else if (VMSandboxSimple) {
-        this.vmSandbox = new VMSandboxSimple(vmConfig);
+        this.vmSandbox = new VMSandboxSimple(this.appContext, vmConfig);
         if (this.options.verbose) {
           console.error('Using VM engine (on-demand)');
         }

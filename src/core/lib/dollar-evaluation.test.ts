@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from './processor';
 
 describe('Dollar ($) Evaluation Tests', () => {
   let processor: JsqProcessor;
   let processJSON: (expression: string, data: any) => Promise<any>;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
-    processor = new JsqProcessor({ verbose: false });
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor({ verbose: false }, appContext);
 
     // Helper function to process with JSON input
     processJSON = async (expression: string, data: any) => {
@@ -18,6 +21,7 @@ describe('Dollar ($) Evaluation Tests', () => {
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('Single $ evaluation', () => {

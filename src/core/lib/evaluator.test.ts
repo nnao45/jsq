@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from './evaluator';
 
 describe('ExpressionEvaluator', () => {
   let evaluator: ExpressionEvaluator;
   let mockOptions: JsqOptions;
+  let appContext: ReturnType<typeof createApplicationContext>;
 
   beforeEach(() => {
     mockOptions = {
@@ -13,7 +15,13 @@ describe('ExpressionEvaluator', () => {
       unsafe: false,
       use: undefined,
     };
-    evaluator = new ExpressionEvaluator(mockOptions);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(mockOptions, appContext);
+  });
+
+  afterEach(async () => {
+    await evaluator.dispose();
+    await appContext.dispose();
   });
 
   describe('Basic expression evaluation', () => {
@@ -205,18 +213,24 @@ describe('ExpressionEvaluator', () => {
 
   describe('Console handling', () => {
     it('should always allow console.log', async () => {
+      // This test requires unsafe mode to use direct eval instead of VM
+      const unsafeEvaluator = new ExpressionEvaluator({ ...mockOptions, unsafe: true }, appContext);
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
-      await evaluator.evaluate('console.log("test"); $.value', data);
+      await unsafeEvaluator.evaluate('console.log("test"); $.value', data);
 
       expect(consoleSpy).toHaveBeenCalledWith('test');
 
       consoleSpy.mockRestore();
+      await unsafeEvaluator.dispose();
     });
 
     it('should return correct value with console.log', async () => {
-      const verboseEvaluator = new ExpressionEvaluator({ ...mockOptions, verbose: true });
+      const verboseEvaluator = new ExpressionEvaluator(
+        { ...mockOptions, verbose: true, unsafe: true },
+        appContext
+      );
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const data = { value: 42 };
@@ -226,6 +240,7 @@ describe('ExpressionEvaluator', () => {
       expect(consoleSpy).toHaveBeenCalledWith('test');
 
       consoleSpy.mockRestore();
+      await verboseEvaluator.dispose();
     });
   });
 
