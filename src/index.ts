@@ -15,6 +15,7 @@ import {
 } from '@/utils/file-input';
 import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
+import { detectRuntime } from '@/utils/runtime';
 
 // Helper function to exit cleanly without QuickJS GC errors
 function exitCleanly(code: number): void {
@@ -64,38 +65,60 @@ program
   .description('A jQuery-like JSON query tool for the command line')
   .version('0.1.16');
 
-// Main command (default Node.js behavior)
-program
-  .argument('[expression]', 'JavaScript expression to evaluate')
-  .option('-d, --debug', 'Enable debug mode')
-  .option('-v, --verbose', 'Verbose output')
-  .option('-s, --stream', 'Enable streaming mode for large datasets')
-  .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option(
-    '-p, --parallel [workers]',
-    'Enable parallel processing (optionally specify number of workers)'
-  )
-  .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
-  .option('-f, --file <path>', 'Read input from file instead of stdin')
-  .option(
+// Add runtime info to verbose output
+function logRuntimeInfo(options: JsqOptions): void {
+  if (options.verbose) {
+    const runtime = detectRuntime();
+    console.error(`🚀 Running on ${runtime} runtime`);
+  }
+}
+
+// Define common options once
+const commonOptions = [
+  ['-d, --debug', 'Enable debug mode'],
+  ['-v, --verbose', 'Verbose output'],
+  ['-s, --stream', 'Enable streaming mode for large datasets'],
+  ['-b, --batch <size>', 'Process in batches of specified size (implies --stream)'],
+  ['-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)'],
+  ['--json-lines', 'Input/output in JSON Lines format (one JSON object per line)'],
+  ['-f, --file <path>', 'Read input from file instead of stdin'],
+  [
     '--file-format <format>',
     'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
-    'auto'
-  )
-  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
-  .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
-  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
-  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
-  .option('--repl', 'Start interactive REPL mode')
-  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
-  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
-  .option('--color', 'Enable colored output')
-  .option('--no-color', 'Disable colored output')
-  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
-  .option('--compact', 'Compact output (no spaces after separators)')
-  .option('--sort-keys', 'Sort object keys alphabetically')
-  .action(async (expression: string | undefined, options: JsqOptions) => {
+    'auto',
+  ],
+  ['--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)'],
+  ['--safe', 'Legacy option (deprecated, shows warning)'],
+  ['--sandbox', 'Legacy option (deprecated, VM isolation is now default)'],
+  ['--memory-limit <mb>', 'Memory limit in MB (default: 128)'],
+  ['--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)'],
+  ['--repl', 'Start interactive REPL mode'],
+  ['-w, --watch', 'Watch input file for changes and re-execute expression'],
+  ['--oneline', 'Output JSON in a single line (no pretty-printing)'],
+  ['--color', 'Enable colored output'],
+  ['--no-color', 'Disable colored output'],
+  ['--indent <spaces>', 'Number of spaces for indentation (default: 2)'],
+  ['--compact', 'Compact output (no spaces after separators)'],
+  ['--sort-keys', 'Sort object keys alphabetically'],
+] as const;
+
+// Helper function to add options to a command
+function addCommonOptions(cmd: Command): Command {
+  commonOptions.forEach(([flags, description, defaultValue]) => {
+    if (defaultValue) {
+      cmd.option(flags, description, defaultValue);
+    } else {
+      cmd.option(flags, description);
+    }
+  });
+  return cmd;
+}
+
+// Main command (default Node.js behavior)
+const mainCommand = program.argument('[expression]', 'JavaScript expression to evaluate');
+
+addCommonOptions(mainCommand).action(
+  async (expression: string | undefined, options: JsqOptions) => {
     try {
       if (options.repl) {
         await handleReplMode(options);
@@ -110,6 +133,7 @@ program
       }
 
       prepareOptions(options);
+      logRuntimeInfo(options);
 
       if (options.watch && !options.file) {
         console.error('Error: --watch requires --file option to specify the file to watch');
@@ -120,81 +144,46 @@ program
     } catch (error) {
       handleError(error, options);
     }
-  });
+  }
+);
 
 // Bun subcommand
-program
+const bunCommand = program
   .command('bun')
   .description('Run jsq with Bun runtime')
-  .argument('[expression]', 'JavaScript expression to evaluate')
-  .option('-d, --debug', 'Enable debug mode')
-  .option('-v, --verbose', 'Verbose output')
-  .option('-s, --stream', 'Enable streaming mode for large datasets')
-  .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option(
-    '-p, --parallel [workers]',
-    'Enable parallel processing (optionally specify number of workers)'
-  )
-  .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
-  .option('-f, --file <path>', 'Read input from file instead of stdin')
-  .option(
-    '--file-format <format>',
-    'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
-    'auto'
-  )
-  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
-  .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
-  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
-  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
-  .option('--repl', 'Start interactive REPL mode')
-  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
-  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
-  .option('--color', 'Enable colored output')
-  .option('--no-color', 'Disable colored output')
-  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
-  .option('--compact', 'Compact output (no spaces after separators)')
-  .option('--sort-keys', 'Sort object keys alphabetically')
-  .action(async (expression: string | undefined, options: JsqOptions) => {
+  .argument('[expression]', 'JavaScript expression to evaluate');
+
+addCommonOptions(bunCommand).action(async (expression: string | undefined, options: JsqOptions) => {
+  // Check if already running in Bun
+  const currentRuntime = detectRuntime();
+  if (currentRuntime === 'bun') {
+    // Already in Bun, just run normally
+    await mainCommand.parseAsync(['', '', expression || '', ...process.argv.slice(3)]);
+  } else {
+    // Need to switch to Bun
     await runWithRuntime('bun', expression, options);
-  });
+  }
+});
 
 // Deno subcommand
-program
+const denoCommand = program
   .command('deno')
   .description('Run jsq with Deno runtime')
-  .argument('[expression]', 'JavaScript expression to evaluate')
-  .option('-d, --debug', 'Enable debug mode')
-  .option('-v, --verbose', 'Verbose output')
-  .option('-s, --stream', 'Enable streaming mode for large datasets')
-  .option('-b, --batch <size>', 'Process in batches of specified size (implies --stream)')
-  .option(
-    '-p, --parallel [workers]',
-    'Enable parallel processing (optionally specify number of workers)'
-  )
-  .option('--json-lines', 'Input/output in JSON Lines format (one JSON object per line)')
-  .option('-f, --file <path>', 'Read input from file instead of stdin')
-  .option(
-    '--file-format <format>',
-    'Specify input file format (json, jsonl, csv, tsv, parquet, yaml, yml, toml, auto)',
-    'auto'
-  )
-  .option('--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)')
-  .option('--safe', 'Legacy option (deprecated, shows warning)')
-  .option('--sandbox', 'Legacy option (deprecated, VM isolation is now default)')
-  .option('--memory-limit <mb>', 'Memory limit in MB (default: 128)')
-  .option('--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)')
-  .option('--repl', 'Start interactive REPL mode')
-  .option('-w, --watch', 'Watch input file for changes and re-execute expression')
-  .option('--oneline', 'Output JSON in a single line (no pretty-printing)')
-  .option('--color', 'Enable colored output')
-  .option('--no-color', 'Disable colored output')
-  .option('--indent <spaces>', 'Number of spaces for indentation (default: 2)')
-  .option('--compact', 'Compact output (no spaces after separators)')
-  .option('--sort-keys', 'Sort object keys alphabetically')
-  .action(async (expression: string | undefined, options: JsqOptions) => {
-    await runWithRuntime('deno', expression, options);
-  });
+  .argument('[expression]', 'JavaScript expression to evaluate');
+
+addCommonOptions(denoCommand).action(
+  async (expression: string | undefined, options: JsqOptions) => {
+    // Check if already running in Deno
+    const currentRuntime = detectRuntime();
+    if (currentRuntime === 'deno') {
+      // Already in Deno, just run normally
+      await mainCommand.parseAsync(['', '', expression || '', ...process.argv.slice(3)]);
+    } else {
+      // Need to switch to Deno
+      await runWithRuntime('deno', expression, options);
+    }
+  }
+);
 
 async function runWithRuntime(
   runtime: 'bun' | 'deno',
@@ -213,6 +202,7 @@ async function runWithRuntime(
         'run',
         '--allow-all',
         '--unstable-sloppy-imports',
+        '--unstable-detect-cjs',
         join(packageRoot, 'dist/index.js')
       );
     }
@@ -238,6 +228,20 @@ async function runWithRuntime(
     if (options.memoryLimit) args.push('--memory-limit', String(options.memoryLimit));
     if (options.cpuLimit) args.push('--cpu-limit', String(options.cpuLimit));
     if (options.watch) args.push('--watch');
+    if (options.parallel) {
+      if (typeof options.parallel === 'string' || typeof options.parallel === 'number') {
+        args.push('--parallel', String(options.parallel));
+      } else {
+        args.push('--parallel');
+      }
+    }
+    // Add output formatting options
+    if (options.oneline) args.push('--oneline');
+    if (options.color) args.push('--color');
+    if (options.noColor) args.push('--no-color');
+    if (options.indent) args.push('--indent', String(options.indent));
+    if (options.compact) args.push('--compact');
+    if (options.sortKeys) args.push('--sort-keys');
 
     if (args.length === 0 || !args[0]) {
       throw new Error('No runtime command specified');

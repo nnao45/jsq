@@ -4,7 +4,9 @@
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "main": "dist/index.js",
   "bin": {
-    "jsq": "bin/jsq"
+    "jsq": "bin/jsq",
+    "jsq-bun": "bin/jsq-bun",
+    "jsq-deno": "bin/jsq-deno"
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=cjs --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=cjs --packages=external",
