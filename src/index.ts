@@ -304,7 +304,8 @@ async function determineInputSource(options: JsqOptions): Promise<{
   }
 
   // Check stdin availability - only assume no input when explicitly running in a terminal
-  if (process.stdin.isTTY === true) {
+  // or when NODE_ENV is 'test' (for testing without stdin)
+  if (process.stdin.isTTY === true || process.env.NODE_ENV === 'test') {
     return { inputSource: 'none', detectedFormat: 'json' };
   }
 
@@ -457,7 +458,7 @@ async function getInputData(
     return await readFileByFormat(filePath, detectedFormat as SupportedFormat);
   }
   if (inputSource === 'none') {
-    return null;
+    return 'null';
   }
 
   return await readStdin();
