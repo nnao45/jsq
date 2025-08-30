@@ -1,16 +1,22 @@
-import { expressionCache, getStringSizeInBytes } from './expression-cache';
+import type { LRUCache } from './expression-cache';
+import { getStringSizeInBytes } from './expression-cache';
 
 /**
  * Transform expression to handle special cases like standalone '$'
  * This is used for non-streaming mode where $ is a complex function/proxy
  */
-export function transformExpression(expression: string): string {
+export function transformExpression(
+  expression: string,
+  expressionCache?: LRUCache<string, string>
+): string {
   const trimmed = expression.trim();
 
-  // Check cache first
-  const cached = expressionCache.get(expression);
-  if (cached !== undefined) {
-    return cached;
+  // Check cache first if provided
+  if (expressionCache) {
+    const cached = expressionCache.get(expression);
+    if (cached !== undefined) {
+      return cached;
+    }
   }
 
   let result: string;
@@ -63,12 +69,14 @@ export function transformExpression(expression: string): string {
     result = expression;
   }
 
-  // Cache the result
-  expressionCache.set(
-    expression,
-    result,
-    getStringSizeInBytes(expression) + getStringSizeInBytes(result)
-  );
+  // Cache the result if cache is provided
+  if (expressionCache) {
+    expressionCache.set(
+      expression,
+      result,
+      getStringSizeInBytes(expression) + getStringSizeInBytes(result)
+    );
+  }
 
   return result;
 }

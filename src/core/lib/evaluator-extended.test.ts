@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from './evaluator';
 
 describe('ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥', () => {
   let evaluator: ExpressionEvaluator;
   let mockOptions: JsqOptions;
+  let appContext: ReturnType<typeof createApplicationContext>;
 
   beforeEach(() => {
     mockOptions = {
@@ -13,7 +15,13 @@ describe('ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥
       unsafe: false,
       use: undefined,
     };
-    evaluator = new ExpressionEvaluator(mockOptions);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(mockOptions, appContext);
+  });
+
+  afterEach(async () => {
+    await evaluator.dispose();
+    await appContext.dispose();
   });
 
   describe('基本的な算術演算 (1-15)', () => {

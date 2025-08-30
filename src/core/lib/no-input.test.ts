@@ -1,15 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from './processor';
 
 describe('No Input Execution Tests', () => {
   let processor: JsqProcessor;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
-    processor = new JsqProcessor({ verbose: false });
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor({ verbose: false }, appContext);
   });
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('Lodash utility functions without input', () => {

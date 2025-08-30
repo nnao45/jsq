@@ -1,5 +1,6 @@
 import type { Readable } from 'node:stream';
 import type { JsqOptions, ProcessingResult } from '@/types/cli';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
 import { type StreamProcessingOptions, StreamProcessor } from '../stream/stream-processor';
 import { ExpressionEvaluator } from './evaluator';
 import { JsonParser } from './parser';
@@ -9,17 +10,22 @@ export class JsqProcessor {
   private evaluator: ExpressionEvaluator;
   private streamProcessor: StreamProcessor;
   private options: JsqOptions;
+  private appContext: ApplicationContext;
 
   constructor(options: JsqOptions) {
     this.options = options;
+    this.appContext = createApplicationContext();
     this.parser = new JsonParser(options);
-    this.evaluator = new ExpressionEvaluator(options);
-    this.streamProcessor = new StreamProcessor(options);
+    this.evaluator = new ExpressionEvaluator(options, this.appContext);
+    this.streamProcessor = new StreamProcessor(options, this.appContext);
   }
 
   async dispose(): Promise<void> {
     await this.evaluator.dispose();
     await this.streamProcessor.dispose();
+
+    // Clean up application context (which contains all "global" resources)
+    await this.appContext.dispose();
   }
 
   async process(expression: string, input: string): Promise<ProcessingResult> {

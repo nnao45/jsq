@@ -1,22 +1,28 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from './processor';
 
 describe('JsqProcessor', () => {
   let processor: JsqProcessor;
   let mockOptions: JsqOptions;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
+    // Tests will rely on proper cleanup through isProcessExiting flag
+
     mockOptions = {
       debug: false,
       verbose: false,
       unsafe: false,
     };
-    processor = new JsqProcessor(mockOptions);
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor(mockOptions, appContext);
   });
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('Basic processing', () => {
@@ -97,7 +103,8 @@ describe('JsqProcessor', () => {
     });
 
     it('should include debug steps when debug mode is enabled', async () => {
-      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true });
+      const debugContext = new ApplicationContext();
+      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true }, debugContext);
       const input = '{"test": "data"}';
       const expression = '$.test';
 
@@ -110,6 +117,7 @@ describe('JsqProcessor', () => {
       expect(result.metadata.steps).toContain('Format output');
 
       await debugProcessor.dispose();
+      await debugContext.dispose();
     });
 
     it('should measure processing time accurately', async () => {
@@ -354,7 +362,8 @@ describe('JsqProcessor', () => {
 
   describe('Integration with different modes', () => {
     it('should work correctly in verbose mode', async () => {
-      const verboseProcessor = new JsqProcessor({ ...mockOptions, verbose: true });
+      const verboseContext = new ApplicationContext();
+      const verboseProcessor = new JsqProcessor({ ...mockOptions, verbose: true }, verboseContext);
       const input = '{"test": "data"}';
       const expression = '$.test';
 
@@ -364,10 +373,12 @@ describe('JsqProcessor', () => {
       expect(result.metadata).toBeDefined();
 
       await verboseProcessor.dispose();
+      await verboseContext.dispose();
     });
 
     it('should work correctly in unsafe mode', async () => {
-      const unsafeProcessor = new JsqProcessor({ ...mockOptions, unsafe: true });
+      const unsafeContext = new ApplicationContext();
+      const unsafeProcessor = new JsqProcessor({ ...mockOptions, unsafe: true }, unsafeContext);
       const input = '{"numbers": [1, 2, 3, 4, 5]}';
       const expression = '$.numbers.value.reduce((sum, n) => sum + n, 0)';
 
@@ -376,10 +387,12 @@ describe('JsqProcessor', () => {
       expect(result.data).toBe(15);
 
       await unsafeProcessor.dispose();
+      await unsafeContext.dispose();
     });
 
     it('should work correctly with debug metadata', async () => {
-      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true });
+      const debugContext = new ApplicationContext();
+      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true }, debugContext);
       const input = '{"array": [1, 2, 3]}';
       const expression = '$.array.length';
 
@@ -390,6 +403,7 @@ describe('JsqProcessor', () => {
       expect(result.metadata.steps.length).toBeGreaterThan(0);
 
       await debugProcessor.dispose();
+      await debugContext.dispose();
     });
   });
 });

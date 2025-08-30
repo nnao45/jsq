@@ -4,6 +4,7 @@
  */
 import { parentPort } from 'node:worker_threads';
 import type { JsqOptions } from '@/types/cli';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 import { JsonParser } from '../lib/parser';
 
@@ -23,10 +24,14 @@ interface WorkerResult {
 // Initialize worker components
 let evaluator: ExpressionEvaluator | null = null;
 let parser: JsonParser | null = null;
+let appContext: ApplicationContext | null = null;
 
 function initializeWorker(options: JsqOptions): void {
+  if (!appContext) {
+    appContext = createApplicationContext();
+  }
   if (!evaluator) {
-    evaluator = new ExpressionEvaluator(options);
+    evaluator = new ExpressionEvaluator(options, appContext);
   }
   if (!parser) {
     parser = new JsonParser(options);
@@ -123,12 +128,18 @@ process.on('SIGTERM', async () => {
   if (evaluator) {
     await evaluator.dispose();
   }
+  if (appContext) {
+    await appContext.dispose();
+  }
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   if (evaluator) {
     await evaluator.dispose();
+  }
+  if (appContext) {
+    await appContext.dispose();
   }
   process.exit(0);
 });

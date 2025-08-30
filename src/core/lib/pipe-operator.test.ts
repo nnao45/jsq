@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { JsqOptions } from '../../types/cli';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from './evaluator';
 import { ExpressionTransformer } from './expression-transformer';
 
 describe('Pipe Operator Support', () => {
   let evaluator: ExpressionEvaluator;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
     const options: JsqOptions = {
@@ -14,41 +16,43 @@ describe('Pipe Operator Support', () => {
       stream: false,
       jsonLines: false,
     };
-    evaluator = new ExpressionEvaluator(options);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(options, appContext);
   });
 
   afterEach(async () => {
     await evaluator.dispose();
+    await appContext.dispose();
   });
 
   describe('ExpressionTransformer.transformPipeExpression', () => {
     it('should handle simple pipe to $', () => {
       const expression = '$.users | $';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('($.users)');
     });
 
     it('should handle pipe to method call', () => {
       const expression = '$.users | $.filter(u => u.age > 25)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('($.users).filter(u => u.age > 25)');
     });
 
     it('should handle multiple pipe operations', () => {
       const expression = '$.data | $.filter(n => n > 3) | $.map(n => n * 2)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('(($.data).filter(n => n > 3)).map(n => n * 2)');
     });
 
     it('should handle pipe to property access', () => {
       const expression = '$.users | $.length';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('($.users).length');
     });
 
     it('should handle complex pipe with nested expressions', () => {
       const expression = '$.products | $.filter(p => p.price > 100) | $.sortBy("name") | $.take(5)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe(
         '((($.products).filter(p => p.price > 100)).sortBy("name")).take(5)'
       );
@@ -235,31 +239,31 @@ describe('Pipe Operator Support', () => {
   describe('Utility function pipe transformations', () => {
     it('should transform pipe to utility function correctly', () => {
       const expression = '$ | _.range(5)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('_.range(5)');
     });
 
     it('should transform pipe to lodash function correctly', () => {
       const expression = '$ | lodash.range(5)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('lodash.range(5)');
     });
 
     it('should transform pipe to function call correctly', () => {
       const expression = '$ | Math.max(1, 2, 3)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('Math.max(1, 2, 3)');
     });
 
     it('should handle complex utility function pipes', () => {
       const expression = '$ | _.range(10) | $.filter(x => x % 2 === 0)';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('(_.range(10)).filter(x => x % 2 === 0)');
     });
 
     it('should differentiate between utility functions and method calls', () => {
       const expression = '$.data | someMethod()';
-      const transformed = ExpressionTransformer.transform(expression);
+      const transformed = ExpressionTransformer.transform(expression, appContext.expressionCache);
       expect(transformed).toBe('($.data).someMethod()');
     });
   });

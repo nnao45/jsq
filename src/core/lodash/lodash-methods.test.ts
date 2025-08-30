@@ -1,19 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 
 describe('Lodash-like Methods', () => {
   let evaluator: ExpressionEvaluator;
   let mockOptions: JsqOptions;
+  let appContext: ReturnType<typeof createApplicationContext>;
 
   beforeEach(() => {
     mockOptions = {
-      debug: false,
-      verbose: false,
+      debug: true, // Enable debug output
+      verbose: true, // Enable verbose output
       unsafe: false,
       use: undefined,
     };
-    evaluator = new ExpressionEvaluator(mockOptions);
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(mockOptions, appContext);
+  });
+
+  afterEach(async () => {
+    await evaluator.dispose();
+    await appContext.dispose();
   });
 
   describe('Array manipulation methods', () => {
@@ -538,7 +546,13 @@ describe('Lodash-like Methods', () => {
         unsafe: true, // VM環境を有効にする
         use: undefined,
       };
-      evaluator = new ExpressionEvaluator(mockOptions);
+      appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(mockOptions, appContext);
+    });
+
+    afterEach(async () => {
+      await evaluator.dispose();
+      await appContext.dispose();
     });
 
     it('should support dollar notation for basic array operations', async () => {
@@ -756,7 +770,13 @@ describe('Lodash-like Methods', () => {
         unsafe: false, // デフォルトではVM環境が有効
         use: undefined,
       };
-      evaluator = new ExpressionEvaluator(mockOptions);
+      appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(mockOptions, appContext);
+    });
+
+    afterEach(async () => {
+      await evaluator.dispose();
+      await appContext.dispose();
     });
 
     it('should support dollar notation in VM environment (default)', async () => {
@@ -780,7 +800,13 @@ describe('Lodash-like Methods', () => {
         unsafe: true, // VM環境を有効にする
         use: undefined,
       };
-      evaluator = new ExpressionEvaluator(mockOptions);
+      appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(mockOptions, appContext);
+    });
+
+    afterEach(async () => {
+      await evaluator.dispose();
+      await appContext.dispose();
     });
 
     it('should support transparent property access through Proxy', async () => {

@@ -1,0 +1,1600 @@
+
+> @nnao45/jsq@0.1.26 test
+> vitest --run
+
+
+ RUN  v3.2.4 /home/nnao45/ghq/github.com/nnao45/jsq
+
+stdout | src/integration/no-input-cli.test.ts
+QuickJS initialized for sync access
+
+stdout | src/integration.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/reactive-methods.test.ts
+QuickJS initialized for sync access
+
+stdout | src/utils/input.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/common-methods.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/property-access.test.ts
+QuickJS initialized for sync access
+
+ ✓ src/core/lib/common-methods.test.ts (44 tests) 200ms
+stdout | src/core/vm/vm-cli-resource-limits.test.ts
+QuickJS initialized for sync access
+
+stdout | src/native-compatibility.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/new-methods.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/evaluator.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/pipe-operator.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/sandbox-differences.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/security/security-integration.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/lib/evaluator-extended.test.ts
+QuickJS initialized for sync access
+
+stdout | src/core/vm/parallel-processing.test.ts
+QuickJS initialized for sync access
+
+ ✓ src/utils/input.test.ts (20 tests | 5 skipped) 435ms
+stdout | src/core/lib/semicolon.test.ts
+QuickJS initialized for sync access
+
+ ✓ src/core/vm/parallel-processing.test.ts (9 tests) 63ms
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should pass memory limit from CLI options to VM
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate simple expressions with $ syntax
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute simple pipe to $ correctly
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 1. 足し算の基本
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same chunk behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stdout | src/core/lib/no-input.test.ts
+QuickJS initialized for sync access
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute simple pipe to $ correctly
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should pass memory limit from CLI options to VM
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stdout | src/core/lib/dollar-evaluation.test.ts
+QuickJS initialized for sync access
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate simple expressions with $ syntax
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute expressions sequentially and return the last value
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same chunk behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should return the entire data when evaluating just $
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 1. 足し算の基本
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(5) without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute expressions sequentially and return the last value
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(5) without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should return the entire data when evaluating just $
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+ ✓ src/native-compatibility.test.ts (70 tests) 270ms
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute simple pipe to $ correctly
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate simple expressions with $ syntax
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+ ✓ src/core/lib/property-access.test.ts (20 tests) 381ms
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should pass memory limit from CLI options to VM
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 1. 足し算の基本
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same chunk behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute expressions sequentially and return the last value
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate simple expressions with $ syntax
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($.name);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute simple pipe to $ correctly
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (($.users));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should pass memory limit from CLI options to VM
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (
+        // Create multiple large arrays to exceed memory limit
+        const arrays = [];
+        try {
+          for (let i = 0; i < 100; i++) {
+            // Create 1MB array each iteration
+            arrays.push(new Array(250000).fill('test'));
+          }
+          arrays.length;
+        } catch (e) {
+          throw new Error('Memory limit exceeded');
+        }
+      );
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+QuickJS eval failed with code: (() => {
+          try {
+            return (
+        // Create multiple large arrays to exceed memory limit
+        const arrays = [];
+        try {
+          for (let i = 0; i < 100; i++) {
+            // Create 1MB array each iteration
+            arrays.push(new Array(250000).fill('test'));
+          }
+          arrays.length;
+        } catch (e) {
+          throw new Error('Memory limit exceeded');
+        }
+      );
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should return the entire data when evaluating just $
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should work with default memory limit
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with filter correctly
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 1. 足し算の基本
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (1 + 2);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(5) without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with filter correctly
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should work with default memory limit
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate expressions using data variable for backward compatibility
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (1 + 1);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with filter correctly
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 2. 引き算の基本
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute expressions sequentially and return the last value
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => {
+      $.name;
+      return $.age;
+    })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 2. 引き算の基本
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with filter correctly
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (($.users).filter(u => u.age > 25));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate expressions using data variable for backward compatibility
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should work with default memory limit
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with pluck correctly
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should return the entire data when evaluating just $
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Memory Limits via CLI options > should work with default memory limit
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+              try {
+                const arr = [1, 2, 3, 4, 5];
+                return (arr.reduce((sum, n) => sum + n, 0));
+              } catch (error) {
+                if (error instanceof Error) {
+                  throw new Error(error.message);
+                }
+                throw error;
+              }
+            })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same chunk behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.chunk(data, 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 2. 引き算の基本
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute side effect expressions without affecting $
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same uniqBy behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with pluck correctly
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute side effect expressions without affecting $
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+🔒 Running in secure VM isolation mode
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+Using QuickJS VM engine (on-demand)
+VM Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+  data: object
+  $: object
+  _: object
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same uniqBy behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with pluck correctly
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with arrays
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(5) without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.range(5));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate expressions using data variable for backward compatibility
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 2. 引き算の基本
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (10 - 4);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Execution Environment > should use VM isolation by default
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (1 + 1);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with arrays
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same uniqBy behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 3. 掛け算の基本
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute side effect expressions without affecting $
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute pipe with pluck correctly
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (($.users).pluck("name"));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => { let count = 0; for (let i = 0; i < 1000; i++) { count++; } return count; })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 3. 掛け算の基本
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should pass CPU limit from CLI options to VM
+Debug: Result type: number isArray: [33mfalse[39m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should work with default CPU limit
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same uniqBy behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.uniqBy(data, Math.floor));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with arrays
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(1, 5) without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(1, 5) without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should evaluate expressions using data variable for backward compatibility
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (data.name);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should work with default CPU limit
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Network Access > should NOT have fetch functions available in VM mode by default
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with arrays
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 3. 掛け算の基本
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same orderBy behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should execute side effect expressions without affecting $
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => {
+      console.log("Processing...");
+      return $.value;
+    })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should handle multiple semicolons
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same orderBy behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute multiple pipe operations correctly
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should work with default CPU limit
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with nested objects
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 3. 掛け算の基本
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (3 * 4);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Network Access > should NOT have fetch functions available in VM mode by default
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle array data with $ syntax
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle array data with $ syntax
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should handle multiple semicolons
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute multiple pipe operations correctly
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with nested objects
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 4. 割り算の基本
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same orderBy behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(1, 5) without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > CPU Time Limits via CLI options > should work with default CPU limit
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => { let sum = 0; for (let i = 0; i < 100; i++) { sum += i; } return sum; })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Combined limits > should handle both memory and CPU limits from CLI
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Combined limits > should handle both memory and CPU limits from CLI
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same orderBy behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.orderBy(data, ["age", "name"], ["asc", "desc"]));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 4. 割り算の基本
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 4. 割り算の基本
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle array data with $ syntax
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Network Access > should NOT have fetch functions available in VM mode by default
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should handle multiple semicolons
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute multiple pipe operations correctly
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Combined limits > should handle both memory and CPU limits from CLI
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same groupBy behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with nested objects
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(1, 5) without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.range(1, 5));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle array data with $ syntax
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($.filter(u => u.age > 27).length);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same groupBy behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle complex chaining operations
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with nested objects
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 4. 割り算の基本
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (15 / 3);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/test-which-vm.test.ts
+Error: No expression provided. Use: jsq "expression" < input.json or jsq --repl
+Error: process.exit unexpectedly called with "1"
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle complex chaining operations
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(0, 10, 2) without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same groupBy behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Basic semicolon functionality > should handle multiple semicolons
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => {
+      $.a;
+      $.b;
+      return $.c;
+    })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > Network Access > should NOT have fetch functions available in VM mode by default
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (
+        ({
+          hasFetchCallback: typeof fetchCallback === 'function',
+          hasFetch: typeof fetch === 'function',
+          hasFetchJSON: typeof fetchJSON === 'function',
+          hasFetchText: typeof fetchText === 'function'
+        })
+      );
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute multiple pipe operations correctly
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((($.data).filter(n => n > 3)).map(n => n * 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 5. 剰余演算
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle complex chaining operations
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(0, 10, 2) without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/vm/vm-cli-resource-limits.test.ts > VM CLI Resource Limits > Combined limits > should handle both memory and CPU limits from CLI
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+              try {
+                const nums = Array.from({ length: 100 }, (_, i) => i);
+const doubled = nums.map(n => n * 2);
+                return (doubled.reduce((sum, n) => sum + n, 0));
+              } catch (error) {
+                if (error instanceof Error) {
+                  throw new Error(error.message);
+                }
+                throw error;
+              }
+            })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same groupBy behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.groupBy(data, item => item.dept));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 5. 剰余演算
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute complex chained pipe operations
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same flatten behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same flatten behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 5. 剰余演算
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+ ✓ src/core/vm/vm-cli-resource-limits.test.ts (5 tests) 565ms
+   ✓ VM CLI Resource Limits > Memory Limits via CLI options > should pass memory limit from CLI options to VM  331ms
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute complex chained pipe operations
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(0, 10, 2) without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 5. 剰余演算
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (17 % 5);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute complex chained pipe operations
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.range(0, 10, 2) without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.range(0, 10, 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should handle object properties and array operations
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 6. べき乗演算
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Basic expression evaluation > should handle complex chaining operations
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (
+        $.users
+          .filter(u => u.department === 'engineering')
+          .sortBy('age')
+          .pluck('name')
+      );
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+QuickJS eval failed with code: (() => {
+          try {
+            return (
+        $.users
+          .filter(u => u.department === 'engineering')
+          .sortBy('age')
+          .pluck('name')
+      );
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+ ✓ src/core/security/security-integration.test.ts (7 tests) 567ms
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should handle object properties and array operations
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.times(3, i => i * 2) without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 6. べき乗演算
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same flatten behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+file:///home/nnao45/ghq/github.com/nnao45/jsq/node_modules/vitest/dist/chunks/execute.B7h3T_Hc.js:525
+		throw new Error(`process.exit unexpectedly called with "${code}"`);
+		^
+
+Error: process.exit unexpectedly called with "1"
+    at process.exit (file:///home/nnao45/ghq/github.com/nnao45/jsq/node_modules/vitest/dist/chunks/execute.B7h3T_Hc.js:525:9)
+    at process.<anonymous> (/home/nnao45/ghq/github.com/nnao45/jsq/src/index.ts:685:11)
+    at process.emit (node:events:519:35)
+    at process._fatalException (node:internal/process/execution:154:25)
+
+Node.js v23.11.1
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 6. べき乗演算
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.times(3, i => i * 2) without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should handle object properties and array operations
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 6. べき乗演算
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (2 ** 8);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should execute complex chained pipe operations
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (((($.products).filter(p => p.category === "electronics")).filter(p => p.price > 100)).pluck("name"));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+QuickJS eval failed with code: (() => {
+          try {
+            return (((($.products).filter(p => p.category === "electronics")).filter(p => p.price > 100)).pluck("name"));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.times(3, i => i * 2) without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide lodash-like utilities via _
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same flatten behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.flatten(data));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same compact behavior
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same compact behavior
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide lodash-like utilities via _
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 7. 複合演算
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.times(3, i => i * 2) without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.times(3, i => i * 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 7. 複合演算
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (1 + 1);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same compact behavior
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide lodash-like utilities via _
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.identity("hello") without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should handle object properties and array operations
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => {
+      $.users;
+      return $.count;
+    })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/new-methods.test.ts > Built-in _ utilities vs $ methods parity > should have same compact behavior
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.compact(data));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 7. 複合演算
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.identity("hello") without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.identity("hello") without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide lodash-like utilities via _
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.uniq(data));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 7. 複合演算
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((2 + 3) * 4 - 1);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with primitives
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ($);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should work with array operations
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should work with array operations
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+ ✓ src/core/lib/new-methods.test.ts (43 tests) 612ms
+   ✓ Built-in _ utilities vs $ methods parity > should have same chunk behavior  385ms
+stderr | src/core/lib/evaluator-extended.test.ts > ExpressionEvaluator Extended Tests - JavaScript Native Evaluation 🔥 > 基本的な算術演算 (1-15) > 8. 浮動小数点演算
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide groupBy utility
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/dollar-evaluation.test.ts > Dollar ($) Evaluation Tests > Single $ evaluation > should handle $ evaluation with empty objects and arrays
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.identity("hello") without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.identity("hello"));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.random(1, 10) without input data
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should work with array operations
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (1 + 1);
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.random(1, 10) without input data
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.random(1, 10) without input data
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Lodash utility functions without input > should execute _.random(1, 10) without input data
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.random(1, 10));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/no-input.test.ts > No Input Execution Tests > Mathematical and utility expressions without input > should execute simple math expressions
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should work with array operations
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ((() => {
+      $.filter(x => x % 2 === 0);
+      return $.length;
+    })());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/semicolon.test.ts > Semicolon Sequential Execution Tests > Semicolon with complex expressions > should handle mathematical expressions
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/pipe-operator.test.ts > Pipe Operator Support > Pipe operator integration tests > should handle pipe with aggregation operations
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (createSmartDollar([1, 2, 3]).map(x => x * 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (createSmartDollar([1, 2, 3]).map(x => x * 2));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ("hello".toUpperCase());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/sandbox-differences.test.ts > VM Sandbox Mode (Default) Behavior > JavaScript Features > should allow basic operations in both modes
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return ("hello".toUpperCase());
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide groupBy utility
+[VMSandboxQuickJS] Context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value: [1mnull[22m
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide groupBy utility
+[VMSandboxQuickJS] Found _ marker for Lodash setup
+[VMSandboxQuickJS] Setting up Lodash in VM
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide groupBy utility
+[VMSandboxQuickJS] Lodash check after setup: function
+[VMSandboxQuickJS] Wrapped code: (() => {
+          try {
+            return (_.groupBy(data, item => item.category));
+          } catch (error) {
+            if (error instanceof Error) {
+              throw new Error(error.message);
+            }
+            throw error;
+          }
+        })()
+
+stderr | src/core/lib/evaluator.test.ts > ExpressionEvaluator > Built-in utilities > should provide sortBy utility
+[VMSandboxQuickJS] execute called with context keys: [ [32m'data'[39m, [32m'$'[39m, [32m'_'[39m ]
+[VMSandboxQuickJS] _ value in context: [1mnull[22m
+
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: Channel closed
+ ❯ target.send node:internal/child_process:753:16
+ ❯ ProcessWorker.send node_modules/tinypool/dist/index.js:140:41
+ ❯ MessagePort.<anonymous> node_modules/tinypool/dist/index.js:149:62
+ ❯ [nodejs.internal.kHybridDispatch] node:internal/event_target:827:20
+ ❯ MessagePort.<anonymous> node:internal/per_context/messageport:23:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_IPC_CHANNEL_CLOSED' }
+
+
+

@@ -2,6 +2,7 @@ import { cpus } from 'node:os';
 import { type Readable, Transform } from 'node:stream';
 import type { JsqOptions } from '@/types/cli';
 import { OutputFormatter } from '@/utils/output-formatter';
+import type { ApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 import { ExpressionTransformer } from '../lib/expression-transformer';
 import { JsonParser } from '../lib/parser';
@@ -17,13 +18,15 @@ export interface StreamProcessingOptions {
 
 export class StreamProcessor {
   private options: JsqOptions;
+  private appContext: ApplicationContext;
   private evaluator: ExpressionEvaluator;
   private parser: JsonParser;
   private workerPool?: WorkerPool;
 
-  constructor(options: JsqOptions) {
+  constructor(options: JsqOptions, appContext: ApplicationContext) {
     this.options = options;
-    this.evaluator = new ExpressionEvaluator(options);
+    this.appContext = appContext;
+    this.evaluator = new ExpressionEvaluator(options, appContext);
     this.parser = new JsonParser(options);
   }
 
@@ -106,7 +109,10 @@ export class StreamProcessor {
     expression: string,
     _streamOptions: StreamProcessingOptions = {}
   ): Transform {
-    const transformedExpression = ExpressionTransformer.transform(expression);
+    const transformedExpression = ExpressionTransformer.transform(
+      expression,
+      this.appContext.expressionCache
+    );
     let lineNumber = 0;
 
     return new Transform({
@@ -237,7 +243,10 @@ export class StreamProcessor {
     const lineNumber = { value: 0 };
 
     // Transform expression for better streaming performance
-    const transformedExpression = ExpressionTransformer.transform(expression);
+    const transformedExpression = ExpressionTransformer.transform(
+      expression,
+      this.appContext.expressionCache
+    );
     return new Transform({
       objectMode: true,
       transform: async (chunk: Buffer, _encoding, callback) => {
@@ -393,7 +402,10 @@ export class StreamProcessor {
     let isWorkerPoolInitialized = false;
 
     // Transform expression for better streaming performance
-    const transformedExpression = ExpressionTransformer.transform(expression);
+    const transformedExpression = ExpressionTransformer.transform(
+      expression,
+      this.appContext.expressionCache
+    );
 
     return new Transform({
       objectMode: true,
@@ -463,7 +475,10 @@ export class StreamProcessor {
     const totalProcessed = { value: 0 };
 
     // Transform expression for better streaming performance
-    const transformedExpression = ExpressionTransformer.transform(expression);
+    const transformedExpression = ExpressionTransformer.transform(
+      expression,
+      this.appContext.expressionCache
+    );
 
     return new Transform({
       objectMode: true,

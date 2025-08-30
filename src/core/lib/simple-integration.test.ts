@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApplicationContext } from '../application-context';
 import { ChainableWrapper } from '../chainable/chainable';
 import { JsqProcessor } from './processor';
 
 describe('Simple integration tests for new methods', () => {
   let processor: JsqProcessor;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
-    processor = new JsqProcessor({ verbose: false });
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor({ verbose: false }, appContext);
   });
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('Basic method functionality', () => {

@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, expect } from 'vitest';
 import { describeWithVM, isQuickJSAvailable, testWithVM } from '@/test/vm-helpers';
+import { createApplicationContext } from '../application-context';
 import { VMSandboxSimple } from '../vm/vm-sandbox-simple';
 
 describeWithVM('Property Access Tests', () => {
@@ -11,13 +12,16 @@ describeWithVM('Property Access Tests', () => {
 
   describe('Basic Property Access', () => {
     let sandbox: VMSandboxSimple;
+    let appContext: ReturnType<typeof createApplicationContext>;
 
     beforeEach(() => {
-      sandbox = new VMSandboxSimple();
+      appContext = createApplicationContext();
+      sandbox = new VMSandboxSimple(appContext);
     });
 
     afterEach(async () => {
       await sandbox.dispose();
+      await appContext.dispose();
     });
 
     testWithVM('should access simple object properties with dot notation', async () => {

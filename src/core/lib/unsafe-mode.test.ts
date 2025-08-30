@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { createApplicationContext } from '../application-context';
 import { SecurityManager } from '../security/security-manager';
 import { ExpressionEvaluator } from './evaluator';
 
@@ -75,16 +76,19 @@ describe.skip('Unsafe Mode', () => {
 
   describe('Expression Execution', () => {
     it('should execute without VM in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = { value: 42 };
 
       // Test that we can access native functions directly
       const result = await evaluator.evaluate('Math.max($.value, 100)', data);
       expect(result).toBe(100);
+      await appContext.dispose();
     });
 
     it('should handle async expressions in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = { numbers: [1, 2, 3] };
 
       const result = await evaluator.evaluate(
@@ -92,10 +96,12 @@ describe.skip('Unsafe Mode', () => {
         data
       );
       expect(result).toEqual([2, 4, 6]);
+      await appContext.dispose();
     });
 
     it('should access all global objects in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = {};
 
       // Test access to various global objects
@@ -119,10 +125,12 @@ describe.skip('Unsafe Mode', () => {
         hasJSON: true,
         hasConsole: true,
       });
+      await appContext.dispose();
     });
 
     it('should have no timeout in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = { count: 5 };
 
       // This would timeout in safe mode but should work in unsafe mode
@@ -139,49 +147,60 @@ describe.skip('Unsafe Mode', () => {
 
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThan(0);
+      await appContext.dispose();
     });
   });
 
   describe('Lodash utilities in unsafe mode', () => {
     it('should provide lodash utilities in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = [3, 1, 4, 1, 5, 9, 2, 6];
 
       const result = await evaluator.evaluate('_.sortBy(data, n => n)', data);
       expect(result).toEqual([1, 1, 2, 3, 4, 5, 6, 9]);
+      await appContext.dispose();
     });
 
     it('should perform complex array operations in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = [5, 1, 3, 2, 4];
 
       const result = await evaluator.evaluate(`_.take(_.sortBy($, n => n), 3)`, data);
 
       expect(result).toEqual([1, 2, 3]);
+      await appContext.dispose();
     });
   });
 
   describe('Error handling', () => {
     it('should handle syntax errors in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = {};
 
       await expect(evaluator.evaluate('$.invalid syntax', data)).rejects.toThrow();
+      await appContext.dispose();
     });
 
     it('should return undefined for null property access in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       const data = { value: null };
 
       const result = await evaluator.evaluate('$.value?.nonexistent?.property', data);
       expect(result).toBeUndefined();
+      await appContext.dispose();
     });
   });
 
   describe('Memory cleanup', () => {
     it('should properly dispose evaluator in unsafe mode', async () => {
-      evaluator = new ExpressionEvaluator(unsafeOptions);
+      const appContext = createApplicationContext();
+      evaluator = new ExpressionEvaluator(unsafeOptions, appContext);
       await evaluator.dispose();
+      await appContext.dispose();
 
       // Should not throw when disposing
       expect(true).toBe(true);

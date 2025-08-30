@@ -133,7 +133,7 @@ Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
       const wrapped = new globalThis.Lodash(dataToWrap);
       const result = wrapped[name](...args.slice(1));
       // If result is a Lodash instance, unwrap it for static methods
-      if (result && result.__isLodash) {
+      if (result && typeof result === 'object' && result.__isLodash) {
         return result._value;
       }
       return result;

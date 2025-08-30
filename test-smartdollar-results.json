@@ -1,0 +1,72 @@
+[
+  {
+    "test": "Array map method",
+    "status": "FAILED",
+    "expected": "[2, 4, 6]",
+    "actual": "[\n  2,\n  4,\n  6\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.map(x => x * 2));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Array filter method",
+    "status": "FAILED",
+    "expected": "[3, 4]",
+    "actual": "[\n  3,\n  4\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.filter(x => x > 2));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Array reduce method",
+    "status": "PASSED",
+    "expected": "10",
+    "actual": "10",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.reduce((a, b) => a + b, 0));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "String split method",
+    "status": "FAILED",
+    "expected": "[\"a\",\"b\",\"c\"]",
+    "actual": "[\n  \"a\",\n  \"b\",\n  \"c\"\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.split(\",\"));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Object keys method",
+    "status": "FAILED",
+    "expected": "[\"a\",\"b\"]",
+    "actual": "[\n  \"a\",\n  \"b\"\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.keys());\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Object values method",
+    "status": "FAILED",
+    "expected": "[1,2]",
+    "actual": "[\n  1,\n  2\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.values());\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Array pluck method",
+    "status": "FAILED",
+    "expected": "[\"alice\",\"bob\"]",
+    "actual": "[\n  \"alice\",\n  \"bob\"\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.pluck(\"name\"));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Array sortBy method",
+    "status": "FAILED",
+    "expected": "[{\"name\":\"bob\",\"age\":25},{\"name\":\"alice\",\"age\":30}]",
+    "actual": "[\n  {\n    \"name\": \"bob\",\n    \"age\": 25\n  },\n  {\n    \"name\": \"alice\",\n    \"age\": 30\n  }\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.sortBy(\"age\"));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Array groupBy method",
+    "status": "FAILED",
+    "expected": "{\"x\":[{\"name\":\"a\",\"type\":\"x\"},{\"name\":\"b\",\"type\":\"x\"}],\"y\":[{\"name\":\"c\",\"type\":\"y\"}]}",
+    "actual": "{\n  \"x\": [\n    {\n      \"name\": \"a\",\n      \"type\": \"x\"\n    },\n    {\n      \"name\": \"b\",\n      \"type\": \"x\"\n    }\n  ],\n  \"y\": [\n    {\n      \"name\": \"c\",\n      \"type\": \"y\"\n    }\n  ]\n}",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.groupBy(\"type\"));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  },
+  {
+    "test": "Chain method",
+    "status": "FAILED",
+    "expected": "[4, 6, 8]",
+    "actual": "[\n  4,\n  6,\n  8\n]",
+    "stderr": "[VMSandboxQuickJS] Wrapped code: (() => {\n          try {\n            return ($.filter(x => x > 1).map(x => x * 2));\n          } catch (error) {\n            if (error instanceof Error) {\n              throw new Error(error.message);\n            }\n            throw error;\n          }\n        })()\n"
+  }
+]

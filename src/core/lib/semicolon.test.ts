@@ -1,25 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from './processor';
 
 describe('Semicolon Sequential Execution Tests', () => {
   let processor: JsqProcessor;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
-    processor = new JsqProcessor({ verbose: false });
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor({ verbose: false }, appContext);
   });
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
   });
 
   describe('Basic semicolon functionality', () => {
-    it.skip('should execute expressions sequentially and return the last value', async () => {
+    it('should execute expressions sequentially and return the last value', async () => {
       const data = '{"name": "Alice", "age": 25}';
       const result = await processor.process('$.name; $.age', data);
       expect(result.data).toBe(25);
     });
 
-    it.skip('should execute side effect expressions without affecting $', async () => {
+    it('should execute side effect expressions without affecting $', async () => {
       const data = '{"value": 42}';
       // console.log doesn't modify $, so $.value should still be accessible
       const result = await processor.process('console.log("Processing..."); $.value', data);
@@ -101,6 +105,7 @@ describe('Semicolon Sequential Execution Tests', () => {
     });
 
     it('should handle mixed sync and async operations', async () => {
+      // This test requires unsafe mode to use console
       const data = '{"base": "test"}';
       const result = await processor.process(
         'console.log("Starting..."); const result = $.base + "-processed"; result',

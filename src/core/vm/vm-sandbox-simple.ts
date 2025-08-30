@@ -41,9 +41,9 @@ import type {
   VMResult,
   VMSandboxConfig,
 } from '@/types/sandbox';
+import type { ApplicationContext } from '../application-context';
 import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine';
 import { VMEngineFactory } from './VMEngineFactory';
-import { vmPool } from './vm-pool';
 
 /**
  * VM Sandbox implementation using QuickJS
@@ -51,8 +51,10 @@ import { vmPool } from './vm-pool';
  */
 export class VMSandboxSimple {
   private config: VMSandboxConfig;
+  private appContext: ApplicationContext;
 
-  constructor(options: Partial<VMSandboxConfig> = {}) {
+  constructor(appContext: ApplicationContext, options: Partial<VMSandboxConfig> = {}) {
+    this.appContext = appContext;
     this.config = {
       memoryLimit: this.validatePositiveNumber(options.memoryLimit, 128),
       timeout: this.validatePositiveNumber(options.timeout, 30000),
@@ -67,7 +69,7 @@ export class VMSandboxSimple {
 
     // Pre-warm the pool if recycling is enabled
     if (this.config.recycleIsolates && this.config.isolatePoolSize > 0) {
-      vmPool.prewarm(Math.min(2, this.config.isolatePoolSize)).catch(err => {
+      this.appContext.vmPool.prewarm(Math.min(2, this.config.isolatePoolSize)).catch(err => {
         console.error('Failed to pre-warm VM pool:', err);
       });
     }
@@ -84,7 +86,7 @@ export class VMSandboxSimple {
 
     try {
       // Create a new QuickJS engine for each execution (to prevent memory leaks)
-      const factory = new VMEngineFactory();
+      const factory = new VMEngineFactory(this.appContext);
       engine = factory.create('quickjs');
       await engine.initialize(this.config);
 

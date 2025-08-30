@@ -1,6 +1,7 @@
 import { Readable, Transform } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import { ApplicationContext } from '../application-context';
 import { JsqProcessor } from '../lib/processor';
 import type { StreamProcessingOptions } from '../stream/stream-processor';
 
@@ -48,13 +49,15 @@ vi.mock('./worker-pool', () => {
 describe('Parallel Processing', () => {
   let processor: JsqProcessor;
   let options: JsqOptions;
+  let appContext: ApplicationContext;
 
   beforeEach(() => {
     options = {
       verbose: false,
       debug: false,
     };
-    processor = new JsqProcessor(options);
+    appContext = new ApplicationContext();
+    processor = new JsqProcessor(options, appContext);
 
     // Mock console.error to reduce test noise
     console.error = vi.fn();
@@ -62,6 +65,7 @@ describe('Parallel Processing', () => {
 
   afterEach(async () => {
     await processor.dispose();
+    await appContext.dispose();
     console.error = originalConsoleError;
   });
 
