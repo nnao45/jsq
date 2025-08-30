@@ -1,8 +1,11 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 describe('Integration Tests', () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
   const jsqBinary = path.join(__dirname, '../dist/index.js');
   let childProcess: ChildProcess | null = null;
 

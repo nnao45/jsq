@@ -3,7 +3,8 @@
  * Manages multiple worker threads to process JSON data in parallel
  */
 import { cpus } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import type { JsqOptions } from '@/types/cli';
 
@@ -44,7 +45,9 @@ export class WorkerPool {
   constructor(maxWorkers?: number) {
     this.maxWorkers = maxWorkers || Math.max(1, cpus().length - 1);
 
-    // Determine worker script path - use __dirname in CommonJS environment
+    // Determine worker script path - use import.meta.url in ESM environment
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
     this.workerScript = join(__dirname, 'parallel-worker.js');
   }
 
