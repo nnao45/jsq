@@ -1,5 +1,31 @@
 export const SMART_DOLLAR_METHODS = `
 if (typeof smartDollarMethods === 'undefined') {
+  // Helper function to create new instances  
+  const createNewInstance = function(data) {
+    // Check if we can use the constructor
+    if (this && this.constructor) {
+      try {
+        return new this.constructor(data);
+      } catch (e) {
+        // Constructor might not work properly in all contexts
+      }
+    }
+    
+    // If we have access to global SmartDollar with createInstance, use it
+    if (typeof globalThis.SmartDollar !== 'undefined' && 
+        typeof globalThis.SmartDollar.createInstance === 'function') {
+      return globalThis.SmartDollar.createInstance(data);
+    }
+    
+    // Otherwise try direct SmartDollar constructor
+    if (typeof globalThis.SmartDollar !== 'undefined') {
+      return new globalThis.SmartDollar(data);
+    }
+    
+    // Fallback: return raw data
+    return data;
+  };
+  
   globalThis.smartDollarMethods = {
   // Array methods
   map: function(dataOrFn, fn) {
@@ -16,10 +42,10 @@ if (typeof smartDollarMethods === 'undefined') {
     }
     
     if (data === null || data === undefined) {
-      return new this.constructor([]);
+      return createNewInstance.call(this, []);
     }
     const mapped = Array.from(data).map((item, index) => mapFn(item, index, data));
-    return new this.constructor(mapped);
+    return createNewInstance.call(this, mapped);
   },
   
   filter: function(dataOrFn, fn) {
@@ -36,10 +62,10 @@ if (typeof smartDollarMethods === 'undefined') {
     }
     
     if (data === null || data === undefined) {
-      return new this.constructor([]);
+      return createNewInstance.call(this, []);
     }
     const filtered = Array.from(data).filter((item, index) => filterFn(item, index, data));
-    return new this.constructor(filtered);
+    return createNewInstance.call(this, filtered);
   },
   
   reduce: function(fn, initial) {
@@ -51,15 +77,15 @@ if (typeof smartDollarMethods === 'undefined') {
   
   slice: function(start, end) {
     if (this._value === null || this._value === undefined) {
-      return new this.constructor([]);
+      return createNewInstance.call(this, []);
     }
     const sliced = Array.from(this._value).slice(start, end);
-    return new this.constructor(sliced);
+    return createNewInstance.call(this, sliced);
   },
   
   concat: function(...args) {
     const concatenated = Array.from(this._value).concat(...args);
-    return new this.constructor(concatenated);
+    return createNewInstance.call(this, concatenated);
   },
   
   push: function(...elements) {
@@ -176,7 +202,7 @@ if (typeof smartDollarMethods === 'undefined') {
     }
     // Fallback for non-arrays
     const reversed = Array.from(this._value).reverse();
-    return new this.constructor(reversed);
+    return createNewInstance.call(this, reversed);
   },
   
   sort: function(compareFn) {
@@ -187,23 +213,23 @@ if (typeof smartDollarMethods === 'undefined') {
     }
     // Fallback for non-arrays
     const sorted = Array.from(this._value).sort(compareFn);
-    return new this.constructor(sorted);
+    return createNewInstance.call(this, sorted);
   },
   
   // Object methods
   keys: function() {
     const keys = Object.keys(this._value);
-    return new this.constructor(keys);
+    return createNewInstance.call(this, keys);
   },
   
   values: function() {
     const values = Object.values(this._value);
-    return new this.constructor(values);
+    return createNewInstance.call(this, values);
   },
   
   entries: function() {
     const entries = Object.entries(this._value);
-    return new this.constructor(entries);
+    return createNewInstance.call(this, entries);
   },
   
   hasOwn: function(prop) {
@@ -212,43 +238,43 @@ if (typeof smartDollarMethods === 'undefined') {
   
   assign: function(...sources) {
     const assigned = Object.assign({}, this._value, ...sources);
-    return new this.constructor(assigned);
+    return createNewInstance.call(this, assigned);
   },
   
   // String methods
   split: function(separator, limit) {
     const parts = String(this._value).split(separator, limit);
-    return new this.constructor(parts);
+    return createNewInstance.call(this, parts);
   },
   
   replace: function(search, replacement) {
     const replaced = String(this._value).replace(search, replacement);
-    return new this.constructor(replaced);
+    return createNewInstance.call(this, replaced);
   },
   
   replaceAll: function(search, replacement) {
     const replaced = String(this._value).replaceAll(search, replacement);
-    return new this.constructor(replaced);
+    return createNewInstance.call(this, replaced);
   },
   
   toLowerCase: function() {
     const lowered = String(this._value).toLowerCase();
-    return new this.constructor(lowered);
+    return createNewInstance.call(this, lowered);
   },
   
   toUpperCase: function() {
     const uppered = String(this._value).toUpperCase();
-    return new this.constructor(uppered);
+    return createNewInstance.call(this, uppered);
   },
   
   trim: function() {
     const trimmed = String(this._value).trim();
-    return new this.constructor(trimmed);
+    return createNewInstance.call(this, trimmed);
   },
   
   substring: function(start, end) {
     const sub = String(this._value).substring(start, end);
-    return new this.constructor(sub);
+    return createNewInstance.call(this, sub);
   },
   
   charAt: function(index) {
@@ -269,12 +295,12 @@ if (typeof smartDollarMethods === 'undefined') {
   
   padStart: function(targetLength, padString) {
     const padded = String(this._value).padStart(targetLength, padString);
-    return new this.constructor(padded);
+    return createNewInstance.call(this, padded);
   },
   
   padEnd: function(targetLength, padString) {
     const padded = String(this._value).padEnd(targetLength, padString);
-    return new this.constructor(padded);
+    return createNewInstance.call(this, padded);
   },
   
   match: function(regexp) {
@@ -395,12 +421,12 @@ if (typeof smartDollarMethods === 'undefined') {
       
       return false;
     });
-    return new this.constructor(filtered);
+    return createNewInstance.call(this, filtered);
   },
   
   pluck: function(property) {
     const plucked = Array.from(this._value).map(item => item ? item[property] : undefined);
-    return new this.constructor(plucked);
+    return createNewInstance.call(this, plucked);
   },
   
   sortBy: function(iteratee) {
@@ -411,7 +437,7 @@ if (typeof smartDollarMethods === 'undefined') {
       if (aVal > bVal) return 1;
       return 0;
     });
-    return new this.constructor(sorted);
+    return createNewInstance.call(this, sorted);
   },
   
   groupBy: function(iteratee) {
@@ -421,7 +447,7 @@ if (typeof smartDollarMethods === 'undefined') {
       acc[key].push(item);
       return acc;
     }, {});
-    return new this.constructor(grouped);
+    return createNewInstance.call(this, grouped);
   },
   
   countBy: function(iteratee) {
@@ -430,17 +456,17 @@ if (typeof smartDollarMethods === 'undefined') {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    return new this.constructor(counted);
+    return createNewInstance.call(this, counted);
   },
   
   take: function(n) {
     const taken = Array.from(this._value).slice(0, n);
-    return new this.constructor(taken);
+    return createNewInstance.call(this, taken);
   },
   
   skip: function(n) {
     const skipped = Array.from(this._value).slice(n);
-    return new this.constructor(skipped);
+    return createNewInstance.call(this, skipped);
   },
   
   uniqBy: function(iteratee) {
@@ -451,21 +477,21 @@ if (typeof smartDollarMethods === 'undefined') {
       seen.set(key, true);
       return true;
     });
-    return new this.constructor(unique);
+    return createNewInstance.call(this, unique);
   },
   
   flatten: function() {
     const flattened = Array.from(this._value).reduce((acc, val) => 
       acc.concat(Array.isArray(val) ? val : [val]), []);
-    return new this.constructor(flattened);
+    return createNewInstance.call(this, flattened);
   },
   
   flatMap: function(fn) {
     if (this._value === null || this._value === undefined) {
-      return new this.constructor([]);
+      return createNewInstance.call(this, []);
     }
     const mapped = Array.from(this._value).flatMap((item, index) => fn(item, index, this._value));
-    return new this.constructor(mapped);
+    return createNewInstance.call(this, mapped);
   },
   
   flattenDeep: function(data) {
@@ -476,14 +502,14 @@ if (typeof smartDollarMethods === 'undefined') {
     // If called with an argument, use that instead of this._value
     const target = arguments.length > 0 ? data : this._value;
     const flattened = flattenDeepRecursive(Array.from(target));
-    return new this.constructor(flattened);
+    return createNewInstance.call(this, flattened);
   },
   
   compact: function(data) {
     // If called with an argument, use that instead of this._value
     const target = arguments.length > 0 ? data : this._value;
     const compacted = Array.from(target).filter(Boolean);
-    return new this.constructor(compacted);
+    return createNewInstance.call(this, compacted);
   },
   
   chunk: function(size) {
@@ -492,7 +518,7 @@ if (typeof smartDollarMethods === 'undefined') {
     for (let i = 0; i < arr.length; i += size) {
       chunks.push(arr.slice(i, i + size));
     }
-    return new this.constructor(chunks);
+    return createNewInstance.call(this, chunks);
   },
   
   sum: function(key) {
@@ -540,7 +566,7 @@ if (typeof smartDollarMethods === 'undefined') {
       }
       return 0;
     });
-    return new this.constructor(sorted);
+    return createNewInstance.call(this, sorted);
   },
   
   keyBy: function(iteratee) {
@@ -549,7 +575,7 @@ if (typeof smartDollarMethods === 'undefined') {
       acc[key] = item;
       return acc;
     }, {});
-    return new this.constructor(keyed);
+    return createNewInstance.call(this, keyed);
   },
   
   takeWhile: function(predicate) {
@@ -559,7 +585,7 @@ if (typeof smartDollarMethods === 'undefined') {
       if (!predicate(arr[i], i, arr)) break;
       taken.push(arr[i]);
     }
-    return new this.constructor(taken);
+    return createNewInstance.call(this, taken);
   },
   
   dropWhile: function(predicate) {
@@ -571,7 +597,7 @@ if (typeof smartDollarMethods === 'undefined') {
         break;
       }
     }
-    return new this.constructor(arr.slice(dropIndex));
+    return createNewInstance.call(this, arr.slice(dropIndex));
   },
   
   min: function() {
@@ -615,13 +641,13 @@ if (typeof smartDollarMethods === 'undefined') {
   sampleSize: function(n) {
     const arr = Array.from(this._value);
     const shuffled = [...arr].sort(() => Math.random() - 0.5);
-    return new this.constructor(shuffled.slice(0, n));
+    return createNewInstance.call(this, shuffled.slice(0, n));
   },
   
   shuffle: function() {
     const arr = Array.from(this._value);
     const shuffled = [...arr].sort(() => Math.random() - 0.5);
-    return new this.constructor(shuffled);
+    return createNewInstance.call(this, shuffled);
   },
   
   // Async methods
@@ -636,7 +662,7 @@ if (typeof smartDollarMethods === 'undefined') {
     }
     const promises = arr.map((item, index) => fn(item, index, arr));
     const results = await Promise.all(promises);
-    return new this.constructor(results);
+    return createNewInstance.call(this, results);
   },
   
   mapAsyncSeq: async function(fn) {
@@ -652,7 +678,7 @@ if (typeof smartDollarMethods === 'undefined') {
     for (let i = 0; i < arr.length; i++) {
       results.push(await fn(arr[i], i, arr));
     }
-    return new this.constructor(results);
+    return createNewInstance.call(this, results);
   },
   
   forEachAsync: async function(fn) {

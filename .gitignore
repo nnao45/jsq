@@ -8,3 +8,8 @@ bin/jsq
 assets/big-test.jsonl
 assets/*-large.jsonl
 assets/test-*.jsonl.tmp
+
+# Temporary test files
+test-*.js
+test-*.json
+test-*.log

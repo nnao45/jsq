@@ -12,11 +12,7 @@ import { createSmartDollar } from './jquery-wrapper';
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let VMSandboxSimple: any;
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
-let VMSandboxSimpleClass: any;
-// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let VMSandboxQuickJS: any;
-// biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
-let VMSandboxQuickJSClass: any;
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic imports require any type
 let getVMEngineType: any;
 
@@ -29,8 +25,7 @@ async function loadVMModules() {
   try {
     // Only import VM modules when actually needed
     const vmModule = await import('../vm/vm-sandbox-simple');
-    VMSandboxSimpleClass = vmModule.VMSandboxSimple;
-    VMSandboxSimple = VMSandboxSimpleClass;
+    VMSandboxSimple = vmModule.VMSandboxSimple;
   } catch (vmError) {
     // VM modules not available, sandbox functionality will be disabled
     if (process.env.NODE_ENV !== 'test') {
@@ -41,8 +36,7 @@ async function loadVMModules() {
   try {
     // Import QuickJS VM module
     const quickJSModule = await import('../vm/vm-sandbox-quickjs');
-    VMSandboxQuickJSClass = quickJSModule.VMSandboxQuickJS;
-    VMSandboxQuickJS = VMSandboxQuickJSClass;
+    VMSandboxQuickJS = quickJSModule.VMSandboxQuickJS;
   } catch (quickJSError) {
     // QuickJS VM module not available
     if (process.env.NODE_ENV !== 'test') {
