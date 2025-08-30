@@ -1,0 +1,3 @@
+echo '#!/usr/bin/env node' > bin/jsq && echo "import '../dist/index.js';" >> bin/jsq && chmod +x bin/jsq
+echo '#!/usr/bin/env bun' > bin/jsq-bun && echo "import '../dist/index.js';" >> bin/jsq-bun && chmod +x bin/jsq-bun
+echo '#!/usr/bin/env deno --allow-env' > bin/jsq-deno && echo "import '../dist/index.js';" >> bin/jsq-deno && chmod +x bin/jsq-deno
