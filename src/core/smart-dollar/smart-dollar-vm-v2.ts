@@ -126,7 +126,9 @@ export function createVMSmartDollarCodeV2(): string {
                                 'uniqBy', 'flatten', 'compact', 'chunk', 'orderBy', 'keyBy',
                                 'takeWhile', 'dropWhile', 'flattenDeep', 'reverse', 'sum',
                                 'mean', 'min', 'max', 'minBy', 'maxBy', 'sample', 'sampleSize',
-                                'size', 'isEmpty', 'includes', 'flatMap'].includes(prop);
+                                'size', 'isEmpty', 'includes', 'flatMap', 'concat', 'slice', 
+                                'push', 'pop', 'shift', 'unshift', 'splice', 'indexOf', 
+                                'lastIndexOf', 'join', 'sort', 'fill'].includes(prop);
           
           if (smartDollarMethod && typeof smartDollarMethod === 'function' && isArrayMethod) {
             return smartDollarMethod.bind(target);
