@@ -17,6 +17,7 @@ describe('No Input CLI Integration Tests', () => {
         env: {
           ...process.env,
           NODE_ENV: 'test',
+          JSQ_NO_STDIN: 'true',
         },
       });
 
