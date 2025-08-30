@@ -84,7 +84,14 @@ if (typeof smartDollarMethods === 'undefined') {
   },
   
   concat: function(...args) {
-    const concatenated = Array.from(this._value).concat(...args);
+    // Unwrap any SmartDollar instances in the arguments
+    const unwrappedArgs = args.map(arg => {
+      if (arg && typeof arg === 'object' && arg.__isSmartDollar) {
+        return arg._value;
+      }
+      return arg;
+    });
+    const concatenated = Array.from(this._value).concat(...unwrappedArgs);
     return createNewInstance.call(this, concatenated);
   },
   

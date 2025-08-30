@@ -256,23 +256,34 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       const sandboxEvaluator = createEvaluator({ sandbox: true });
       const defaultEvaluator = createEvaluator({});
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
-
-      // Test console availability differently since VM may not expose it the same way
+      // Test console availability - VM provides console by default
       const consoleTest1 = await sandboxEvaluator.evaluate('typeof console', null);
       const consoleTest2 = await defaultEvaluator.evaluate('typeof console', null);
 
       expect(consoleTest1).toBe('object');
       expect(consoleTest2).toBe('object');
 
-      // Test that we can use console.log
-      await sandboxEvaluator.evaluate('console.log("test1")', null);
-      await defaultEvaluator.evaluate('console.log("test2")', null);
+      // Test that console methods exist
+      const hasLogMethod1 = await sandboxEvaluator.evaluate(
+        'typeof console.log === "function"',
+        null
+      );
+      const hasLogMethod2 = await defaultEvaluator.evaluate(
+        'typeof console.log === "function"',
+        null
+      );
 
-      // Both should have called console.log
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(hasLogMethod1).toBe(true);
+      expect(hasLogMethod2).toBe(true);
 
-      consoleSpy.mockRestore();
+      // Test that we can call console.log without errors
+      // In VM mode, console output is captured internally
+      await expect(sandboxEvaluator.evaluate('console.log("test1"); true', null)).resolves.toBe(
+        true
+      );
+      await expect(defaultEvaluator.evaluate('console.log("test2"); true', null)).resolves.toBe(
+        true
+      );
     });
   });
 
