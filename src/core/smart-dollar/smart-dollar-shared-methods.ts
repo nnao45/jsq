@@ -713,6 +713,438 @@ if (typeof smartDollarMethods === 'undefined') {
     for (let i = 0; i < arr.length; i++) {
       await fn(arr[i], i, arr);
     }
+  },
+  
+  // === Modern Functional Programming Methods ===
+  
+  // 1. fold/foldLeft - left associative fold (Scala/Haskell style)
+  fold: function(fn, initial) {
+    return this.reduce(fn, initial);
+  },
+  
+  foldLeft: function(fn, initial) {
+    return this.reduce(fn, initial);
+  },
+  
+  // 2. foldRight - right associative fold 
+  foldRight: function(fn, initial) {
+    if (this._value === null || this._value === undefined) {
+      return initial;
+    }
+    const arr = Array.from(this._value);
+    let result = initial;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      result = fn(arr[i], result, i, arr);
+    }
+    return result;
+  },
+  
+  // 3. scan/scanLeft - like fold but returns all intermediate results
+  scan: function(fn, initial) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [initial]);
+    }
+    const arr = Array.from(this._value);
+    const results = [initial];
+    let acc = initial;
+    for (let i = 0; i < arr.length; i++) {
+      acc = fn(acc, arr[i], i, arr);
+      results.push(acc);
+    }
+    return createNewInstance.call(this, results);
+  },
+  
+  scanLeft: function(fn, initial) {
+    return this.scan(fn, initial);
+  },
+  
+  // 4. scanRight - right associative scan
+  scanRight: function(fn, initial) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [initial]);
+    }
+    const arr = Array.from(this._value);
+    const results = [initial];
+    let acc = initial;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      acc = fn(arr[i], acc, i, arr);
+      results.unshift(acc);
+    }
+    return createNewInstance.call(this, results);
+  },
+  
+  // 5. zip - combine two arrays into array of pairs
+  zip: function(other) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr1 = Array.from(this._value);
+    const arr2 = Array.isArray(other) ? other : 
+                 (other && typeof other === 'object' && other.__isSmartDollar) ? 
+                 Array.from(other._value) : [other];
+    const length = Math.min(arr1.length, arr2.length);
+    const zipped = [];
+    for (let i = 0; i < length; i++) {
+      zipped.push([arr1[i], arr2[i]]);
+    }
+    return createNewInstance.call(this, zipped);
+  },
+  
+  // 6. zipWith - zip with custom combining function
+  zipWith: function(other, fn) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr1 = Array.from(this._value);
+    const arr2 = Array.isArray(other) ? other : 
+                 (other && typeof other === 'object' && other.__isSmartDollar) ? 
+                 Array.from(other._value) : [other];
+    const length = Math.min(arr1.length, arr2.length);
+    const zipped = [];
+    for (let i = 0; i < length; i++) {
+      zipped.push(fn(arr1[i], arr2[i], i));
+    }
+    return createNewInstance.call(this, zipped);
+  },
+  
+  // 7. unzip - convert array of pairs into two arrays
+  unzip: function() {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [[], []]);
+    }
+    const arr = Array.from(this._value);
+    const first = [];
+    const second = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (Array.isArray(arr[i]) && arr[i].length >= 2) {
+        first.push(arr[i][0]);
+        second.push(arr[i][1]);
+      }
+    }
+    return createNewInstance.call(this, [first, second]);
+  },
+  
+  // 8. intersperse - insert separator between elements
+  intersperse: function(separator) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    if (arr.length <= 1) {
+      return createNewInstance.call(this, arr);
+    }
+    const result = [arr[0]];
+    for (let i = 1; i < arr.length; i++) {
+      result.push(separator);
+      result.push(arr[i]);
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 9. sliding/windows - sliding window over array
+  sliding: function(size, step) {
+    if (step === undefined) step = 1;
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    const result = [];
+    for (let i = 0; i <= arr.length - size; i += step) {
+      result.push(arr.slice(i, i + size));
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  windows: function(size, step) {
+    return this.sliding(size, step);
+  },
+  
+  // 10. enumerate - add index to each element as [index, value] pairs
+  enumerate: function() {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    const enumerated = [];
+    for (let i = 0; i < arr.length; i++) {
+      enumerated.push([i, arr[i]]);
+    }
+    return createNewInstance.call(this, enumerated);
+  },
+  
+  // === Haskell/FP Style Methods ===
+  
+  // 11. head - get first element
+  head: function() {
+    if (this._value === null || this._value === undefined) {
+      return undefined;
+    }
+    const arr = Array.from(this._value);
+    return arr[0];
+  },
+  
+  // 12. tail - get all elements except first
+  tail: function() {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    return createNewInstance.call(this, arr.slice(1));
+  },
+  
+  // 13. init - get all elements except last
+  init: function() {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    return createNewInstance.call(this, arr.slice(0, -1));
+  },
+  
+  // 14. last - get last element
+  last: function() {
+    if (this._value === null || this._value === undefined) {
+      return undefined;
+    }
+    const arr = Array.from(this._value);
+    return arr[arr.length - 1];
+  },
+  
+  // 15. cons - prepend element to list
+  cons: function(element) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [element]);
+    }
+    const arr = Array.from(this._value);
+    return createNewInstance.call(this, [element, ...arr]);
+  },
+  
+  // 16. snoc - append element to list
+  snoc: function(element) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [element]);
+    }
+    const arr = Array.from(this._value);
+    return createNewInstance.call(this, [...arr, element]);
+  },
+  
+  // 17. span - split array at first element that doesn't match predicate
+  span: function(predicate) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, [[], []]);
+    }
+    const arr = Array.from(this._value);
+    let i = 0;
+    while (i < arr.length && predicate(arr[i], i, arr)) {
+      i++;
+    }
+    return createNewInstance.call(this, [arr.slice(0, i), arr.slice(i)]);
+  },
+  
+  // 18. breakAt - split array at first element that matches predicate (renamed from 'break' as it's a reserved word)
+  breakAt: function(predicate) {
+    return this.span((...args) => !predicate(...args));
+  },
+  
+  // 19. iterate - generate array by repeatedly applying function
+  iterate: function(fn, times) {
+    const results = [];
+    let current = this._value;
+    for (let i = 0; i < times; i++) {
+      results.push(current);
+      current = fn(current, i);
+    }
+    return createNewInstance.call(this, results);
+  },
+  
+  // 20. unfold - generate array from a seed value
+  unfold: function(fn, seed) {
+    if (seed === undefined) seed = this._value;
+    const results = [];
+    let current = seed;
+    let next = fn(current);
+    while (next !== null && next !== undefined) {
+      if (Array.isArray(next) && next.length === 2) {
+        results.push(next[0]);
+        current = next[1];
+        next = fn(current);
+      } else {
+        break;
+      }
+    }
+    return createNewInstance.call(this, results);
+  },
+  
+  // === More Modern & Innovative Methods ===
+  
+  // 21. cycle - create infinite cycle of array elements (with limit)
+  cycle: function(times) {
+    if (times === undefined) times = 1;
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    if (arr.length === 0) {
+      return createNewInstance.call(this, []);
+    }
+    const result = [];
+    for (let i = 0; i < times; i++) {
+      result.push(...arr);
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 22. intercalate - join array of arrays with separator
+  intercalate: function(separator) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    const result = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i > 0 && separator !== undefined) {
+        if (Array.isArray(separator)) {
+          result.push(...separator);
+        } else {
+          result.push(separator);
+        }
+      }
+      if (Array.isArray(arr[i])) {
+        result.push(...arr[i]);
+      } else {
+        result.push(arr[i]);
+      }
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 23. transpose - transpose matrix (array of arrays)
+  transpose: function() {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const matrix = Array.from(this._value);
+    if (matrix.length === 0) {
+      return createNewInstance.call(this, []);
+    }
+    const maxLength = Math.max(...matrix.map(row => Array.isArray(row) ? row.length : 0));
+    const result = [];
+    for (let col = 0; col < maxLength; col++) {
+      const column = [];
+      for (let row = 0; row < matrix.length; row++) {
+        if (Array.isArray(matrix[row]) && col < matrix[row].length) {
+          column.push(matrix[row][col]);
+        }
+      }
+      result.push(column);
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 24. distinctBy - remove duplicates by custom key function
+  distinctBy: function(keyFn) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, []);
+    }
+    const arr = Array.from(this._value);
+    const seen = new Set();
+    const result = [];
+    for (let i = 0; i < arr.length; i++) {
+      const key = keyFn(arr[i], i, arr);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(arr[i]);
+      }
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 25. groupByMultiple - group by multiple key functions
+  groupByMultiple: function(...keyFns) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, {});
+    }
+    const arr = Array.from(this._value);
+    const groups = {};
+    for (let i = 0; i < arr.length; i++) {
+      const keys = keyFns.map(fn => fn(arr[i], i, arr));
+      const keyStr = JSON.stringify(keys);
+      if (!groups[keyStr]) {
+        groups[keyStr] = { keys, items: [] };
+      }
+      groups[keyStr].items.push(arr[i]);
+    }
+    return createNewInstance.call(this, Object.values(groups));
+  },
+  
+  // 26. tee - split stream into multiple branches (returns array of results)
+  tee: function(...fns) {
+    const results = [];
+    for (let i = 0; i < fns.length; i++) {
+      results.push(fns[i](this._value));
+    }
+    return createNewInstance.call(this, results);
+  },
+  
+  // 27. debug - log value and return it (for debugging chains)
+  debug: function(label) {
+    const prefix = label ? '[' + label + '] ' : '';
+    if (typeof console !== 'undefined' && console.log) {
+      console.log(prefix + 'Debug:', this._value);
+    }
+    return this;
+  },
+  
+  // 28. benchmark - measure execution time of function
+  benchmark: function(fn, label) {
+    const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const result = fn(this._value);
+    const end = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const duration = end - start;
+    if (typeof console !== 'undefined' && console.log) {
+      const prefix = label ? '[' + label + '] ' : '';
+      console.log(prefix + 'Benchmark: ' + duration + 'ms');
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  // 29. memoize - create memoized version of function
+  memoize: function(fn, keyFn) {
+    const cache = new Map();
+    const memoized = (value) => {
+      const key = keyFn ? keyFn(value) : JSON.stringify(value);
+      if (cache.has(key)) {
+        return cache.get(key);
+      }
+      const result = fn(value);
+      cache.set(key, result);
+      return result;
+    };
+    return createNewInstance.call(this, memoized(this._value));
+  },
+  
+  // 30. partition - enhanced partition with multiple predicates
+  partitionBy: function(...predicates) {
+    if (this._value === null || this._value === undefined) {
+      return createNewInstance.call(this, Array(predicates.length + 1).fill([]));
+    }
+    const arr = Array.from(this._value);
+    const partitions = Array(predicates.length + 1).fill(null).map(() => []);
+    
+    for (let i = 0; i < arr.length; i++) {
+      let matched = false;
+      for (let j = 0; j < predicates.length; j++) {
+        if (predicates[j](arr[i], i, arr)) {
+          partitions[j].push(arr[i]);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        partitions[predicates.length].push(arr[i]);
+      }
+    }
+    return createNewInstance.call(this, partitions);
   }
 };
 }
@@ -887,7 +1319,6 @@ if (typeof SmartDollar === 'undefined') {
     }
     return this._value;
   }
-}
 }
 
 // Apply all methods to SmartDollar prototype

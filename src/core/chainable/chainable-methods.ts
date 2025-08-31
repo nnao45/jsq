@@ -92,9 +92,12 @@ const CHAINABLE_METHODS = [
   'batched',
 
   // Functional programming methods
+  'fold',
   'foldLeft',
   'foldRight',
   'traverse',
+  'scan',
+  'scanRight',
 
   // Reactive/Async methods (RxJS-style operators)
   // Time-based operators
@@ -119,6 +122,8 @@ const CHAINABLE_METHODS = [
   // Stream combination operators
   'combineLatest',
   'zip',
+  'zipWith',
+  'unzip',
   'merge',
 
   // Error handling operators
@@ -138,4 +143,28 @@ const CHAINABLE_METHODS = [
   'forEachAsyncSeq',
   'mapAsync',
   'mapAsyncSeq',
+  
+  // Haskell-style methods
+  'head',
+  'tail',
+  'init',
+  'last',
+  'cons',
+  'snoc',
+  'breakAt',
+  'iterate',
+  'unfold',
+  
+  // Modern utility methods
+  'cycle',
+  'intercalate',
+  'transpose',
+  'tee',
+  'debug',
+  'benchmark',
+  'memoize',
+  'partitionBy',
+  'sliding',
+  'enumerate',
+  'groupByMultiple',
 ];

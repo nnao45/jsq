@@ -56,9 +56,66 @@ if (typeof globalThis.lodashMethods !== 'undefined' && typeof globalThis.Lodash 
   });
 }
 
-// Create _ function first before using it in the setup
+// Create _ function with Proxy support
 globalThis.createLodash = function(value) {
-  return new globalThis.Lodash(value);
+  if (value === null || value === undefined) {
+    return value;
+  }
+  
+  // Create lodash instance
+  const lodash = new globalThis.Lodash(value);
+  
+  // Create proxy to handle property access
+  return new Proxy(lodash, {
+    get(target, prop, receiver) {
+      // Check if it's a lodash method first
+      if (prop in target) {
+        const value = target[prop];
+        if (typeof value === 'function') {
+          return value.bind(target);
+        }
+        return value;
+      }
+      
+      // Handle numeric indices for arrays
+      if (typeof prop === 'string' && !isNaN(Number(prop))) {
+        const index = Number(prop);
+        if (Array.isArray(target._value) && index >= 0 && index < target._value.length) {
+          return target._value[index];
+        }
+      }
+      
+      // Check wrapped value properties
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object' && prop in target._value) {
+        const valueFromData = target._value[prop];
+        
+        // Return the property value, wrapping it if it's an object
+        if (valueFromData !== null && valueFromData !== undefined && typeof valueFromData === 'object') {
+          return globalThis.createLodash(valueFromData);
+        }
+        return valueFromData;
+      }
+      
+      return undefined;
+    },
+    
+    set(target, prop, value) {
+      // Allow setting properties on the wrapped value
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+        target._value[prop] = value;
+        return true;
+      }
+      return false;
+    },
+    
+    has(target, prop) {
+      if (prop in target) return true;
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+        return prop in target._value;
+      }
+      return false;
+    }
+  });
 };
 
 // Set up _ for direct use (always override)
@@ -67,12 +124,12 @@ globalThis._ = function(value) {
   if (arguments.length === 0) {
     // If called without arguments and data exists AND is not null, use data
     if (typeof globalThis.data !== 'undefined' && globalThis.data !== null) {
-      return new globalThis.Lodash(globalThis.data);
+      return globalThis.createLodash(globalThis.data);
     }
     // Otherwise return undefined
     return undefined;
   }
-  return new globalThis.Lodash(value);
+  return globalThis.createLodash(value);
 };
 
 // Add static methods to _ (like _.chunk, _.filter, etc)
