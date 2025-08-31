@@ -66,15 +66,11 @@ import { ZardCardComponent } from '@shared/components/card/card.component';
           <p>Transform complex JSON with intuitive JavaScript:</p>
           
           <div class="grid md:grid-cols-2 gap-6 mt-6">
-            <div>
-              <h4 class="text-base font-semibold mb-2 text-muted-foreground">Traditional jq syntax</h4>
-              <pre><code class="language-bash">cat users.json | jq '.users[] | select(.active == true) | .name'</code></pre>
-            </div>
-            
-            <div>
-              <h4 class="text-base font-semibold mb-2 text-muted-foreground">jsq - intuitive and powerful</h4>
-              <pre><code class="language-bash">cat users.json | jsq '$.users.filter(u => u.active).pluck("name")'</code></pre>
-            </div>
+            <h4 class="text-base font-semibold mb-2 text-muted-foreground">Traditional jq syntax</h4>
+            <pre><code class="language-bash">cat users.json | jq '.users[] | select(.active == true) | .name'</code></pre>
+
+            <h4 class="text-base font-semibold mb-2 text-muted-foreground">jsq - intuitive and powerful</h4>
+            <pre><code class="language-bash">cat users.json | jsq '$.users.filter(u => u.active).pluck("name")'</code></pre>
           </div>
         </div>
       </div>

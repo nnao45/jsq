@@ -66,29 +66,81 @@ export class VMSandboxQuickJS {
       // Create a new execution context
       execContext = await engine.createContext();
 
-      // Set up console - similar to VMSandboxSimple implementation
-      // Note: Disabled by default to match QuickJS's behavior of not having console
-      // Only set up console if explicitly requested through options or context
-      if (context.console || options.enableConsole) {
+      // Set up console - always set it up when console is passed in context
+      // This ensures console.log works properly in jsq
+      const needsConsole = context.console || options.enableConsole;
+      
+      // Store the host console reference for later use
+      const hostConsole = context.console || {
+        log: (...args: unknown[]) => console.log(...args),
+        error: (...args: unknown[]) => console.error(...args),
+        warn: (...args: unknown[]) => console.warn(...args),
+        info: (...args: unknown[]) => console.info(...args),
+        debug: (...args: unknown[]) => console.debug(...args),
+      };
+
+      // Set up console first if needed
+      if (needsConsole) {
         try {
-          // Set up a way to collect console calls
+          // Set up console in VM with proper function handling
           await execContext.eval(`
-            globalThis.__consoleCalls = [];
             globalThis.console = {
               log: function(...args) {
-                globalThis.__consoleCalls.push({ method: 'log', args: args });
+                // Convert args to a format that can be passed back to host
+                const serializedArgs = args.map(arg => {
+                  if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch { return String(arg); }
+                  }
+                  return String(arg);
+                });
+                // Store for later processing
+                if (!globalThis.__consoleCalls) globalThis.__consoleCalls = [];
+                globalThis.__consoleCalls.push({ method: 'log', args: serializedArgs });
+                return undefined;
               },
               error: function(...args) {
-                globalThis.__consoleCalls.push({ method: 'error', args: args });
+                const serializedArgs = args.map(arg => {
+                  if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch { return String(arg); }
+                  }
+                  return String(arg);
+                });
+                if (!globalThis.__consoleCalls) globalThis.__consoleCalls = [];
+                globalThis.__consoleCalls.push({ method: 'error', args: serializedArgs });
+                return undefined;
               },
               warn: function(...args) {
-                globalThis.__consoleCalls.push({ method: 'warn', args: args });
+                const serializedArgs = args.map(arg => {
+                  if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch { return String(arg); }
+                  }
+                  return String(arg);
+                });
+                if (!globalThis.__consoleCalls) globalThis.__consoleCalls = [];
+                globalThis.__consoleCalls.push({ method: 'warn', args: serializedArgs });
+                return undefined;
               },
               info: function(...args) {
-                globalThis.__consoleCalls.push({ method: 'info', args: args });
+                const serializedArgs = args.map(arg => {
+                  if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch { return String(arg); }
+                  }
+                  return String(arg);
+                });
+                if (!globalThis.__consoleCalls) globalThis.__consoleCalls = [];
+                globalThis.__consoleCalls.push({ method: 'info', args: serializedArgs });
+                return undefined;
               },
               debug: function(...args) {
-                globalThis.__consoleCalls.push({ method: 'debug', args: args });
+                const serializedArgs = args.map(arg => {
+                  if (typeof arg === 'object' && arg !== null) {
+                    try { return JSON.stringify(arg); } catch { return String(arg); }
+                  }
+                  return String(arg);
+                });
+                if (!globalThis.__consoleCalls) globalThis.__consoleCalls = [];
+                globalThis.__consoleCalls.push({ method: 'debug', args: serializedArgs });
+                return undefined;
               }
             };
           `);
@@ -103,9 +155,9 @@ export class VMSandboxQuickJS {
         // Debug logs removed
       }
       for (const [key, value] of Object.entries(context)) {
-        // Skip built-in globals that are already set up, except console which we want to override
+        // Skip built-in globals that are already set up, and skip console since we set it up above
         if (
-          ['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean'].includes(key)
+          ['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean', 'console'].includes(key)
         ) {
           continue;
         }
@@ -161,17 +213,8 @@ export class VMSandboxQuickJS {
         }
       );
 
-      // Store the host console reference for later use
-      const hostConsole = {
-        log: (...args: unknown[]) => console.log(...args),
-        error: (...args: unknown[]) => console.error(...args),
-        warn: (...args: unknown[]) => console.warn(...args),
-        info: (...args: unknown[]) => console.info(...args),
-        debug: (...args: unknown[]) => console.debug(...args),
-      };
-
       // Process console calls after execution (only if console was enabled)
-      if (context.console || options.enableConsole) {
+      if (needsConsole) {
         try {
           const consoleCalls = await execContext.eval('globalThis.__consoleCalls');
           if (Array.isArray(consoleCalls)) {
@@ -179,6 +222,7 @@ export class VMSandboxQuickJS {
               if (call && typeof call === 'object' && 'method' in call && 'args' in call) {
                 const method = call.method as keyof typeof hostConsole;
                 if (method in hostConsole && Array.isArray(call.args)) {
+                  // Call the host console method with the serialized args
                   hostConsole[method](...call.args);
                 }
               }

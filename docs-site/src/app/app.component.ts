@@ -24,28 +24,28 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
               [routerLinkActiveOptions]="{exact: true}"
               class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
             >
-              Home
+              🏠
             </a>
             <a 
               routerLink="/getting-started" 
               routerLinkActive="text-primary"
               class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
             >
-              Getting Started
+              🚀
             </a>
             <a 
               routerLink="/smart-dollar-methods" 
               routerLinkActive="text-primary"
               class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
             >
-              $ Methods
+              $
             </a>
             <a 
               routerLink="/lodash-methods" 
               routerLinkActive="text-primary"
               class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
             >
-              Lodash Methods
+              Lodash
             </a>
             <a 
               href="https://github.com/nnao45/jsq" 
