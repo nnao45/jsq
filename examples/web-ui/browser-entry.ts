@@ -40,13 +40,18 @@ export class JSQBrowser {
       ...options
     };
     
-    const evaluator = new this.evaluatorModule.ExpressionEvaluator(defaultOptions);
+    // Import and create proper ApplicationContext for browser
+    const { createApplicationContext } = await import('@/core/application-context');
+    const appContext = createApplicationContext();
+    
+    const evaluator = new this.evaluatorModule.ExpressionEvaluator(defaultOptions, appContext);
     
     try {
       const result = await evaluator.evaluate(expression, data);
       return result;
     } finally {
       await evaluator.dispose();
+      await appContext.dispose();
     }
   }
   

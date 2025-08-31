@@ -15,7 +15,9 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["../../src/*"]
-    }
+    },
+    "skipLibCheck": true,
+    "strictNullChecks": true
   },
   "include": [
     "browser-entry.ts",
@@ -26,6 +28,8 @@
     "dist",
     "../../src/**/*.test.ts",
     "../../src/test/**/*",
-    "../../src/repl/**/*"
+    "../../src/repl/**/*",
+    "../../src/core/vm/piscina-*.ts",
+    "../../node_modules/piscina"
   ]
 }

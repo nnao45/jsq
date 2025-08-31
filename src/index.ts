@@ -342,8 +342,8 @@ async function handleStreamingMode(
   const streamOptions = createStreamOptions(options, detectedFormat);
 
   if (options.parallel) {
-    // Parallel processing - use batch processing with workers
-    const transformStream = processor.createParallelTransformStream(expression, streamOptions);
+    // Parallel processing - use Piscina for better performance
+    const transformStream = processor.createPiscinaParallelTransformStream(expression, streamOptions);
     inputStream.pipe(transformStream).pipe(process.stdout);
   } else if (options.batch && typeof options.batch === 'number') {
     const transformStream = processor.createBatchTransformStream(expression, streamOptions);

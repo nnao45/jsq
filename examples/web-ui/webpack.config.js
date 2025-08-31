@@ -10,7 +10,8 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     library: 'JSQ',
     libraryTarget: 'umd',
-    globalObject: 'this'
+    globalObject: 'this',
+    publicPath: 'auto'
   },
   resolve: {
     extensions: ['.ts', '.js'],
@@ -34,7 +35,13 @@ module.exports = {
     rules: [
       {
         test: /\.ts$/,
-        use: 'ts-loader',
+        use: {
+          loader: 'ts-loader',
+          options: {
+            transpileOnly: true,
+            experimentalWatchApi: true,
+          }
+        },
         exclude: /node_modules/
       },
       {

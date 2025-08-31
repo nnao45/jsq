@@ -98,7 +98,6 @@ export function createTSVStream(filePath: string, options: { headers?: boolean }
 export async function parseParquetToJSON(filePath: string): Promise<unknown[]> {
   try {
     // For now, we'll use a simple approach - in production, you'd want to use a proper Parquet reader
-    // @ts-expect-error - Dynamic import of optional dependency
     const parquet = await import('parquetjs-lite');
     const reader = await parquet.ParquetReader.openFile(filePath);
 
