@@ -69,7 +69,7 @@ export class VMSandboxQuickJS {
       // Set up console - always set it up when console is passed in context
       // This ensures console.log works properly in jsq
       const needsConsole = context.console || options.enableConsole;
-      
+
       // Store the host console reference for later use
       const hostConsole = context.console || {
         log: (...args: unknown[]) => console.log(...args),
@@ -157,7 +157,17 @@ export class VMSandboxQuickJS {
       for (const [key, value] of Object.entries(context)) {
         // Skip built-in globals that are already set up, and skip console since we set it up above
         if (
-          ['JSON', 'Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean', 'console'].includes(key)
+          [
+            'JSON',
+            'Math',
+            'Date',
+            'Array',
+            'Object',
+            'String',
+            'Number',
+            'Boolean',
+            'console',
+          ].includes(key)
         ) {
           continue;
         }
@@ -220,10 +230,19 @@ export class VMSandboxQuickJS {
           if (Array.isArray(consoleCalls)) {
             for (const call of consoleCalls) {
               if (call && typeof call === 'object' && 'method' in call && 'args' in call) {
-                const method = call.method as keyof typeof hostConsole;
-                if (method in hostConsole && Array.isArray(call.args)) {
-                  // Call the host console method with the serialized args
-                  hostConsole[method](...call.args);
+                const consoleCall = call as { method: string; args: unknown[] };
+                const method = consoleCall.method;
+                if (
+                  method === 'log' ||
+                  method === 'error' ||
+                  method === 'warn' ||
+                  method === 'info' ||
+                  method === 'debug'
+                ) {
+                  if (Array.isArray(consoleCall.args)) {
+                    // Call the host console method with the serialized args
+                    (hostConsole[method] as (...args: unknown[]) => void)(...consoleCall.args);
+                  }
                 }
               }
             }

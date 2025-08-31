@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { JsqProcessor } from '../lib/processor';
 import type { JsqOptions } from '../../types/cli';
+import { JsqProcessor } from '../lib/processor';
 
 describe('Console functionality', () => {
   // Mock console methods
@@ -20,7 +20,7 @@ describe('Console functionality', () => {
     console.error = consoleErrorSpy;
     console.warn = consoleWarnSpy;
     console.info = consoleInfoSpy;
-    
+
     // Clear all spies
     consoleLogSpy.mockClear();
     consoleErrorSpy.mockClear();
@@ -41,11 +41,11 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process('console.log("hello world")', 'null');
-    
+
     // console.log should have been called with "hello world"
     expect(consoleLogSpy).toHaveBeenCalledWith('hello world');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be undefined (console.log returns undefined)
     expect(result.data).toBe(undefined);
 
@@ -57,16 +57,16 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process(
-      'console.log("first"); console.log("second"); console.log("third")', 
+      'console.log("first"); console.log("second"); console.log("third")',
       'null'
     );
-    
+
     // console.log should have been called three times
     expect(consoleLogSpy).toHaveBeenCalledTimes(3);
     expect(consoleLogSpy).toHaveBeenNthCalledWith(1, 'first');
     expect(consoleLogSpy).toHaveBeenNthCalledWith(2, 'second');
     expect(consoleLogSpy).toHaveBeenNthCalledWith(3, 'third');
-    
+
     // Result should be undefined (last statement returns undefined)
     expect(result.data).toBe(undefined);
 
@@ -78,11 +78,11 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process('console.error("error message")', 'null');
-    
+
     // console.error should have been called
     expect(consoleErrorSpy).toHaveBeenCalledWith('error message');
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be undefined
     expect(result.data).toBe(undefined);
 
@@ -94,11 +94,11 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process('console.warn("warning message")', 'null');
-    
+
     // console.warn should have been called
     expect(consoleWarnSpy).toHaveBeenCalledWith('warning message');
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be undefined
     expect(result.data).toBe(undefined);
 
@@ -110,11 +110,11 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process('console.info("info message")', 'null');
-    
+
     // console.info should have been called
     expect(consoleInfoSpy).toHaveBeenCalledWith('info message');
     expect(consoleInfoSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be undefined
     expect(result.data).toBe(undefined);
 
@@ -125,8 +125,8 @@ describe('Console functionality', () => {
     const options: JsqOptions = {};
     const processor = new JsqProcessor(options);
 
-    const result = await processor.process('console.log("hello", "world", 123)', 'null');
-    
+    await processor.process('console.log("hello", "world", 123)', 'null');
+
     // console.log should have been called with multiple arguments
     expect(consoleLogSpy).toHaveBeenCalledWith('hello', 'world', '123');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
@@ -138,8 +138,8 @@ describe('Console functionality', () => {
     const options: JsqOptions = {};
     const processor = new JsqProcessor(options);
 
-    const result = await processor.process('console.log({foo: "bar", num: 42})', 'null');
-    
+    await processor.process('console.log({foo: "bar", num: 42})', 'null');
+
     // console.log should have been called with JSON stringified object
     expect(consoleLogSpy).toHaveBeenCalledWith('{"foo":"bar","num":42}');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
@@ -151,8 +151,8 @@ describe('Console functionality', () => {
     const options: JsqOptions = {};
     const processor = new JsqProcessor(options);
 
-    const result = await processor.process('console.log([1, 2, 3, "hello"])', 'null');
-    
+    await processor.process('console.log([1, 2, 3, "hello"])', 'null');
+
     // console.log should have been called with JSON stringified array
     expect(consoleLogSpy).toHaveBeenCalledWith('[1,2,3,"hello"]');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
@@ -165,14 +165,14 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process(
-      'console.log("logging..."); [1, 2, 3].map(x => x * 2)', 
+      'console.log("logging..."); [1, 2, 3].map(x => x * 2)',
       'null'
     );
-    
+
     // console.log should have been called
     expect(consoleLogSpy).toHaveBeenCalledWith('logging...');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be the array
     expect(result.data).toEqual([2, 4, 6]);
 
@@ -185,14 +185,14 @@ describe('Console functionality', () => {
     const testData = { name: 'test', value: 42 };
 
     const result = await processor.process(
-      'console.log("Data is:", $); $.value', 
+      'console.log("Data is:", $); $.value',
       JSON.stringify(testData)
     );
-    
+
     // console.log should have been called with data
     expect(consoleLogSpy).toHaveBeenCalledWith('Data is:', JSON.stringify(testData));
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be 42
     expect(result.data).toBe(42);
 
@@ -204,11 +204,11 @@ describe('Console functionality', () => {
     const processor = new JsqProcessor(options);
 
     const result = await processor.process('console.log("unsafe mode log")', 'null');
-    
+
     // console.log should have been called even in unsafe mode
     expect(consoleLogSpy).toHaveBeenCalledWith('unsafe mode log');
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-    
+
     // Result should be undefined
     expect(result.data).toBe(undefined);
 

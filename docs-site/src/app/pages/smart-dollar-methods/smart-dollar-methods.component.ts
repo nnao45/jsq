@@ -31,7 +31,7 @@ interface MethodCategory {
     <div class="container">
       <div class="prose">
         <h1>Smart Dollar ($) Methods</h1>
-        <p>The Smart Dollar (<code>$</code>) API provides a jQuery-like chainable interface for data manipulation with 80+ built-in methods.</p>
+        <p>The Smart Dollar (<code>$</code>) API provides a jQuery-like chainable interface for data manipulation with 115+ built-in methods.</p>
         
         <div class="toc">
           <h2>Table of Contents</h2>
@@ -237,6 +237,194 @@ export class SmartDollarMethodsComponent implements OnInit {
             data: [0, 1, false, 2, "", 3, null, undefined, 4, NaN, 5],
             expression: '$.compact()'
           }
+        },
+        {
+          name: 'concat(...values)',
+          description: 'Concatenates arrays and values.',
+          syntax: '$.array.concat(...values)',
+          example: `$.arr1.concat(arr2, arr3)
+// Input: [1, 2], [3, 4], [5]
+// Output: [1, 2, 3, 4, 5]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.concat([4, 5], 6, [7, 8])'
+          }
+        },
+        {
+          name: 'push(...elements) / pop()',
+          description: 'Adds/removes elements from end.',
+          syntax: '$.array.push(...elements) / $.array.pop()',
+          example: `$.arr.push(4, 5)   // [1, 2, 3, 4, 5]
+$.arr.pop()         // [1, 2, 3]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.push(4, 5)'
+          }
+        },
+        {
+          name: 'shift() / unshift(...elements)',
+          description: 'Removes/adds elements from beginning.',
+          syntax: '$.array.shift() / $.array.unshift(...elements)',
+          example: `$.arr.shift()       // [2, 3, 4]
+$.arr.unshift(0)    // [0, 1, 2, 3]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.unshift(0, -1)'
+          }
+        },
+        {
+          name: 'splice(start, deleteCount?, ...items)',
+          description: 'Changes array by removing/replacing/adding elements.',
+          syntax: '$.array.splice(start, deleteCount?, ...items)',
+          example: `$.arr.splice(1, 2, "a", "b")
+// Input: [1, 2, 3, 4]
+// Output: [1, "a", "b", 4]`,
+          playground: {
+            data: ["a", "b", "c", "d", "e"],
+            expression: '$.splice(2, 1, "X", "Y")'
+          }
+        },
+        {
+          name: 'slice(start?, end?)',
+          description: 'Returns shallow copy of portion of array.',
+          syntax: '$.array.slice(start?, end?)',
+          example: `$.arr.slice(1, 3)
+// Input: [1, 2, 3, 4, 5]
+// Output: [2, 3]`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.slice(1, 4)'
+          }
+        },
+        {
+          name: 'some(predicate)',
+          description: 'Tests if at least one element passes the test.',
+          syntax: '$.array.some(predicate)',
+          example: `$.numbers.some(n => n > 10)
+// Input: [2, 5, 8, 12]
+// Output: true`,
+          playground: {
+            data: [1, 3, 5, 7, 9],
+            expression: '$.some(n => n % 2 === 0)'
+          }
+        },
+        {
+          name: 'every(predicate)',
+          description: 'Tests if all elements pass the test.',
+          syntax: '$.array.every(predicate)',
+          example: `$.numbers.every(n => n > 0)
+// Input: [1, 2, 3, 4]
+// Output: true`,
+          playground: {
+            data: [2, 4, 6, 8],
+            expression: '$.every(n => n % 2 === 0)'
+          }
+        },
+        {
+          name: 'includes(value)',
+          description: 'Checks if array includes a value.',
+          syntax: '$.array.includes(value)',
+          example: `$.fruits.includes("apple")
+// Input: ["banana", "apple", "orange"]
+// Output: true`,
+          playground: {
+            data: ["red", "green", "blue"],
+            expression: '$.includes("green")'
+          }
+        },
+        {
+          name: 'indexOf(value, fromIndex?)',
+          description: 'Returns first index of value.',
+          syntax: '$.array.indexOf(value, fromIndex?)',
+          example: `$.arr.indexOf(3)
+// Input: [1, 2, 3, 4, 3]
+// Output: 2`,
+          playground: {
+            data: ["a", "b", "c", "b", "d"],
+            expression: '$.indexOf("b")'
+          }
+        },
+        {
+          name: 'lastIndexOf(value, fromIndex?)',
+          description: 'Returns last index of value.',
+          syntax: '$.array.lastIndexOf(value, fromIndex?)',
+          example: `$.arr.lastIndexOf(3)
+// Input: [1, 2, 3, 4, 3]
+// Output: 4`,
+          playground: {
+            data: ["a", "b", "c", "b", "d"],
+            expression: '$.lastIndexOf("b")'
+          }
+        },
+        {
+          name: 'reverse()',
+          description: 'Reverses array in place.',
+          syntax: '$.array.reverse()',
+          example: `$.arr.reverse()
+// Input: [1, 2, 3, 4]
+// Output: [4, 3, 2, 1]`,
+          playground: {
+            data: ["first", "second", "third"],
+            expression: '$.reverse()'
+          }
+        },
+        {
+          name: 'sort(compareFn?)',
+          description: 'Sorts array in place.',
+          syntax: '$.array.sort(compareFn?)',
+          example: `$.numbers.sort((a, b) => a - b)
+// Sorts numbers ascending`,
+          playground: {
+            data: [3, 1, 4, 1, 5, 9, 2, 6],
+            expression: '$.sort()'
+          }
+        },
+        {
+          name: 'join(separator?)',
+          description: 'Joins array elements into string.',
+          syntax: '$.array.join(separator?)',
+          example: `$.words.join(" ")
+// Input: ["Hello", "world"]
+// Output: "Hello world"`,
+          playground: {
+            data: ["apple", "banana", "orange"],
+            expression: '$.join(", ")'
+          }
+        },
+        {
+          name: 'flatMap(fn)',
+          description: 'Maps and flattens result by one level.',
+          syntax: '$.array.flatMap(fn)',
+          example: `$.arr.flatMap(x => [x, x * 2])
+// Input: [1, 2, 3]
+// Output: [1, 2, 2, 4, 3, 6]`,
+          playground: {
+            data: ["Hello World", "How are you"],
+            expression: '$.flatMap(str => str.split(" "))'
+          }
+        },
+        {
+          name: 'forEach(fn)',
+          description: 'Executes function for each element.',
+          syntax: '$.array.forEach(fn)',
+          example: `$.items.forEach(item => console.log(item))
+// Logs each item`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.forEach(n => console.log(n))'
+          }
+        },
+        {
+          name: 'fill(value, start?, end?)',
+          description: 'Fills array with static value.',
+          syntax: '$.array.fill(value, start?, end?)',
+          example: `$.arr.fill(0, 1, 3)
+// Input: [1, 2, 3, 4]
+// Output: [1, 0, 0, 4]`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.fill("X", 1, 4)'
+          }
         }
       ]
     },
@@ -384,13 +572,6 @@ $.config.entries()  // [["host", "localhost"], ["port", 3000], ["secure", true]]
           }
         },
         {
-          name: 'pick(keys) / omit(keys)',
-          description: 'Select or exclude specific object keys.',
-          syntax: '$.object.pick(keys) / $.object.omit(keys)',
-          example: `$.user.pick(['name', 'email'])
-$.user.omit(['password', 'secret'])`
-        },
-        {
           name: 'assign(...sources)',
           description: 'Merges properties from source objects.',
           syntax: '$.object.assign(...sources)',
@@ -451,6 +632,763 @@ $.options.sampleSize(3)   // 3 random elements`
           playground: {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
             expression: '$.shuffle()'
+          }
+        }
+      ]
+    },
+    {
+      name: 'String Methods', 
+      description: 'Methods for string manipulation and transformation',
+      methods: [
+        {
+          name: 'split(separator, limit?)',
+          description: 'Splits string into array of substrings.',
+          syntax: '$.string.split(separator, limit?)',
+          example: `$.text.split(",")
+// Input: "apple,banana,orange"
+// Output: ["apple", "banana", "orange"]`,
+          playground: {
+            data: "hello-world-from-jsq",
+            expression: '$.split("-")'
+          }
+        },
+        {
+          name: 'replace(search, replacement)',
+          description: 'Replaces first occurrence of search string.',
+          syntax: '$.string.replace(search, replacement)',
+          example: `$.message.replace("old", "new")
+// Input: "old value and old data"
+// Output: "new value and old data"`,
+          playground: {
+            data: "Hello World from JSQ",
+            expression: '$.replace("World", "Universe")'
+          }
+        },
+        {
+          name: 'replaceAll(search, replacement)',
+          description: 'Replaces all occurrences of search string.',
+          syntax: '$.string.replaceAll(search, replacement)',
+          example: `$.message.replaceAll("old", "new")
+// Input: "old value and old data"
+// Output: "new value and new data"`,
+          playground: {
+            data: "foo bar foo baz foo",
+            expression: '$.replaceAll("foo", "hello")'
+          }
+        },
+        {
+          name: 'toLowerCase() / toUpperCase()',
+          description: 'Converts string to lowercase/uppercase.',
+          syntax: '$.string.toLowerCase() / $.string.toUpperCase()',
+          example: `$.text.toLowerCase()  // "hello world"
+$.text.toUpperCase()  // "HELLO WORLD"`,
+          playground: {
+            data: "Hello World from JSQ",
+            expression: '$.toLowerCase()'
+          }
+        },
+        {
+          name: 'trim() / trimStart() / trimEnd()',
+          description: 'Removes whitespace from string.',
+          syntax: '$.string.trim() / $.string.trimStart() / $.string.trimEnd()',
+          example: `$.text.trim()       // "hello" (from "  hello  ")
+$.text.trimStart()  // "hello  " (from "  hello  ")
+$.text.trimEnd()    // "  hello" (from "  hello  ")`,
+          playground: {
+            data: "   Hello World   ",
+            expression: '$.trim()'
+          }
+        },
+        {
+          name: 'substring(start, end?)',
+          description: 'Extracts substring between indices.',
+          syntax: '$.string.substring(start, end?)',
+          example: `$.text.substring(0, 5)
+// Input: "Hello World"
+// Output: "Hello"`,
+          playground: {
+            data: "JavaScript is awesome",
+            expression: '$.substring(0, 10)'
+          }
+        },
+        {
+          name: 'slice(start, end?)',
+          description: 'Extracts section of string (supports negative indices).',
+          syntax: '$.string.slice(start, end?)',
+          example: `$.text.slice(-5)     // Last 5 characters
+$.text.slice(0, -5)  // All except last 5`,
+          playground: {
+            data: "Hello World",
+            expression: '$.slice(-5)'
+          }
+        },
+        {
+          name: 'charAt(index)',
+          description: 'Returns character at specified index.',
+          syntax: '$.string.charAt(index)',
+          example: `$.text.charAt(0)   // First character
+$.text.charAt(5)   // Character at index 5`,
+          playground: {
+            data: "Hello World",
+            expression: '$.charAt(6)'
+          }
+        },
+        {
+          name: 'charCodeAt(index)',
+          description: 'Returns Unicode value of character at index.',
+          syntax: '$.string.charCodeAt(index)',
+          example: `$.text.charCodeAt(0)
+// Input: "A"
+// Output: 65`,
+          playground: {
+            data: "ABC",
+            expression: '$.charCodeAt(0)'
+          }
+        },
+        {
+          name: 'indexOf(search, fromIndex?)',
+          description: 'Returns first index of substring.',
+          syntax: '$.string.indexOf(search, fromIndex?)',
+          example: `$.text.indexOf("world")
+// Input: "hello world"
+// Output: 6`,
+          playground: {
+            data: "Hello wonderful world",
+            expression: '$.indexOf("world")'
+          }
+        },
+        {
+          name: 'lastIndexOf(search, fromIndex?)',
+          description: 'Returns last index of substring.',
+          syntax: '$.string.lastIndexOf(search, fromIndex?)',
+          example: `$.text.lastIndexOf("o")
+// Input: "hello world"
+// Output: 7`,
+          playground: {
+            data: "Hello world, wonderful world",
+            expression: '$.lastIndexOf("world")'
+          }
+        },
+        {
+          name: 'includes(search)',
+          description: 'Checks if string contains substring.',
+          syntax: '$.string.includes(search)',
+          example: `$.text.includes("world")
+// Input: "hello world"
+// Output: true`,
+          playground: {
+            data: "JavaScript is awesome",
+            expression: '$.includes("Script")'
+          }
+        },
+        {
+          name: 'startsWith(search)',
+          description: 'Checks if string starts with substring.',
+          syntax: '$.string.startsWith(search)',
+          example: `$.text.startsWith("hello")
+// Input: "hello world"
+// Output: true`,
+          playground: {
+            data: "Hello World",
+            expression: '$.startsWith("Hello")'
+          }
+        },
+        {
+          name: 'endsWith(search)',
+          description: 'Checks if string ends with substring.',
+          syntax: '$.string.endsWith(search)',
+          example: `$.text.endsWith("world")
+// Input: "hello world"
+// Output: true`,
+          playground: {
+            data: "Hello World",
+            expression: '$.endsWith("World")'
+          }
+        },
+        {
+          name: 'repeat(count)',
+          description: 'Repeats string specified number of times.',
+          syntax: '$.string.repeat(count)',
+          example: `$.text.repeat(3)
+// Input: "abc"
+// Output: "abcabcabc"`,
+          playground: {
+            data: "Hi! ",
+            expression: '$.repeat(3)'
+          }
+        }
+      ]
+    },
+    {
+      name: 'Functional Programming Methods',
+      description: 'Advanced functional programming methods inspired by Haskell and modern FP',
+      methods: [
+        {
+          name: 'fold(fn, initial) / foldLeft(fn, initial)',
+          description: 'Reduces array from left to right (same as reduce).',
+          syntax: '$.array.fold(fn, initial)',
+          example: `$.numbers.fold((acc, n) => acc + n, 0)
+// Input: [1, 2, 3, 4]
+// Output: 10`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.fold((acc, val) => acc * val, 1)'
+          }
+        },
+        {
+          name: 'foldRight(fn, initial)',
+          description: 'Reduces array from right to left.',
+          syntax: '$.array.foldRight(fn, initial)',
+          example: `$.letters.foldRight((char, acc) => acc + char, "")
+// Input: ["a", "b", "c"]
+// Output: "cba"`,
+          playground: {
+            data: ["hello", "world", "from", "jsq"],
+            expression: '$.foldRight((word, acc) => acc + " " + word, "").trim()'
+          }
+        },
+        {
+          name: 'scan(fn, initial) / scanLeft(fn, initial)',
+          description: 'Like fold but returns array of intermediate results.',
+          syntax: '$.array.scan(fn, initial)',
+          example: `$.numbers.scan((acc, n) => acc + n, 0)
+// Input: [1, 2, 3, 4]
+// Output: [0, 1, 3, 6, 10]`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.scan((acc, val) => acc + val, 0)'
+          }
+        },
+        {
+          name: 'scanRight(fn, initial)',
+          description: 'Like foldRight but returns array of intermediate results.',
+          syntax: '$.array.scanRight(fn, initial)',
+          example: `$.numbers.scanRight((n, acc) => n + acc, 0)
+// Input: [1, 2, 3, 4]
+// Output: [10, 9, 7, 4, 0]`,
+          playground: {
+            data: [1, 2, 3, 4],
+            expression: '$.scanRight((val, acc) => val + acc, 0)'
+          }
+        },
+        {
+          name: 'zip(...arrays)',
+          description: 'Combines arrays element-wise into tuples.',
+          syntax: '$.array.zip(...arrays)',
+          example: `$.names.zip(ages, cities)
+// Input: ["Alice", "Bob"], [25, 30], ["NYC", "LA"]
+// Output: [["Alice", 25, "NYC"], ["Bob", 30, "LA"]]`,
+          playground: {
+            data: ["a", "b", "c"],
+            expression: '$.zip([1, 2, 3], ["x", "y", "z"])'
+          }
+        },
+        {
+          name: 'zipWith(fn, ...arrays)',
+          description: 'Combines arrays element-wise using function.',
+          syntax: '$.array.zipWith(fn, ...arrays)',
+          example: `$.prices.zipWith((a, b) => a + b, taxes)
+// Input: [100, 200], [10, 20]
+// Output: [110, 220]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.zipWith((a, b) => a * b, [10, 20, 30])'
+          }
+        },
+        {
+          name: 'unzip()',
+          description: 'Transposes array of arrays.',
+          syntax: '$.array.unzip()',
+          example: `$.tuples.unzip()
+// Input: [["a", 1], ["b", 2], ["c", 3]]
+// Output: [["a", "b", "c"], [1, 2, 3]]`,
+          playground: {
+            data: [["Alice", 25], ["Bob", 30], ["Charlie", 35]],
+            expression: '$.unzip()'
+          }
+        },
+        {
+          name: 'sliding(size, step?)',
+          description: 'Creates sliding windows over array.',
+          syntax: '$.array.sliding(size, step = 1)',
+          example: `$.numbers.sliding(3)
+// Input: [1, 2, 3, 4, 5]
+// Output: [[1, 2, 3], [2, 3, 4], [3, 4, 5]]`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6],
+            expression: '$.sliding(3, 2)'
+          }
+        },
+        {
+          name: 'head()',
+          description: 'Returns first element (Haskell-style).',
+          syntax: '$.array.head()',
+          example: `$.list.head()
+// Input: [1, 2, 3]
+// Output: 1`,
+          playground: {
+            data: ["first", "second", "third"],
+            expression: '$.head()'
+          }
+        },
+        {
+          name: 'tail()',
+          description: 'Returns all elements except first (Haskell-style).',
+          syntax: '$.array.tail()',
+          example: `$.list.tail()
+// Input: [1, 2, 3]
+// Output: [2, 3]`,
+          playground: {
+            data: ["first", "second", "third"],
+            expression: '$.tail()'
+          }
+        },
+        {
+          name: 'init()',
+          description: 'Returns all elements except last (Haskell-style).',
+          syntax: '$.array.init()',
+          example: `$.list.init()
+// Input: [1, 2, 3]
+// Output: [1, 2]`,
+          playground: {
+            data: ["first", "second", "third"],
+            expression: '$.init()'
+          }
+        },
+        {
+          name: 'last()',
+          description: 'Returns last element (Haskell-style).',
+          syntax: '$.array.last()',
+          example: `$.list.last()
+// Input: [1, 2, 3]
+// Output: 3`,
+          playground: {
+            data: ["first", "second", "third"],
+            expression: '$.last()'
+          }
+        },
+        {
+          name: 'cons(element)',
+          description: 'Prepends element to array (Haskell-style).',
+          syntax: '$.array.cons(element)',
+          example: `$.list.cons(0)
+// Input: [1, 2, 3]
+// Output: [0, 1, 2, 3]`,
+          playground: {
+            data: [2, 3, 4],
+            expression: '$.cons(1)'
+          }
+        },
+        {
+          name: 'snoc(element)',
+          description: 'Appends element to array (cons reversed).',
+          syntax: '$.array.snoc(element)',
+          example: `$.list.snoc(4)
+// Input: [1, 2, 3]
+// Output: [1, 2, 3, 4]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.snoc(4)'
+          }
+        },
+        {
+          name: 'tails()',
+          description: 'Returns all tail subsequences.',
+          syntax: '$.array.tails()',
+          example: `$.list.tails()
+// Input: [1, 2, 3]
+// Output: [[1, 2, 3], [2, 3], [3], []]`,
+          playground: {
+            data: ["a", "b", "c"],
+            expression: '$.tails()'
+          }
+        },
+        {
+          name: 'inits()',
+          description: 'Returns all initial subsequences.',
+          syntax: '$.array.inits()',
+          example: `$.list.inits()
+// Input: [1, 2, 3]
+// Output: [[], [1], [1, 2], [1, 2, 3]]`,
+          playground: {
+            data: ["a", "b", "c"],
+            expression: '$.inits()'
+          }
+        },
+        {
+          name: 'span(predicate)',
+          description: 'Splits array where predicate first becomes false.',
+          syntax: '$.array.span(predicate)',
+          example: `$.numbers.span(n => n < 5)
+// Input: [1, 3, 5, 2, 7]
+// Output: [[1, 3], [5, 2, 7]]`,
+          playground: {
+            data: [2, 4, 6, 7, 8, 10],
+            expression: '$.span(n => n % 2 === 0)'
+          }
+        },
+        {
+          name: 'breakAt(predicate)',
+          description: 'Splits array where predicate first becomes true.',
+          syntax: '$.array.breakAt(predicate)',
+          example: `$.numbers.breakAt(n => n > 5)
+// Input: [1, 3, 7, 2, 9]
+// Output: [[1, 3], [7, 2, 9]]`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6],
+            expression: '$.breakAt(n => n > 3)'
+          }
+        },
+        {
+          name: 'intersperse(separator)',
+          description: 'Inserts separator between elements.',
+          syntax: '$.array.intersperse(separator)',
+          example: `$.words.intersperse("-")
+// Input: ["hello", "world"]
+// Output: ["hello", "-", "world"]`,
+          playground: {
+            data: ["apple", "banana", "orange"],
+            expression: '$.intersperse(" and ")'
+          }
+        },
+        {
+          name: 'intercalate(separator, arrays)',
+          description: 'Flattens and intersperses arrays.',
+          syntax: '$.array.intercalate(separator, arrays)',
+          example: `$([","]).intercalate([["a", "b"], ["c", "d"]])
+// Output: ["a", "b", ",", "c", "d"]`,
+          playground: {
+            data: [[1, 2], [3, 4], [5, 6]],
+            expression: '$([0]).intercalate($)'
+          }
+        },
+        {
+          name: 'partition(predicate)',
+          description: 'Splits array into two based on predicate.',
+          syntax: '$.array.partition(predicate)',
+          example: `$.numbers.partition(n => n % 2 === 0)
+// Input: [1, 2, 3, 4, 5]
+// Output: [[2, 4], [1, 3, 5]]`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6, 7, 8],
+            expression: '$.partition(n => n > 4)'
+          }
+        },
+        {
+          name: 'transpose()',
+          description: 'Transposes rows and columns.',
+          syntax: '$.array.transpose()',
+          example: `$.matrix.transpose()
+// Input: [[1, 2, 3], [4, 5, 6]]
+// Output: [[1, 4], [2, 5], [3, 6]]`,
+          playground: {
+            data: [["a", "b", "c"], [1, 2, 3], ["x", "y", "z"]],
+            expression: '$.transpose()'
+          }
+        },
+        {
+          name: 'cycle(n)',
+          description: 'Repeats array n times.',
+          syntax: '$.array.cycle(n)',
+          example: `$.pattern.cycle(3)
+// Input: ["a", "b"]
+// Output: ["a", "b", "a", "b", "a", "b"]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.cycle(2)'
+          }
+        },
+        {
+          name: 'takeWhile(predicate)',
+          description: 'Takes elements while predicate is true.',
+          syntax: '$.array.takeWhile(predicate)',
+          example: `$.numbers.takeWhile(n => n < 5)
+// Input: [1, 3, 5, 2, 7]
+// Output: [1, 3]`,
+          playground: {
+            data: [2, 4, 6, 7, 8, 10],
+            expression: '$.takeWhile(n => n % 2 === 0)'
+          }
+        },
+        {
+          name: 'dropWhile(predicate)',
+          description: 'Drops elements while predicate is true.',
+          syntax: '$.array.dropWhile(predicate)',
+          example: `$.numbers.dropWhile(n => n < 5)
+// Input: [1, 3, 5, 2, 7]
+// Output: [5, 2, 7]`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6],
+            expression: '$.dropWhile(n => n < 4)'
+          }
+        },
+        {
+          name: 'distinctBy(iteratee)',
+          description: 'Returns unique elements based on iteratee.',
+          syntax: '$.array.distinctBy(iteratee)',
+          example: `$.items.distinctBy(item => item.category)
+// Keeps first occurrence of each category`,
+          playground: {
+            data: [{id: 1, type: "A"}, {id: 2, type: "B"}, {id: 3, type: "A"}],
+            expression: '$.distinctBy(item => item.type)'
+          }
+        },
+        {
+          name: 'when(condition, fn)',
+          description: 'Applies function if condition is true.',
+          syntax: '$.value.when(condition, fn)',
+          example: `$.data.when(data => data.length > 5, arr => arr.slice(0, 5))
+// Truncates only if length > 5`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6, 7],
+            expression: '$.when(arr => arr.length > 5, arr => arr.filter(n => n % 2 === 0))'
+          }
+        },
+        {
+          name: 'unless(condition, fn)',
+          description: 'Applies function if condition is false.',
+          syntax: '$.value.unless(condition, fn)',
+          example: `$.data.unless(data => data.isEmpty(), arr => arr.sort())
+// Sorts only if not empty`,
+          playground: {
+            data: [3, 1, 4, 1, 5],
+            expression: '$.unless(arr => arr.length < 3, arr => arr.sort())'
+          }
+        },
+        {
+          name: 'tee(fn)',
+          description: 'Executes side effect and returns original value.',
+          syntax: '$.value.tee(fn)',
+          example: `$.data
+  .tee(data => analytics.track("processed", data))
+  .filter(item => item.valid)`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.tee(arr => console.log("Array length:", arr.length)).map(n => n * 2)'
+          }
+        },
+        {
+          name: 'debug(label?)',
+          description: 'Logs value with optional label and returns it.',
+          syntax: '$.value.debug(label?)',
+          example: `$.data
+  .debug("before filter")
+  .filter(x => x > 0)
+  .debug("after filter")`,
+          playground: {
+            data: {name: "test", value: 42},
+            expression: '$.debug("Current data:").pluck("value")'
+          }
+        },
+        {
+          name: 'benchmark(label?)',
+          description: 'Measures execution time and returns value.',
+          syntax: '$.value.benchmark(label?)',
+          example: `$.bigData
+  .benchmark("sorting")
+  .sortBy("timestamp")
+  .benchmark("filtering")
+  .filter(item => item.active)`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.benchmark("Processing").map(n => n * n).benchmark("Done")'
+          }
+        }
+      ]
+    },
+    {
+      name: 'Type Conversion Methods',
+      description: 'Methods for converting between different data types',
+      methods: [
+        {
+          name: 'toString()',
+          description: 'Converts value to string.',
+          syntax: '$.value.toString()',
+          example: `$.number.toString()
+// Input: 42
+// Output: "42"`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.toString()'
+          }
+        },
+        {
+          name: 'toNumber()',
+          description: 'Converts value to number.',
+          syntax: '$.value.toNumber()',
+          example: `$.string.toNumber()
+// Input: "42"
+// Output: 42`,
+          playground: {
+            data: "123.45",
+            expression: '$.toNumber()'
+          }
+        },
+        {
+          name: 'toBoolean()',
+          description: 'Converts value to boolean.',
+          syntax: '$.value.toBoolean()',
+          example: `$.value.toBoolean()
+// Truthy values => true
+// Falsy values => false`,
+          playground: {
+            data: "hello",
+            expression: '$.toBoolean()'
+          }
+        },
+        {
+          name: 'toArray()',
+          description: 'Converts value to array.',
+          syntax: '$.value.toArray()',
+          example: `$.string.toArray()
+// Input: "hello"
+// Output: ["h", "e", "l", "l", "o"]`,
+          playground: {
+            data: {a: 1, b: 2, c: 3},
+            expression: '$.toArray()'
+          }
+        }
+      ]
+    },
+    {
+      name: 'Number Methods',
+      description: 'Methods for number formatting and manipulation',
+      methods: [
+        {
+          name: 'toFixed(digits)',
+          description: 'Formats number to fixed decimal places.',
+          syntax: '$.number.toFixed(digits)',
+          example: `$.price.toFixed(2)
+// Input: 19.99999
+// Output: "20.00"`,
+          playground: {
+            data: 3.14159265359,
+            expression: '$.toFixed(2)'
+          }
+        },
+        {
+          name: 'toExponential(fractionDigits?)',
+          description: 'Returns exponential notation string.',
+          syntax: '$.number.toExponential(fractionDigits?)',
+          example: `$.bigNumber.toExponential(2)
+// Input: 123456
+// Output: "1.23e+5"`,
+          playground: {
+            data: 0.0000123,
+            expression: '$.toExponential(2)'
+          }
+        },
+        {
+          name: 'toPrecision(precision)',
+          description: 'Formats number to specified precision.',
+          syntax: '$.number.toPrecision(precision)',
+          example: `$.value.toPrecision(4)
+// Input: 123.456
+// Output: "123.5"`,
+          playground: {
+            data: 123.456789,
+            expression: '$.toPrecision(5)'
+          }
+        }
+      ]
+    },
+    {
+      name: 'Advanced Utility Methods',
+      description: 'Additional utility methods for advanced operations',
+      methods: [
+        {
+          name: 'value() / valueOf()',
+          description: 'Extracts the wrapped value.',
+          syntax: '$.wrapped.value() / $.wrapped.valueOf()',
+          example: `$.data.filter(x => x > 0).value()
+// Returns the actual array`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '$.filter(n => n > 2).value()'
+          }
+        },
+        {
+          name: 'isNull()',
+          description: 'Checks if value is null.',
+          syntax: '$.value.isNull()',
+          example: `$.data.isNull()
+// Input: null
+// Output: true`,
+          playground: {
+            data: null,
+            expression: '$.isNull()'
+          }
+        },
+        {
+          name: 'isUndefined()',
+          description: 'Checks if value is undefined.',
+          syntax: '$.value.isUndefined()',
+          example: `$.data.isUndefined()
+// Input: undefined
+// Output: true`,
+          playground: {
+            data: undefined,
+            expression: '$.isUndefined()'
+          }
+        },
+        {
+          name: 'isNil()',
+          description: 'Checks if value is null or undefined.',
+          syntax: '$.value.isNil()',
+          example: `$.data.isNil()
+// Input: null or undefined
+// Output: true`,
+          playground: {
+            data: null,
+            expression: '$.isNil()'
+          }
+        },
+        {
+          name: 'isArray()',
+          description: 'Checks if value is an array.',
+          syntax: '$.value.isArray()',
+          example: `$.data.isArray()
+// Input: [1, 2, 3]
+// Output: true`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '$.isArray()'
+          }
+        },
+        {
+          name: 'isObject()',
+          description: 'Checks if value is an object.',
+          syntax: '$.value.isObject()',
+          example: `$.data.isObject()
+// Input: {a: 1}
+// Output: true`,
+          playground: {
+            data: {name: "test", value: 42},
+            expression: '$.isObject()'
+          }
+        },
+        {
+          name: 'isString()',
+          description: 'Checks if value is a string.',
+          syntax: '$.value.isString()',
+          example: `$.data.isString()
+// Input: "hello"
+// Output: true`,
+          playground: {
+            data: "Hello World",
+            expression: '$.isString()'
+          }
+        },
+        {
+          name: 'isNumber()',
+          description: 'Checks if value is a number.',
+          syntax: '$.value.isNumber()',
+          example: `$.data.isNumber()
+// Input: 42
+// Output: true`,
+          playground: {
+            data: 42,
+            expression: '$.isNumber()'
           }
         }
       ]

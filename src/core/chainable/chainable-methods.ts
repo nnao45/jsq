@@ -38,6 +38,8 @@ const CHAINABLE_METHODS = [
   'invert',
   'defaults',
   'merge',
+  'assignIn',
+  'assignWith',
   'extend',
   'mapValues',
   'clone',
@@ -143,7 +145,7 @@ const CHAINABLE_METHODS = [
   'forEachAsyncSeq',
   'mapAsync',
   'mapAsyncSeq',
-  
+
   // Haskell-style methods
   'head',
   'tail',
@@ -154,7 +156,7 @@ const CHAINABLE_METHODS = [
   'breakAt',
   'iterate',
   'unfold',
-  
+
   // Modern utility methods
   'cycle',
   'intercalate',

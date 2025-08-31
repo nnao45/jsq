@@ -1440,14 +1440,22 @@ globalThis.lodashMethods = {
     return new this.constructor(result);
   },
   
-  assignWith: function(customizer, ...sources) {
+  assignWith: function(...args) {
+    // Extract customizer (last argument if it's a function)
+    const customizer = typeof args[args.length - 1] === 'function' ? args.pop() : undefined;
+    const sources = args;
+    
     const result = { ...this._value };
     
     for (const source of sources) {
       if (source && typeof source === 'object') {
         for (const [key, value] of Object.entries(source)) {
-          const customized = customizer(result[key], value, key, result, source);
-          result[key] = customized !== undefined ? customized : value;
+          if (customizer) {
+            const customized = customizer(result[key], value, key, result, source);
+            result[key] = customized !== undefined ? customized : value;
+          } else {
+            result[key] = value;
+          }
         }
       }
     }

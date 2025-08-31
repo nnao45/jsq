@@ -48,6 +48,13 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
               Lodash
             </a>
             <a 
+              routerLink="/js-operations" 
+              routerLinkActive="text-primary"
+              class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
+            >
+              JS
+            </a>
+            <a 
               href="https://github.com/nnao45/jsq" 
               target="_blank" 
               class="text-muted-foreground hover:text-primary transition-colors"
