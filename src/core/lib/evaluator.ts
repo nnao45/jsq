@@ -165,7 +165,8 @@ export class ExpressionEvaluator {
     // For VM mode, only pass minimal context - VM will set up the rest
     if (this.securityManager.shouldUseVM()) {
       const vmContext: Record<string, unknown> = {
-        // Don't pass console - VM will set up its own
+        // Pass console to enable console.log in VM mode
+        console: this.createConsoleObject(),
         // VM sandbox will set up its own native constructors and objects
         data,
         // Pass the raw data or the $ passed in (which should be data in VM mode)

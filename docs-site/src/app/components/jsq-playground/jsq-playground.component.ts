@@ -99,6 +99,12 @@ declare global {
     .output-section {
       margin-bottom: 1rem;
     }
+    
+    .input-section {
+      textarea {
+        min-height: 180px;
+      }
+    }
 
     label {
       display: block;

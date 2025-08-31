@@ -238,6 +238,139 @@ export class LodashMethodsComponent implements OnInit {
             data: [0, 1, false, 2, "", 3, null, undefined, 4, NaN],
             expression: '_.compact($)'
           }
+        },
+        {
+          name: '_.findLast(collection, predicate)',
+          description: 'Finds element iterating from right to left.',
+          syntax: '_.findLast(collection, predicate)',
+          example: `_.findLast([1, 2, 3, 4], n => n % 2 === 1)
+// Output: 3`,
+          playground: {
+            data: [{id: 1, status: "pending"}, {id: 2, status: "complete"}, {id: 3, status: "pending"}, {id: 4, status: "complete"}],
+            expression: '_.findLast($, item => item.status === "complete")'
+          }
+        },
+        {
+          name: '_.findLastIndex(array, predicate)',
+          description: 'Finds index iterating from right to left.',
+          syntax: '_.findLastIndex(array, predicate)',
+          example: `_.findLastIndex([1, 2, 3, 4], n => n % 2 === 1)
+// Output: 2`,
+          playground: {
+            data: ["apple", "banana", "apple", "orange", "apple"],
+            expression: '_.findLastIndex($, fruit => fruit === "apple")'
+          }
+        },
+        {
+          name: '_.nth(array, n)',
+          description: 'Gets element at index n (supports negative indexes).',
+          syntax: '_.nth(array, n)',
+          example: `_.nth(['a', 'b', 'c', 'd'], 1)   // 'b'
+_.nth(['a', 'b', 'c', 'd'], -2)  // 'c'`,
+          playground: {
+            data: ["first", "second", "third", "fourth", "fifth"],
+            expression: '({ positive: _.nth($, 2), negative: _.nth($, -2) })'
+          }
+        },
+        {
+          name: '_.pullAt(array, ...indexes)',
+          description: 'Removes elements at given indexes (mutates array).',
+          syntax: '_.pullAt(array, ...indexes)',
+          example: `const arr = ['a', 'b', 'c', 'd'];
+const pulled = _.pullAt(arr, [1, 3]);
+// arr: ['a', 'c'], pulled: ['b', 'd']`,
+          playground: {
+            data: ["zero", "one", "two", "three", "four"],
+            expression: '(() => { const arr = [...$]; const pulled = _.pullAt(arr, [1, 3]); return { remaining: arr, pulled }; })()'
+          }
+        },
+        {
+          name: '_.takeRight(array, n)',
+          description: 'Takes n elements from end.',
+          syntax: '_.takeRight(array, n)',
+          example: `_.takeRight([1, 2, 3, 4, 5], 3)
+// Output: [3, 4, 5]`,
+          playground: {
+            data: ["a", "b", "c", "d", "e", "f"],
+            expression: '_.takeRight($, 3)'
+          }
+        },
+        {
+          name: '_.takeRightWhile(array, predicate)',
+          description: 'Takes elements from end while predicate returns true.',
+          syntax: '_.takeRightWhile(array, predicate)',
+          example: `_.takeRightWhile([1, 2, 3, 4, 5], n => n > 3)
+// Output: [4, 5]`,
+          playground: {
+            data: [{score: 65}, {score: 70}, {score: 85}, {score: 90}, {score: 95}],
+            expression: '_.takeRightWhile($, item => item.score >= 85)'
+          }
+        },
+        {
+          name: '_.dropRight(array, n)',
+          description: 'Drops n elements from end.',
+          syntax: '_.dropRight(array, n)',
+          example: `_.dropRight([1, 2, 3, 4, 5], 2)
+// Output: [1, 2, 3]`,
+          playground: {
+            data: ["keep", "keep", "keep", "drop", "drop"],
+            expression: '_.dropRight($, 2)'
+          }
+        },
+        {
+          name: '_.dropRightWhile(array, predicate)',
+          description: 'Drops elements from end while predicate returns true.',
+          syntax: '_.dropRightWhile(array, predicate)',
+          example: `_.dropRightWhile([1, 2, 3, 4, 5], n => n > 3)
+// Output: [1, 2, 3]`,
+          playground: {
+            data: [{active: true}, {active: true}, {active: false}, {active: false}],
+            expression: '_.dropRightWhile($, item => !item.active)'
+          }
+        },
+        {
+          name: '_.zipObject(keys, values)',
+          description: 'Creates object from arrays of keys and values.',
+          syntax: '_.zipObject(keys, values)',
+          example: `_.zipObject(['a', 'b'], [1, 2])
+// Output: {a: 1, b: 2}`,
+          playground: {
+            data: [["name", "age", "city"], ["Alice", 25, "NYC"]],
+            expression: '_.zipObject(...$)'
+          }
+        },
+        {
+          name: '_.zipObjectDeep(keys, values)',
+          description: 'Creates object from arrays of keys and values with deep path support.',
+          syntax: '_.zipObjectDeep(keys, values)',
+          example: `_.zipObjectDeep(['a.b[0].c', 'a.b[1].d'], [1, 2])
+// Output: {a: {b: [{c: 1}, {d: 2}]}}`,
+          playground: {
+            data: [["user.name", "user.email", "settings.theme"], ["Alice", "alice@example.com", "dark"]],
+            expression: '_.zipObjectDeep(...$)'
+          }
+        },
+        {
+          name: '_.unzip(array)',
+          description: 'Groups elements by index from multiple arrays.',
+          syntax: '_.unzip(array)',
+          example: `_.unzip([['a', 1], ['b', 2], ['c', 3]])
+// Output: [['a', 'b', 'c'], [1, 2, 3]]`,
+          playground: {
+            data: [["Alice", 25, "Engineer"], ["Bob", 30, "Designer"], ["Charlie", 28, "Manager"]],
+            expression: '_.unzip($)'
+          }
+        },
+        {
+          name: '_.unzipWith(array, iteratee)',
+          description: 'Groups elements by index using iteratee.',
+          syntax: '_.unzipWith(array, iteratee)',
+          example: `_.unzipWith([[1, 10], [2, 20]], (a, b) => a + b)
+// Output: [3, 30]`,
+          playground: {
+            data: [[1, 4], [2, 5], [3, 6]],
+            expression: '_.unzipWith($, (...args) => args.reduce((sum, n) => sum + n, 0))'
+          }
         }
       ]
     },
@@ -310,6 +443,173 @@ export class LodashMethodsComponent implements OnInit {
             data: ["Alice", "Bob", "Charlie", "David", "Eve"],
             expression: '_.shuffle($)'
           }
+        },
+        {
+          name: '_.flatMap(collection, iteratee)',
+          description: 'Maps collection and flattens the result by one level.',
+          syntax: '_.flatMap(collection, iteratee)',
+          example: `_.flatMap([1, 2, 3], n => [n, n * 2])
+// Output: [1, 2, 2, 4, 3, 6]`,
+          playground: {
+            data: [{name: "Alice", hobbies: ["reading", "swimming"]}, {name: "Bob", hobbies: ["gaming", "cooking"]}],
+            expression: '_.flatMap($, user => user.hobbies)'
+          }
+        },
+        {
+          name: '_.flatMapDeep(collection, iteratee)',
+          description: 'Maps collection and flattens the result recursively.',
+          syntax: '_.flatMapDeep(collection, iteratee)',
+          example: `_.flatMapDeep([1, 2], n => [[n, [n * 2]]])
+// Output: [1, 2, 2, 4]`,
+          playground: {
+            data: [{id: 1, nested: [[1, 2], [3, 4]]}, {id: 2, nested: [[5, 6]]}],
+            expression: '_.flatMapDeep($, item => item.nested)'
+          }
+        },
+        {
+          name: '_.invokeMap(collection, method, ...args)',
+          description: 'Invokes method on each element in collection.',
+          syntax: '_.invokeMap(collection, method, ...args)',
+          example: `_.invokeMap(['hello', 'world'], 'toUpperCase')
+// Output: ['HELLO', 'WORLD']`,
+          playground: {
+            data: [[1, 2, 3], [4, 5], [6, 7, 8, 9]],
+            expression: '_.invokeMap($, "slice", 0, 2)'
+          }
+        },
+        {
+          name: '_.partition(collection, predicate)',
+          description: 'Splits collection into two arrays based on predicate.',
+          syntax: '_.partition(collection, predicate)',
+          example: `_.partition([1, 2, 3, 4, 5], n => n % 2 === 0)
+// Output: [[2, 4], [1, 3, 5]]`,
+          playground: {
+            data: [{name: "Alice", active: true}, {name: "Bob", active: false}, {name: "Charlie", active: true}, {name: "David", active: false}],
+            expression: '_.partition($, user => user.active)'
+          }
+        },
+        {
+          name: '_.pullAll(array, values)',
+          description: 'Removes all given values from array (mutates array).',
+          syntax: '_.pullAll(array, values)',
+          example: `const arr = [1, 2, 3, 1, 2, 3];
+_.pullAll(arr, [2, 3]);
+// arr is now [1, 1]`,
+          playground: {
+            data: ["apple", "banana", "orange", "apple", "grape", "banana"],
+            expression: '(() => { const arr = [...$]; _.pullAll(arr, ["apple", "banana"]); return arr; })()'
+          }
+        },
+        {
+          name: '_.pullAllBy(array, values, iteratee)',
+          description: 'Removes values from array using iteratee for comparison.',
+          syntax: '_.pullAllBy(array, values, iteratee)',
+          example: `const arr = [{x: 1}, {x: 2}, {x: 3}];
+_.pullAllBy(arr, [{x: 1}, {x: 3}], 'x');
+// arr is now [{x: 2}]`,
+          playground: {
+            data: [{id: 1, name: "Alice"}, {id: 2, name: "Bob"}, {id: 3, name: "Charlie"}],
+            expression: '(() => { const arr = [...$]; _.pullAllBy(arr, [{id: 2}, {id: 3}], "id"); return arr; })()'
+          }
+        },
+        {
+          name: '_.differenceBy(array, ...values, iteratee)',
+          description: 'Creates array excluding values using iteratee for comparison.',
+          syntax: '_.differenceBy(array, ...values, iteratee)',
+          example: `_.differenceBy([{x: 2}, {x: 1}], [{x: 1}], 'x')
+// Output: [{x: 2}]`,
+          playground: {
+            data: [{id: 1, name: "Alice"}, {id: 2, name: "Bob"}, {id: 3, name: "Charlie"}],
+            expression: '_.differenceBy($, [{id: 2}, {id: 4}], "id")'
+          }
+        },
+        {
+          name: '_.differenceWith(array, ...values, comparator)',
+          description: 'Creates array excluding values using comparator.',
+          syntax: '_.differenceWith(array, ...values, comparator)',
+          example: `_.differenceWith([{x: 1, y: 2}], [{x: 1, y: 3}], (a, b) => a.x === b.x)
+// Output: []`,
+          playground: {
+            data: [{x: 1, y: 2}, {x: 2, y: 1}, {x: 3, y: 4}],
+            expression: '_.differenceWith($, [{x: 1, y: 3}], (a, b) => a.x === b.x)'
+          }
+        },
+        {
+          name: '_.intersectionBy(...arrays, iteratee)',
+          description: 'Creates array of unique values using iteratee.',
+          syntax: '_.intersectionBy(...arrays, iteratee)',
+          example: `_.intersectionBy([{x: 1}], [{x: 2}, {x: 1}], 'x')
+// Output: [{x: 1}]`,
+          playground: {
+            data: [[{id: 1}, {id: 2}, {id: 3}], [{id: 2}, {id: 3}, {id: 4}]],
+            expression: '_.intersectionBy(...$, "id")'
+          }
+        },
+        {
+          name: '_.intersectionWith(...arrays, comparator)',
+          description: 'Creates array of unique values using comparator.',
+          syntax: '_.intersectionWith(...arrays, comparator)',
+          example: `_.intersectionWith([{x: 1, y: 2}], [{x: 1, y: 3}], (a, b) => a.x === b.x)
+// Output: [{x: 1, y: 2}]`,
+          playground: {
+            data: [[{x: 1, y: 2}, {x: 2, y: 1}], [{x: 1, y: 3}, {x: 3, y: 2}]],
+            expression: '_.intersectionWith(...$, (a, b) => a.x === b.x)'
+          }
+        },
+        {
+          name: '_.unionBy(...arrays, iteratee)',
+          description: 'Creates array of unique values from all arrays using iteratee.',
+          syntax: '_.unionBy(...arrays, iteratee)',
+          example: `_.unionBy([{x: 1}], [{x: 2}, {x: 1}], 'x')
+// Output: [{x: 1}, {x: 2}]`,
+          playground: {
+            data: [[{id: 1, name: "Alice"}, {id: 2, name: "Bob"}], [{id: 2, name: "Bob"}, {id: 3, name: "Charlie"}]],
+            expression: '_.unionBy(...$, "id")'
+          }
+        },
+        {
+          name: '_.unionWith(...arrays, comparator)',
+          description: 'Creates array of unique values from all arrays using comparator.',
+          syntax: '_.unionWith(...arrays, comparator)',
+          example: `_.unionWith([{x: 1, y: 2}], [{x: 1, y: 3}], (a, b) => a.x === b.x)
+// Output: [{x: 1, y: 2}]`,
+          playground: {
+            data: [[{x: 1, y: 2}, {x: 2, y: 1}], [{x: 1, y: 3}, {x: 3, y: 2}]],
+            expression: '_.unionWith(...$, (a, b) => a.x === b.x)'
+          }
+        },
+        {
+          name: '_.xor(...arrays)',
+          description: 'Creates array of symmetric difference (values in exactly one array).',
+          syntax: '_.xor(...arrays)',
+          example: `_.xor([2, 1], [2, 3])
+// Output: [1, 3]`,
+          playground: {
+            data: [[1, 2, 3], [2, 3, 4], [3, 4, 5]],
+            expression: '_.xor(...$)'
+          }
+        },
+        {
+          name: '_.xorBy(...arrays, iteratee)',
+          description: 'Creates array of symmetric difference using iteratee.',
+          syntax: '_.xorBy(...arrays, iteratee)',
+          example: `_.xorBy([{x: 1}], [{x: 2}, {x: 1}], 'x')
+// Output: [{x: 2}]`,
+          playground: {
+            data: [[{id: 1}, {id: 2}], [{id: 2}, {id: 3}]],
+            expression: '_.xorBy(...$, "id")'
+          }
+        },
+        {
+          name: '_.xorWith(...arrays, comparator)',
+          description: 'Creates array of symmetric difference using comparator.',
+          syntax: '_.xorWith(...arrays, comparator)',
+          example: `_.xorWith([{x: 1, y: 2}], [{x: 1, y: 3}], (a, b) => a.x === b.x)
+// Output: []`,
+          playground: {
+            data: [[{x: 1, y: 2}, {x: 2, y: 1}], [{x: 1, y: 3}, {x: 3, y: 2}]],
+            expression: '_.xorWith(...$, (a, b) => a.x === b.x)'
+          }
         }
       ]
     },
@@ -348,6 +648,59 @@ _.sum([{n: 4}, {n: 6}], 'n')
             data: [{name: "Alice", score: 85}, {name: "Bob", score: 92}, {name: "Charlie", score: 78}],
             expression: '_.maxBy($, "score")'
           }
+        },
+        {
+          name: '_.meanBy(array, iteratee)',
+          description: 'Computes mean of values using iteratee.',
+          syntax: '_.meanBy(array, iteratee)',
+          example: `_.meanBy([{n: 4}, {n: 2}, {n: 8}, {n: 6}], 'n')
+// Output: 5`,
+          playground: {
+            data: [{product: "A", rating: 4.5}, {product: "B", rating: 3.8}, {product: "C", rating: 4.2}],
+            expression: '_.meanBy($, "rating")'
+          }
+        },
+        {
+          name: '_.sumBy(array, iteratee)',
+          description: 'Computes sum of values using iteratee.',
+          syntax: '_.sumBy(array, iteratee)',
+          example: `_.sumBy([{n: 4}, {n: 2}, {n: 8}], 'n')
+// Output: 14`,
+          playground: {
+            data: [{item: "apple", quantity: 3, price: 2}, {item: "banana", quantity: 5, price: 1}],
+            expression: '_.sumBy($, item => item.quantity * item.price)'
+          }
+        },
+        {
+          name: '_.add(augend, addend)',
+          description: 'Adds two numbers.',
+          syntax: '_.add(augend, addend)',
+          example: `_.add(6, 4)  // 10
+_.add(0.1, 0.2)  // 0.30000000000000004`,
+          playground: {
+            data: [10, 20],
+            expression: '_.add(...$)'
+          }
+        },
+        {
+          name: '_.subtract(minuend, subtrahend)',
+          description: 'Subtracts two numbers.',
+          syntax: '_.subtract(minuend, subtrahend)',
+          example: `_.subtract(6, 4)  // 2`,
+          playground: {
+            data: [100, 25],
+            expression: '_.subtract(...$)'
+          }
+        },
+        {
+          name: '_.multiply(multiplier, multiplicand)',
+          description: 'Multiplies two numbers.',
+          syntax: '_.multiply(multiplier, multiplicand)',
+          example: `_.multiply(6, 4)  // 24`,
+          playground: {
+            data: [7, 8],
+            expression: '_.multiply(...$)'
+          }
         }
       ]
     },
@@ -383,6 +736,146 @@ _.sum([{n: 4}, {n: 6}], 'n')
             data: {name: "User", settings: {theme: "light"}},
             expression: '_.defaults($, {name: "Anonymous", settings: {theme: "dark", notifications: true}})'
           }
+        },
+        {
+          name: '_.get(object, path, defaultValue)',
+          description: 'Gets value at path of object.',
+          syntax: '_.get(object, path, defaultValue)',
+          example: `_.get({a: {b: {c: 3}}}, 'a.b.c')     // 3
+_.get({a: {b: {c: 3}}}, 'a.b.d', 0)  // 0`,
+          playground: {
+            data: {user: {profile: {name: "Alice", address: {city: "NYC"}}}},
+            expression: '({ name: _.get($, "user.profile.name"), zip: _.get($, "user.profile.address.zip", "00000") })'
+          }
+        },
+        {
+          name: '_.set(object, path, value)',
+          description: 'Sets value at path of object.',
+          syntax: '_.set(object, path, value)',
+          example: `const obj = {a: {b: {c: 3}}};
+_.set(obj, 'a.b.d', 4);
+// obj is now {a: {b: {c: 3, d: 4}}}`,
+          playground: {
+            data: {user: {name: "Alice"}},
+            expression: '(() => { const obj = _.cloneDeep($); _.set(obj, "user.profile.age", 25); return obj; })()'
+          }
+        },
+        {
+          name: '_.has(object, path)',
+          description: 'Checks if path exists in object.',
+          syntax: '_.has(object, path)',
+          example: `_.has({a: {b: 2}}, 'a')     // true
+_.has({a: {b: 2}}, 'a.b')   // true
+_.has({a: {b: 2}}, 'a.c')   // false`,
+          playground: {
+            data: {user: {profile: {name: "Alice", email: "alice@example.com"}}},
+            expression: '({ hasName: _.has($, "user.profile.name"), hasPhone: _.has($, "user.profile.phone") })'
+          }
+        },
+        {
+          name: '_.hasIn(object, path)',
+          description: 'Checks if path exists (including inherited properties).',
+          syntax: '_.hasIn(object, path)',
+          example: `const obj = Object.create({a: 1});
+_.has(obj, 'a')   // false
+_.hasIn(obj, 'a') // true`,
+          playground: {
+            data: {name: "Alice", toString: Function.prototype.toString},
+            expression: '({ has: _.has($, "toString"), hasIn: _.hasIn($, "toString") })'
+          }
+        },
+        {
+          name: '_.mapKeys(object, iteratee)',
+          description: 'Creates object with same values but mapped keys.',
+          syntax: '_.mapKeys(object, iteratee)',
+          example: `_.mapKeys({a: 1, b: 2}, (value, key) => key + value)
+// Output: {a1: 1, b2: 2}`,
+          playground: {
+            data: {firstName: "Alice", lastName: "Smith"},
+            expression: '_.mapKeys($, (value, key) => _.snakeCase(key))'
+          }
+        },
+        {
+          name: '_.mapValues(object, iteratee)',
+          description: 'Creates object with same keys but mapped values.',
+          syntax: '_.mapValues(object, iteratee)',
+          example: `_.mapValues({a: 1, b: 2}, n => n * 2)
+// Output: {a: 2, b: 4}`,
+          playground: {
+            data: {alice: {age: 25}, bob: {age: 30}},
+            expression: '_.mapValues($, user => user.age)'
+          }
+        },
+        {
+          name: '_.toPairs(object)',
+          description: 'Converts object to array of key-value pairs.',
+          syntax: '_.toPairs(object)',
+          example: `_.toPairs({a: 1, b: 2})
+// Output: [['a', 1], ['b', 2]]`,
+          playground: {
+            data: {name: "Alice", age: 25, city: "NYC"},
+            expression: '_.toPairs($)'
+          }
+        },
+        {
+          name: '_.toPairsIn(object)',
+          description: 'Converts object to array of key-value pairs (including inherited).',
+          syntax: '_.toPairsIn(object)',
+          example: `function Foo() { this.a = 1; }
+Foo.prototype.b = 2;
+_.toPairsIn(new Foo)
+// Output: [['a', 1], ['b', 2]]`,
+          playground: {
+            data: {own: "property", inherited: Object.prototype.toString},
+            expression: '_.toPairsIn($).map(([k, v]) => [k, typeof v])'
+          }
+        },
+        {
+          name: '_.assignIn(object, ...sources)',
+          description: 'Assigns own and inherited properties.',
+          syntax: '_.assignIn(object, ...sources)',
+          example: `function Foo() { this.a = 1; }
+Foo.prototype.b = 2;
+_.assignIn({c: 3}, new Foo)
+// Output: {a: 1, b: 2, c: 3}`,
+          playground: {
+            data: {a: 1},
+            expression: '_.assignIn({}, $, {b: 2}, {c: 3})'
+          }
+        },
+        {
+          name: '_.assignWith(object, ...sources, customizer)',
+          description: 'Assigns with customizer function.',
+          syntax: '_.assignWith(object, ...sources, customizer)',
+          example: `_.assignWith({a: 1}, {a: 2}, (obj, src) => obj + src)
+// Output: {a: 3}`,
+          playground: {
+            data: {count: 10},
+            expression: '_.assignWith({}, $, {count: 5}, (objValue, srcValue) => _.isUndefined(objValue) ? srcValue : objValue + srcValue)'
+          }
+        },
+        {
+          name: '_.mergeWith(object, ...sources, customizer)',
+          description: 'Deep merges with customizer function.',
+          syntax: '_.mergeWith(object, ...sources, customizer)',
+          example: `_.mergeWith({a: [1]}, {a: [2]}, (obj, src) => 
+  _.isArray(obj) ? obj.concat(src) : undefined)
+// Output: {a: [1, 2]}`,
+          playground: {
+            data: {tags: ["js"], meta: {views: 100}},
+            expression: '_.mergeWith({}, $, {tags: ["node"], meta: {likes: 50}}, (objValue, srcValue) => _.isArray(objValue) ? objValue.concat(srcValue) : undefined)'
+          }
+        },
+        {
+          name: '_.at(object, ...paths)',
+          description: 'Gets values at given paths of object.',
+          syntax: '_.at(object, ...paths)',
+          example: `_.at({a: {b: {c: 3}}, x: {y: 4}}, ['a.b.c', 'x.y'])
+// Output: [3, 4]`,
+          playground: {
+            data: {user: {name: "Alice", email: "alice@example.com"}, settings: {theme: "dark"}},
+            expression: '_.at($, ["user.name", "settings.theme", "settings.language"])'
+          }
         }
       ]
     },
@@ -401,6 +894,153 @@ _.startCase('foo-bar-baz')      // 'Foo Bar Baz'`,
           playground: {
             data: "hello-world_test CASE",
             expression: '({ camelCase: _.camelCase($), kebabCase: _.kebabCase($), snakeCase: _.snakeCase($), startCase: _.startCase($) })'
+          }
+        },
+        {
+          name: '_.upperCase(string)',
+          description: 'Converts to upper case with spaces.',
+          syntax: '_.upperCase(string)',
+          example: `_.upperCase('fooBar')        // 'FOO BAR'
+_.upperCase('__foo_bar__')   // 'FOO BAR'`,
+          playground: {
+            data: "hello-world_test",
+            expression: '_.upperCase($)'
+          }
+        },
+        {
+          name: '_.lowerCase(string)',
+          description: 'Converts to lower case with spaces.',
+          syntax: '_.lowerCase(string)',
+          example: `_.lowerCase('fooBar')        // 'foo bar'
+_.lowerCase('__FOO_BAR__')   // 'foo bar'`,
+          playground: {
+            data: "HELLO-WORLD_TEST",
+            expression: '_.lowerCase($)'
+          }
+        },
+        {
+          name: '_.pad(string, length, chars)',
+          description: 'Pads string on both sides to given length.',
+          syntax: '_.pad(string, length, chars)',
+          example: `_.pad('abc', 8)          // '  abc   '
+_.pad('abc', 8, '_-')    // '_-abc_-_'`,
+          playground: {
+            data: "hello",
+            expression: '({ default: _.pad($, 10), custom: _.pad($, 12, "*") })'
+          }
+        },
+        {
+          name: '_.padStart(string, length, chars)',
+          description: 'Pads string on left side to given length.',
+          syntax: '_.padStart(string, length, chars)',
+          example: `_.padStart('abc', 6)        // '   abc'
+_.padStart('abc', 6, '_-')  // '_-_abc'`,
+          playground: {
+            data: "123",
+            expression: '_.padStart($, 8, "0")'
+          }
+        },
+        {
+          name: '_.padEnd(string, length, chars)',
+          description: 'Pads string on right side to given length.',
+          syntax: '_.padEnd(string, length, chars)',
+          example: `_.padEnd('abc', 6)        // 'abc   '
+_.padEnd('abc', 6, '_-')  // 'abc_-_'`,
+          playground: {
+            data: "loading",
+            expression: '_.padEnd($, 10, ".")'
+          }
+        },
+        {
+          name: '_.trim(string, chars)',
+          description: 'Removes whitespace or specified characters from both ends.',
+          syntax: '_.trim(string, chars)',
+          example: `_.trim('  abc  ')       // 'abc'
+_.trim('-_-abc-_-', '_-')  // 'abc'`,
+          playground: {
+            data: "  hello world  ",
+            expression: '({ whitespace: _.trim($), custom: _.trim("__hello__", "_") })'
+          }
+        },
+        {
+          name: '_.trimStart(string, chars)',
+          description: 'Removes whitespace or specified characters from beginning.',
+          syntax: '_.trimStart(string, chars)',
+          example: `_.trimStart('  abc  ')       // 'abc  '
+_.trimStart('-_-abc', '_-')  // 'abc'`,
+          playground: {
+            data: "   hello",
+            expression: '_.trimStart($)'
+          }
+        },
+        {
+          name: '_.trimEnd(string, chars)',
+          description: 'Removes whitespace or specified characters from end.',
+          syntax: '_.trimEnd(string, chars)',
+          example: `_.trimEnd('  abc  ')       // '  abc'
+_.trimEnd('abc-_-', '_-')  // 'abc'`,
+          playground: {
+            data: "hello   ",
+            expression: '_.trimEnd($)'
+          }
+        },
+        {
+          name: '_.truncate(string, options)',
+          description: 'Truncates string to given length.',
+          syntax: '_.truncate(string, options)',
+          example: `_.truncate('hi-diddly-ho there, neighborino')
+// 'hi-diddly-ho there, neighbo...'
+_.truncate('hi', {length: 30, omission: ' [...]'})
+// 'hi [...]'`,
+          playground: {
+            data: "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+            expression: '_.truncate($, { length: 30, separator: " " })'
+          }
+        },
+        {
+          name: '_.escape(string)',
+          description: 'Escapes HTML entities.',
+          syntax: '_.escape(string)',
+          example: `_.escape('fred, barney, & pebbles')
+// 'fred, barney, &amp; pebbles'`,
+          playground: {
+            data: "<p>Hello & welcome to the 'world'</p>",
+            expression: '_.escape($)'
+          }
+        },
+        {
+          name: '_.unescape(string)',
+          description: 'Unescapes HTML entities.',
+          syntax: '_.unescape(string)',
+          example: `_.unescape('fred, barney, &amp; pebbles')
+// 'fred, barney, & pebbles'`,
+          playground: {
+            data: "fred, barney, &amp; pebbles &lt;tag&gt;",
+            expression: '_.unescape($)'
+          }
+        },
+        {
+          name: '_.words(string, pattern)',
+          description: 'Splits string into array of words.',
+          syntax: '_.words(string, pattern)',
+          example: `_.words('fred, barney, & pebbles')
+// ['fred', 'barney', 'pebbles']
+_.words('fred-barney')
+// ['fred', 'barney']`,
+          playground: {
+            data: "hello-world, foo_bar & test123",
+            expression: '_.words($)'
+          }
+        },
+        {
+          name: '_.deburr(string)',
+          description: 'Removes diacritical marks from string.',
+          syntax: '_.deburr(string)',
+          example: `_.deburr('déjà vu')  // 'deja vu'
+_.deburr('João')     // 'Joao'`,
+          playground: {
+            data: "Héllö Wörld, çà và?",
+            expression: '_.deburr($)'
           }
         }
       ]
@@ -431,6 +1071,139 @@ _.range(0, 10, 2)    // [0, 2, 4, 6, 8]`,
           playground: {
             data: null,
             expression: '_.range(1, 11)'
+          }
+        }
+      ]
+    },
+    {
+      name: 'Function Methods',
+      description: 'Function composition and control flow',
+      methods: [
+        {
+          name: '_.debounce(func, wait, options)',
+          description: 'Creates a debounced function that delays invoking func.',
+          syntax: '_.debounce(func, wait, options)',
+          example: `const debounced = _.debounce(updateQuery, 300);
+// Function will only execute 300ms after last call`,
+          playground: {
+            data: null,
+            expression: '// Debounce example - try typing quickly!\nconst log = _.debounce(() => "Debounced!", 1000); log()'
+          }
+        },
+        {
+          name: '_.throttle(func, wait, options)',
+          description: 'Creates a throttled function that only invokes func at most once per wait.',
+          syntax: '_.throttle(func, wait, options)',
+          example: `const throttled = _.throttle(updatePosition, 100);
+// Function executes at most once every 100ms`,
+          playground: {
+            data: null,
+            expression: '// Throttle example - limits execution frequency\nconst log = _.throttle(() => "Throttled!", 1000); log()'
+          }
+        },
+        {
+          name: '_.curry(func, arity)',
+          description: 'Creates a curried function.',
+          syntax: '_.curry(func, arity)',
+          example: `const abc = (a, b, c) => [a, b, c];
+const curried = _.curry(abc);
+curried(1)(2)(3)     // [1, 2, 3]
+curried(1, 2)(3)     // [1, 2, 3]`,
+          playground: {
+            data: null,
+            expression: 'const add = _.curry((a, b, c) => a + b + c); ({ partial: add(1)(2), full: add(1)(2)(3) })'
+          }
+        },
+        {
+          name: '_.curryRight(func, arity)',
+          description: 'Creates a right-curried function.',
+          syntax: '_.curryRight(func, arity)',
+          example: `const abc = (a, b, c) => [a, b, c];
+const curried = _.curryRight(abc);
+curried(3)(2)(1)     // [1, 2, 3]`,
+          playground: {
+            data: null,
+            expression: 'const divide = _.curryRight((a, b) => a / b); ({ partial: divide(2), full: divide(2)(10) })'
+          }
+        },
+        {
+          name: '_.partial(func, ...partials)',
+          description: 'Creates a partially applied function.',
+          syntax: '_.partial(func, ...partials)',
+          example: `const greet = (greeting, name) => greeting + ' ' + name;
+const sayHello = _.partial(greet, 'Hello');
+sayHello('Alice')    // 'Hello Alice'`,
+          playground: {
+            data: null,
+            expression: 'const multiply = (a, b, c) => a * b * c; const double = _.partial(multiply, 2, _, 1); double(5)'
+          }
+        },
+        {
+          name: '_.partialRight(func, ...partials)',
+          description: 'Creates a partially applied function from right.',
+          syntax: '_.partialRight(func, ...partials)',
+          example: `const greet = (greeting, name) => greeting + ' ' + name;
+const greetAlice = _.partialRight(greet, 'Alice');
+greetAlice('Hello')  // 'Hello Alice'`,
+          playground: {
+            data: null,
+            expression: 'const divide = (a, b) => a / b; const divideBy2 = _.partialRight(divide, 2); divideBy2(10)'
+          }
+        },
+        {
+          name: '_.memoize(func, resolver)',
+          description: 'Creates a memoized function that caches results.',
+          syntax: '_.memoize(func, resolver)',
+          example: `const expensive = _.memoize(n => {
+  console.log('Computing...');
+  return n * n;
+});
+expensive(4)  // Computing... 16
+expensive(4)  // 16 (cached)`,
+          playground: {
+            data: null,
+            expression: 'const fib = _.memoize(n => n <= 1 ? n : fib(n - 1) + fib(n - 2)); [fib(10), fib(20), fib(30)]'
+          }
+        },
+        {
+          name: '_.once(func)',
+          description: 'Creates a function that is restricted to invoking func once.',
+          syntax: '_.once(func)',
+          example: `const initialize = _.once(() => {
+  console.log('Initialized!');
+  return true;
+});
+initialize()  // 'Initialized!' true
+initialize()  // true (no console log)`,
+          playground: {
+            data: null,
+            expression: 'const init = _.once(() => ({ initialized: true, time: Date.now() })); [init(), init(), init()]'
+          }
+        },
+        {
+          name: '_.flow(...funcs)',
+          description: 'Creates a function that is the composition of funcs.',
+          syntax: '_.flow(...funcs)',
+          example: `const add = n => n + 1;
+const square = n => n * n;
+const addSquare = _.flow(add, square);
+addSquare(3)  // 16`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: 'const process = _.flow(arr => _.filter(arr, n => n > 2), arr => _.map(arr, n => n * 2), _.sum); process($)'
+          }
+        },
+        {
+          name: '_.flowRight(...funcs)',
+          description: 'Creates a function that is the composition of funcs (right to left).',
+          syntax: '_.flowRight(...funcs)',
+          example: `const add = n => n + 1;
+const square = n => n * n;
+const squareAdd = _.flowRight(add, square);
+squareAdd(3)  // 10`,
+          playground: {
+            data: "hello world",
+            expression: 'const process = _.flowRight(_.upperCase, s => s + "!", _.trim); process($)'
           }
         }
       ]
