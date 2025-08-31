@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.1.26",
+  "version": "0.2.0",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "type": "module",
   "main": "dist/index.js",
@@ -49,7 +49,8 @@
     "prepare": "npm run build && npm run build:bin",
     "build:bin": "./build-bin.sh",
     "prepublishOnly": "npm run format && npm run lint:fix && npm run lint && npm run check && npm run build && npm run test",
-    "relase:patch": "./bump-version.sh patch && npm publish --access public"
+    "release:patch": "./bump-version.sh patch && npm publish --access public",
+    "release:minor": "./bump-version.sh minor && npm publish --access public"
   },
   "keywords": [
     "json",
