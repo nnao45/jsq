@@ -382,10 +382,10 @@ export class VMSandboxQuickJS {
       if (definitelyHasStatements) {
         // It has statements, need to handle it differently
         // Split code into statements and handle the last one specially
-        const statements = [];
+        const statements: string[] = [];
         let current = '';
         let inString = false;
-        let stringChar = null;
+        let stringChar: string | null = null;
         let depth = 0;
 
         for (let i = 0; i < trimmedCode.length; i++) {

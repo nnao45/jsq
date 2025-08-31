@@ -105,7 +105,10 @@ export class JsqProcessor {
   /**
    * Create a Piscina-based parallel transform stream for better performance
    */
-  createPiscinaParallelTransformStream(expression: string, streamOptions?: StreamProcessingOptions) {
+  createPiscinaParallelTransformStream(
+    expression: string,
+    streamOptions?: StreamProcessingOptions
+  ) {
     return this.streamProcessor.createPiscinaParallelTransformStream(expression, streamOptions);
   }
 }

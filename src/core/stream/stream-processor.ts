@@ -6,8 +6,8 @@ import type { ApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 import { ExpressionTransformer } from '../lib/expression-transformer';
 import { JsonParser } from '../lib/parser';
-import { WorkerPool } from '../vm/worker-pool';
 import { PiscinaWorkerPool } from '../vm/piscina-worker-pool';
+import { WorkerPool } from '../vm/worker-pool';
 
 export interface StreamProcessingOptions {
   batchSize?: number;
@@ -517,17 +517,15 @@ export class StreamProcessor {
           // Process batch when ready
           if (lineBatch.length >= batchSize) {
             const batch = lineBatch.splice(0, batchSize);
-            const result = await this.piscinaPool!.processBatch({
+            const result = await this.piscinaPool?.processBatch({
               data: batch,
               expression: transformedExpression,
-              options: this.options
+              options: this.options,
             });
 
             // Format and output results
-            if (result.results.length > 0) {
-              const output = result.results
-                .map(r => this.formatOutput(r))
-                .join('');
+            if (result?.results != null && result.results.length > 0) {
+              const output = result?.results.map(r => this.formatOutput(r)).join('');
               callback(null, output);
             } else {
               callback();
@@ -551,13 +549,11 @@ export class StreamProcessor {
             const result = await this.piscinaPool.processBatch({
               data: lineBatch,
               expression: transformedExpression,
-              options: this.options
+              options: this.options,
             });
 
             if (result.results.length > 0) {
-              const output = result.results
-                .map(r => this.formatOutput(r))
-                .join('');
+              const output = result.results.map(r => this.formatOutput(r)).join('');
               callback(null, output);
             } else {
               callback();

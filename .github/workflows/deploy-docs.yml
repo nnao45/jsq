@@ -6,7 +6,8 @@ on:
       - main
     paths:
       - 'docs-site/**'
-      - 'examples/web-ui/**'
+      - 'scripts/build-browser/**'
+      - 'src/**'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
@@ -43,27 +44,8 @@ jobs:
       - name: Install main project dependencies
         run: npm ci
             
-      - name: Cache dependencies - examples/web-ui
-        uses: actions/cache@v4
-        with:
-          path: examples/web-ui/node_modules
-          key: ${{ runner.os }}-web-ui-${{ hashFiles('examples/web-ui/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-web-ui-
-            
       - name: Build jsq browser bundle
-        working-directory: examples/web-ui
-        run: |
-          npm ci
-          npm run build
-          
-      - name: Copy browser bundle to docs
-        run: |
-          mkdir -p docs-site/public
-          cp examples/web-ui/dist/jsq-browser.js docs-site/public/
-          cp examples/web-ui/dist/*.jsq-browser.js docs-site/public/
-          cp examples/web-ui/dist/*.wasm docs-site/public/ || true
-          cp examples/web-ui/dist/jsq-browser.js.map docs-site/public/ || true
+        run: npm run build:browser
           
       - name: Cache dependencies - docs-site
         uses: actions/cache@v4
@@ -78,15 +60,6 @@ jobs:
         run: |
           npm ci
           npm run build
-          
-      - name: Copy jsq-browser.js to output directory
-        run: |
-          if [ -f docs-site/public/jsq-browser.js ]; then
-            cp docs-site/public/jsq-browser.js docs-site/dist/jsq-docs/browser/
-            cp docs-site/public/*.jsq-browser.js docs-site/dist/jsq-docs/browser/
-            cp docs-site/public/*.wasm docs-site/dist/jsq-docs/browser/ || true
-            cp docs-site/public/jsq-browser.js.map docs-site/dist/jsq-docs/browser/ || true
-          fi
           
       - name: Add .nojekyll file
         run: |

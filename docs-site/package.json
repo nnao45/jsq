@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prebuild": "cd .. && npm run build:browser",
     "build": "ng build --base-href /jsq/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

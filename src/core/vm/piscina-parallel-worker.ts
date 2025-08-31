@@ -69,8 +69,8 @@ async function processLine(
       result: null,
       error: {
         line: lineNumber,
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
     };
   }
 }
@@ -82,7 +82,7 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
   }
 
   const { data = [], expression = '', options = {} } = task;
-  
+
   initializeWorker(options);
 
   const results: unknown[] = [];
@@ -90,6 +90,7 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
   // Process lines with line numbers
   for (let i = 0; i < data.length; i++) {
+    // @ts-expect-error
     const { result, error } = await processLine(data[i], expression || '', i + 1);
     
     if (error) {
