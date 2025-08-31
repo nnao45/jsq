@@ -318,6 +318,261 @@ describe('Lodash-like Methods', () => {
     });
   });
 
+  describe('New Collection methods', () => {
+    it('should support flatMap', async () => {
+      const data = [1, 2, 3];
+      const result = await evaluator.evaluate('_.flatMap(data, n => [n, n * 2])', data);
+      expect(result).toEqual([1, 2, 2, 4, 3, 6]);
+    });
+
+    it('should support flatMapDeep', async () => {
+      const data = [1, 2, 3];
+      const result = await evaluator.evaluate('_.flatMapDeep(data, n => [[n, [n * 2]]])', data);
+      expect(result).toEqual([1, 2, 2, 4, 3, 6]);
+    });
+
+    it('should support invokeMap', async () => {
+      const data = ['123', '456'];
+      const result = await evaluator.evaluate('_.invokeMap(data, "split", "")', data);
+      expect(result).toEqual([
+        ['1', '2', '3'],
+        ['4', '5', '6'],
+      ]);
+    });
+
+    it('should support partition', async () => {
+      const data = [1, 2, 3, 4, 5, 6];
+      const result = await evaluator.evaluate('_.partition(data, n => n % 2 === 0)', data);
+      expect(result).toEqual([
+        [2, 4, 6],
+        [1, 3, 5],
+      ]);
+    });
+
+    it('should support differenceBy', async () => {
+      const data = [{ x: 1 }, { x: 2 }, { x: 3 }];
+      const result = await evaluator.evaluate('_.differenceBy(data, [{ x: 2 }], "x")', data);
+      expect(result).toEqual([{ x: 1 }, { x: 3 }]);
+    });
+
+    it('should support intersectionBy', async () => {
+      const data = [{ x: 1 }, { x: 2 }, { x: 3 }];
+      const result = await evaluator.evaluate(
+        '_.intersectionBy(data, [{ x: 2 }, { x: 3 }], "x")',
+        data
+      );
+      expect(result).toEqual([{ x: 2 }, { x: 3 }]);
+    });
+
+    it('should support xor', async () => {
+      const data = [1, 2, 3];
+      const result = await evaluator.evaluate('_.xor(data, [3, 4])', data);
+      expect(result).toEqual([1, 2, 4]);
+    });
+  });
+
+  describe('New Array methods', () => {
+    it('should support findLast', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_.findLast(data, n => n < 4)', data);
+      expect(result).toBe(3);
+    });
+
+    it('should support findLastIndex', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_.findLastIndex(data, n => n < 4)', data);
+      expect(result).toBe(2);
+    });
+
+    it('should support nth', async () => {
+      const data = ['a', 'b', 'c', 'd'];
+      const result1 = await evaluator.evaluate('_.nth(data, 1)', data);
+      const result2 = await evaluator.evaluate('_.nth(data, -2)', data);
+      expect(result1).toBe('b');
+      expect(result2).toBe('c');
+    });
+
+    it('should support takeRight', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_.takeRight(data, 3)', data);
+      expect(result).toEqual([3, 4, 5]);
+    });
+
+    it('should support dropRight', async () => {
+      const data = [1, 2, 3, 4, 5];
+      const result = await evaluator.evaluate('_.dropRight(data, 2)', data);
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should support zipObject', async () => {
+      const data = ['a', 'b', 'c'];
+      const result = await evaluator.evaluate('_.zipObject(data, [1, 2, 3])', data);
+      expect(result).toEqual({ a: 1, b: 2, c: 3 });
+    });
+
+    it('should support unzip', async () => {
+      const data = [
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+      ];
+      const result = await evaluator.evaluate('_.unzip(data)', data);
+      expect(result).toEqual([
+        ['a', 'b', 'c'],
+        [1, 2, 3],
+      ]);
+    });
+  });
+
+  describe('New String methods', () => {
+    it('should support upperCase', async () => {
+      const data = 'helloWorld';
+      const result = await evaluator.evaluate('_.upperCase(data)', data);
+      expect(result).toBe('HELLO WORLD');
+    });
+
+    it('should support lowerCase', async () => {
+      const data = 'HelloWorld';
+      const result = await evaluator.evaluate('_.lowerCase(data)', data);
+      expect(result).toBe('hello world');
+    });
+
+    it('should support pad', async () => {
+      const data = 'abc';
+      const result = await evaluator.evaluate('_.pad(data, 8, "_-")', data);
+      expect(result).toBe('_-abc_-_');
+    });
+
+    it('should support truncate', async () => {
+      const data = 'hi-diddly-ho there, neighborino';
+      const result = await evaluator.evaluate(
+        '_.truncate(data, { length: 24, separator: " " })',
+        data
+      );
+      expect(result).toBe('hi-diddly-ho there,...');
+    });
+
+    it('should support words', async () => {
+      const data = 'fred, barney, & pebbles';
+      const result = await evaluator.evaluate('_.words(data)', data);
+      expect(result).toEqual(['fred', 'barney', 'pebbles']);
+    });
+
+    it('should support escape', async () => {
+      const data = 'fred, barney, & pebbles';
+      const result = await evaluator.evaluate('_.escape(data)', data);
+      expect(result).toBe('fred, barney, &amp; pebbles');
+    });
+  });
+
+  describe('New Object methods', () => {
+    it('should support get', async () => {
+      const data = { a: { b: { c: 3 } } };
+      const result1 = await evaluator.evaluate('_.get(data, "a.b.c")', data);
+      const result2 = await evaluator.evaluate('_.get(data, "a.x.c", "default")', data);
+      expect(result1).toBe(3);
+      expect(result2).toBe('default');
+    });
+
+    it('should support set', async () => {
+      const data = { a: { b: 2 } };
+      const result = await evaluator.evaluate('_.set(data, "a.b.c", 3)', data);
+      expect(result).toEqual({ a: { b: { c: 3 } } });
+    });
+
+    it('should support has', async () => {
+      const data = { a: { b: { c: 3 } } };
+      const result1 = await evaluator.evaluate('_.has(data, "a.b.c")', data);
+      const result2 = await evaluator.evaluate('_.has(data, "a.x.c")', data);
+      expect(result1).toBe(true);
+      expect(result2).toBe(false);
+    });
+
+    it('should support mapKeys', async () => {
+      const data = { a: 1, b: 2 };
+      const result = await evaluator.evaluate('_.mapKeys(data, (value, key) => key + value)', data);
+      expect(result).toEqual({ a1: 1, b2: 2 });
+    });
+
+    it('should support mapValues', async () => {
+      const data = { a: 1, b: 2 };
+      const result = await evaluator.evaluate('_.mapValues(data, n => n * n)', data);
+      expect(result).toEqual({ a: 1, b: 4 });
+    });
+
+    it('should support toPairs', async () => {
+      const data = { a: 1, b: 2 };
+      const result = await evaluator.evaluate('_.toPairs(data)', data);
+      expect(result).toEqual([
+        ['a', 1],
+        ['b', 2],
+      ]);
+    });
+
+    it('should support at', async () => {
+      const data = { a: { b: { c: 3 } }, x: { y: 4 } };
+      const result = await evaluator.evaluate('_.at(data, ["a.b.c", "x.y"])', data);
+      expect(result).toEqual([3, 4]);
+    });
+  });
+
+  describe('New Function methods', () => {
+    it('should support curry', async () => {
+      const data = {};
+      const result = await evaluator.evaluate(
+        `
+        const add = (a, b, c) => a + b + c;
+        const curriedAdd = _.curry(add);
+        curriedAdd(1)(2)(3)
+      `,
+        data
+      );
+      expect(result).toBe(6);
+    });
+
+    it('should support partial', async () => {
+      const data = {};
+      const result = await evaluator.evaluate(
+        `
+        const greet = (greeting, name) => greeting + ' ' + name;
+        const sayHello = _.partial(greet, 'Hello');
+        sayHello('World')
+      `,
+        data
+      );
+      expect(result).toBe('Hello World');
+    });
+
+    it('should support once', async () => {
+      const data = {};
+      const result = await evaluator.evaluate(
+        `
+        let count = 0;
+        const increment = _.once(() => ++count);
+        [increment(), increment(), increment(), count]
+      `,
+        data
+      );
+      expect(result).toEqual([1, 1, 1, 1]);
+    });
+
+    it('should support memoize', async () => {
+      const data = {};
+      const result = await evaluator.evaluate(
+        `
+        let callCount = 0;
+        const expensive = _.memoize((n) => {
+          callCount++;
+          return n * n;
+        });
+        [expensive(4), expensive(4), expensive(5), callCount]
+      `,
+        data
+      );
+      expect(result).toEqual([16, 16, 25, 2]);
+    });
+  });
+
   describe('Chainable wrapper integration', () => {
     it('should support chaining new lodash methods', async () => {
       const data = [
