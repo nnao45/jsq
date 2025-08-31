@@ -77,10 +77,22 @@ jobs:
           npm ci
           npm run build
           
+      - name: Copy jsq-browser.js to output directory
+        run: |
+          if [ -f docs-site/public/jsq-browser.js ]; then
+            cp docs-site/public/jsq-browser.js docs-site/dist/jsq-docs/browser/
+            cp docs-site/public/jsq-browser.js.map docs-site/dist/jsq-docs/browser/ || true
+          fi
+          
+      - name: Add .nojekyll file
+        run: |
+          touch docs-site/dist/jsq-docs/browser/.nojekyll
+          echo "GitHub Pages will not process this site with Jekyll" > docs-site/dist/jsq-docs/browser/.nojekyll
+          
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs-site/dist/jsq-docs
+          path: docs-site/dist/jsq-docs/browser
           
   deploy:
     environment:
