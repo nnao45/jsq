@@ -250,22 +250,33 @@ export class JsqPlaygroundComponent implements OnInit, OnDestroy {
 
   private async loadJsq() {
     try {
-      // Check if jsq is already loaded globally
-      if (window.JSQ || window.jsq) {
-        this.jsq = window.jsq || window.JSQ;
-        await this.jsq.initialize?.();
-      } else {
-        // Dynamic import for the browser bundle
-        const module = await import('./jsq-browser.js' as any);
-        this.jsq = module.jsq || module.JSQ;
-        await this.jsq.initialize?.();
+      // Wait for jsq to be loaded from index.html
+      let attempts = 0;
+      while ((!window.JSQ && !window.jsq) && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
       }
       
-      // Execute initial expression
-      this.execute();
+      if (window.jsq) {
+        console.log('Found jsq on window');
+        this.jsq = window.jsq;
+        // jsq is already auto-initialized from jsq-browser.js
+        console.log('Using pre-initialized jsq instance');
+        // Execute initial expression
+        this.execute();
+      } else if (window.JSQ) {
+        console.log('Found JSQ constructor, creating instance...');
+        this.jsq = new window.JSQ();
+        await this.jsq.initialize();
+        console.log('JSQ initialized successfully');
+        // Execute initial expression
+        this.execute();
+      } else {
+        throw new Error('jsq library not found on window object');
+      }
     } catch (e) {
       console.error('Failed to load jsq:', e);
-      this.error = 'Failed to load jsq library';
+      this.error = 'Failed to load jsq library: ' + (e as Error).message;
     }
   }
 }
