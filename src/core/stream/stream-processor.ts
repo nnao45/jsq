@@ -7,6 +7,7 @@ import { ExpressionEvaluator } from '../lib/evaluator';
 import { ExpressionTransformer } from '../lib/expression-transformer';
 import { JsonParser } from '../lib/parser';
 import { WorkerPool } from '../vm/worker-pool';
+import { PiscinaWorkerPool } from '../vm/piscina-worker-pool';
 
 export interface StreamProcessingOptions {
   batchSize?: number;
@@ -22,6 +23,7 @@ export class StreamProcessor {
   private evaluator: ExpressionEvaluator;
   private parser: JsonParser;
   private workerPool?: WorkerPool;
+  private piscinaPool?: PiscinaWorkerPool;
 
   constructor(options: JsqOptions, appContext: ApplicationContext) {
     this.options = options;
@@ -34,6 +36,9 @@ export class StreamProcessor {
     await this.evaluator.dispose();
     if (this.workerPool) {
       await this.workerPool.shutdown();
+    }
+    if (this.piscinaPool) {
+      await this.piscinaPool.terminate();
     }
   }
 
@@ -460,6 +465,119 @@ export class StreamProcessor {
         }
       },
     });
+  }
+
+  /**
+   * Creates a Piscina-based parallel transform stream for better performance
+   */
+  createPiscinaParallelTransformStream(
+    expression: string,
+    streamOptions: StreamProcessingOptions = {}
+  ): Transform {
+    const { batchSize = 1000, delimiter = '\n', parallel } = streamOptions;
+    const workerCount = this.getWorkerCount(parallel);
+
+    if (workerCount === 0) {
+      return this.createBatchTransformStream(expression, streamOptions);
+    }
+
+    let buffer = '';
+    const lineBatch: string[] = [];
+    let isPoolInitialized = false;
+
+    // Transform expression once
+    const transformedExpression = ExpressionTransformer.transform(
+      expression,
+      this.appContext.expressionCache
+    );
+
+    return new Transform({
+      objectMode: true,
+      transform: async (chunk: Buffer, _encoding, callback) => {
+        try {
+          // Initialize Piscina pool on first chunk
+          if (!isPoolInitialized) {
+            this.piscinaPool = new PiscinaWorkerPool(workerCount);
+            await this.piscinaPool.initialize();
+            isPoolInitialized = true;
+          }
+
+          // Process chunk into lines
+          buffer += chunk.toString();
+          const lines = buffer.split(delimiter);
+          buffer = lines.pop() || '';
+
+          // Add valid lines to batch
+          lines.forEach(line => {
+            if (line.trim()) {
+              lineBatch.push(line);
+            }
+          });
+
+          // Process batch when ready
+          if (lineBatch.length >= batchSize) {
+            const batch = lineBatch.splice(0, batchSize);
+            const result = await this.piscinaPool!.processBatch({
+              data: batch,
+              expression: transformedExpression,
+              options: this.options
+            });
+
+            // Format and output results
+            if (result.results.length > 0) {
+              const output = result.results
+                .map(r => this.formatOutput(r))
+                .join('');
+              callback(null, output);
+            } else {
+              callback();
+            }
+          } else {
+            callback();
+          }
+        } catch (error) {
+          callback(error instanceof Error ? error : new Error('Piscina processing error'));
+        }
+      },
+
+      flush: async callback => {
+        try {
+          // Process remaining buffer and batch
+          if (buffer.trim()) {
+            lineBatch.push(buffer);
+          }
+
+          if (lineBatch.length > 0 && this.piscinaPool) {
+            const result = await this.piscinaPool.processBatch({
+              data: lineBatch,
+              expression: transformedExpression,
+              options: this.options
+            });
+
+            if (result.results.length > 0) {
+              const output = result.results
+                .map(r => this.formatOutput(r))
+                .join('');
+              callback(null, output);
+            } else {
+              callback();
+            }
+          } else {
+            callback();
+          }
+        } catch (error) {
+          callback(error instanceof Error ? error : new Error('Piscina flush error'));
+        }
+      },
+    });
+  }
+
+  private formatOutput(result: unknown): string {
+    try {
+      return `${JSON.stringify(result)}\n`;
+    } catch {
+      return `${String(result)}\n`;
+    }
   }
 
   /**

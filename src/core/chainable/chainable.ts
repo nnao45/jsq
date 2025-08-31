@@ -181,8 +181,8 @@ export class ChainableWrapper {
   flattenDeep(): ChainableWrapper {
     if (Array.isArray(this.data)) {
       const flattenDeep = (arr: unknown[]): unknown[] =>
-        arr.reduce(
-          (acc: unknown[], val: unknown) =>
+        arr.reduce<unknown[]>(
+          (acc, val) =>
             Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val),
           []
         );

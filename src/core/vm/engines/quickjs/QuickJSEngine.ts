@@ -67,8 +67,10 @@ export class QuickJSExecutionContext implements VMExecutionContext {
         throw new Error(`Failed to create Date for global ${name}: ${errorMsg}`);
       }
 
-      this.vm.setProp(this.vm.global, name, result.value);
-      result.value.dispose();
+      if ('value' in result) {
+        this.vm.setProp(this.vm.global, name, result.value);
+        result.value.dispose();
+      }
       return;
     }
     const jsonString = JSON.stringify(value);
@@ -86,10 +88,12 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       throw new Error(`Failed to parse JSON for global ${name}: ${errorMsg}`);
     }
 
-    // Set the parsed value as global property
-    this.vm.setProp(globalHandle, name, result.value);
-    // Note: We must dispose result.value - QuickJS increments reference count internally
-    result.value.dispose();
+    if ('value' in result) {
+      // Set the parsed value as global property
+      this.vm.setProp(globalHandle, name, result.value);
+      // Note: We must dispose result.value - QuickJS increments reference count internally
+      result.value.dispose();
+    }
   }
 
   async eval(code: string, options?: EvalOptions): Promise<unknown> {
@@ -154,7 +158,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       }
 
       // result.valueが存在することを確認
-      if (!result.value) {
+      if (!('value' in result) || !result.value) {
         throw new Error('No result value from eval');
       }
 
@@ -167,13 +171,15 @@ export class QuickJSExecutionContext implements VMExecutionContext {
 
         if ('error' in jobResult && jobResult.error) {
           // Error executing jobs
-          result.value.dispose();
+          if ('value' in result) {
+            result.value.dispose();
+          }
           jobResult.error.dispose();
           jobResult.dispose();
           throw new Error('Error executing pending jobs');
         }
 
-        const jobCount = jobResult.value;
+        const jobCount = 'value' in jobResult ? jobResult.value : 0;
         jobResult.dispose();
 
         if (jobCount === 0) {
@@ -190,12 +196,18 @@ export class QuickJSExecutionContext implements VMExecutionContext {
 
       // Try to dump the result after executing jobs
       try {
-        const value = this.vm.dump(result.value);
-        result.value.dispose();
-        return value;
+        if ('value' in result) {
+          const value = this.vm.dump(result.value);
+          result.value.dispose();
+          return value;
+        } else {
+          throw new Error('No value in result');
+        }
       } catch (dumpError) {
         // If dump still fails, handle the error
-        result.value.dispose();
+        if ('value' in result) {
+          result.value.dispose();
+        }
 
         if (dumpError instanceof Error && dumpError.message.includes('Lifetime not alive')) {
           throw new Error(
@@ -223,9 +235,9 @@ export class QuickJSExecutionContext implements VMExecutionContext {
           }
         `;
         const result = this.vm.evalCode(clearCode);
-        if (result.error) {
+        if ('error' in result && result.error) {
           result.error.dispose();
-        } else {
+        } else if ('value' in result && result.value) {
           result.value.dispose();
         }
       } catch {
@@ -259,8 +271,8 @@ export class QuickJSExecutionContext implements VMExecutionContext {
     }
 
     // Clear references
-    // @ts-expect-error - Intentionally clearing reference to prevent memory leaks
-    this.vm = undefined;
+    // Intentionally clearing reference to prevent memory leaks
+    (this as any).vm = undefined;
   }
 }
 
@@ -326,9 +338,9 @@ export class QuickJSEngine implements VMEngine {
       `;
 
       const result = vm.evalCode(consoleCode);
-      if (result.error) {
+      if ('error' in result && result.error) {
         result.error.dispose();
-      } else {
+      } else if ('value' in result && result.value) {
         // Dispose the result value to prevent memory leak
         result.value.dispose();
       }
