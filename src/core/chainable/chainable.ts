@@ -1318,10 +1318,11 @@ export class ChainableWrapper {
    */
   zip(others: unknown[][] | unknown[]): ChainableWrapper {
     // Handle single array argument (SmartDollar style)
-    const otherArrays = Array.isArray(others) && others.length > 0 && !Array.isArray(others[0]) 
-      ? [others] 
-      : others as unknown[][];
-      
+    const otherArrays =
+      Array.isArray(others) && others.length > 0 && !Array.isArray(others[0])
+        ? [others]
+        : (others as unknown[][]);
+
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper([this.data, ...otherArrays.map(arr => arr[0] || null)]);
     }
@@ -1344,7 +1345,10 @@ export class ChainableWrapper {
   /**
    * Zip with custom combining function
    */
-  zipWith(other: unknown[], fn: (a: unknown, b: unknown, index: number) => unknown): ChainableWrapper {
+  zipWith(
+    other: unknown[],
+    fn: (a: unknown, b: unknown, index: number) => unknown
+  ): ChainableWrapper {
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper([]);
     }
@@ -1575,12 +1579,15 @@ export class ChainableWrapper {
   /**
    * Generate array from a seed value
    */
-  unfold(fn: (seed: unknown) => [unknown, unknown] | null | undefined, seed?: unknown): ChainableWrapper {
+  unfold(
+    fn: (seed: unknown) => [unknown, unknown] | null | undefined,
+    seed?: unknown
+  ): ChainableWrapper {
     const actualSeed = seed !== undefined ? seed : this.data;
     const results: unknown[] = [];
     let current = actualSeed;
     let next = fn(current);
-    
+
     while (next !== null && next !== undefined) {
       if (Array.isArray(next) && next.length === 2) {
         results.push(next[0]);
@@ -1590,7 +1597,7 @@ export class ChainableWrapper {
         break;
       }
     }
-    
+
     return new ChainableWrapper(results);
   }
 
@@ -1601,7 +1608,7 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data) || this.data.length === 0) {
       return new ChainableWrapper([]);
     }
-    
+
     const result: unknown[] = [];
     for (let i = 0; i < times; i++) {
       result.push(...this.data);
@@ -1616,7 +1623,7 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper([]);
     }
-    
+
     const result: unknown[] = [];
     for (let i = 0; i < this.data.length; i++) {
       if (i > 0 && separator !== undefined) {
@@ -1627,7 +1634,7 @@ export class ChainableWrapper {
         }
       }
       if (Array.isArray(this.data[i])) {
-        result.push(...this.data[i] as unknown[]);
+        result.push(...(this.data[i] as unknown[]));
       } else {
         result.push(this.data[i]);
       }
@@ -1642,11 +1649,11 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data) || this.data.length === 0) {
       return new ChainableWrapper([]);
     }
-    
+
     const matrix = this.data;
-    const maxLength = Math.max(...matrix.map(row => Array.isArray(row) ? row.length : 0));
+    const maxLength = Math.max(...matrix.map(row => (Array.isArray(row) ? row.length : 0)));
     const result: unknown[][] = [];
-    
+
     for (let col = 0; col < maxLength; col++) {
       const column: unknown[] = [];
       for (let row = 0; row < matrix.length; row++) {
@@ -1656,7 +1663,7 @@ export class ChainableWrapper {
       }
       result.push(column);
     }
-    
+
     return new ChainableWrapper(result);
   }
 
@@ -1696,11 +1703,11 @@ export class ChainableWrapper {
   memoize(fn: (value: unknown) => unknown, keyFn?: (value: unknown) => string): ChainableWrapper {
     const cache = new Map<string, unknown>();
     const key = keyFn ? keyFn(this.data) : JSON.stringify(this.data);
-    
+
     if (cache.has(key)) {
       return new ChainableWrapper(cache.get(key));
     }
-    
+
     const result = fn(this.data);
     cache.set(key, result);
     return new ChainableWrapper(result);
@@ -1713,9 +1720,11 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper(Array(predicates.length + 1).fill([]));
     }
-    
-    const partitions: unknown[][] = Array(predicates.length + 1).fill(null).map(() => []);
-    
+
+    const partitions: unknown[][] = Array(predicates.length + 1)
+      .fill(null)
+      .map(() => []);
+
     for (let i = 0; i < this.data.length; i++) {
       let matched = false;
       for (let j = 0; j < predicates.length; j++) {
@@ -1729,7 +1738,7 @@ export class ChainableWrapper {
         partitions[predicates.length].push(this.data[i]);
       }
     }
-    
+
     return new ChainableWrapper(partitions);
   }
 
@@ -1793,7 +1802,6 @@ export class ChainableWrapper {
     return new ChainableWrapper([element]);
   }
 
-
   /**
    * Sliding window over array (alias for windowed)
    */
@@ -1808,7 +1816,7 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper([]);
     }
-    
+
     const enumerated: [number, unknown][] = [];
     for (let i = 0; i < this.data.length; i++) {
       enumerated.push([i, this.data[i]]);
@@ -1823,7 +1831,7 @@ export class ChainableWrapper {
     if (!Array.isArray(this.data)) {
       return new ChainableWrapper({});
     }
-    
+
     const groups: Record<string, { keys: unknown[]; items: unknown[] }> = {};
     for (let i = 0; i < this.data.length; i++) {
       const keys = keyFns.map(fn => fn(this.data[i], i));

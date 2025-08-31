@@ -30,7 +30,7 @@ interface MethodCategory {
     <div class="container">
       <div class="prose">
         <h1>Lodash Methods</h1>
-        <p>jsq includes the complete lodash utility library, accessible through the underscore (<code>_</code>) namespace. This provides 60+ additional methods for data manipulation.</p>
+        <p>jsq includes the complete lodash utility library, accessible through the underscore (<code>_</code>) namespace. This provides 120+ additional methods for data manipulation.</p>
         
         <div class="usage-note">
           <h2>Static vs Chained Usage</h2>
@@ -269,7 +269,7 @@ export class LodashMethodsComponent implements OnInit {
 _.nth(['a', 'b', 'c', 'd'], -2)  // 'c'`,
           playground: {
             data: ["first", "second", "third", "fourth", "fifth"],
-            expression: '({ positive: _.nth($, 2), negative: _.nth($, -2) })'
+            expression: '_.nth($, 2)'
           }
         },
         {
@@ -281,7 +281,7 @@ const pulled = _.pullAt(arr, [1, 3]);
 // arr: ['a', 'c'], pulled: ['b', 'd']`,
           playground: {
             data: ["zero", "one", "two", "three", "four"],
-            expression: '(() => { const arr = [...$]; const pulled = _.pullAt(arr, [1, 3]); return { remaining: arr, pulled }; })()'
+            expression: 'const arr = [...$]; _.pullAt(arr, [1, 3])'
           }
         },
         {
@@ -370,6 +370,138 @@ const pulled = _.pullAt(arr, [1, 3]);
           playground: {
             data: [[1, 4], [2, 5], [3, 6]],
             expression: '_.unzipWith($, (...args) => args.reduce((sum, n) => sum + n, 0))'
+          }
+        },
+        {
+          name: '_.find(collection, predicate)',
+          description: 'Finds the first element matching the predicate.',
+          syntax: '_.find(collection, predicate)',
+          example: `_.find([1, 2, 3, 4], n => n > 2)
+// Output: 3`,
+          playground: {
+            data: [{id: 1, name: "Alice"}, {id: 2, name: "Bob"}, {id: 3, name: "Charlie"}],
+            expression: '_.find($, user => user.name.startsWith("B"))'
+          }
+        },
+        {
+          name: '_.findIndex(array, predicate)',
+          description: 'Returns index of first element matching predicate.',
+          syntax: '_.findIndex(array, predicate)',
+          example: `_.findIndex([1, 2, 3, 4], n => n > 2)
+// Output: 2`,
+          playground: {
+            data: ["apple", "banana", "cherry", "date"],
+            expression: '_.findIndex($, fruit => fruit.length > 5)'
+          }
+        },
+        {
+          name: '_.where(collection, source)',
+          description: 'Filters by exact property matches.',
+          syntax: '_.where(collection, source)',
+          example: `_.where(users, {active: true, age: 25})
+// Returns all users with active=true AND age=25`,
+          playground: {
+            data: [{name: "Alice", role: "admin", active: true}, {name: "Bob", role: "user", active: true}, {name: "Charlie", role: "admin", active: false}],
+            expression: '_.where($, {role: "admin", active: true})'
+          }
+        },
+        {
+          name: '_.drop(array, n) / _.skip(array, n)',
+          description: 'Drops first n elements from array.',
+          syntax: '_.drop(array, n)',
+          example: `_.drop([1, 2, 3, 4, 5], 2)
+// Output: [3, 4, 5]`,
+          playground: {
+            data: ["skip", "skip", "keep", "keep", "keep"],
+            expression: '_.drop($, 2)'
+          }
+        },
+        {
+          name: '_.dropWhile(array, predicate)',
+          description: 'Drops elements while predicate returns true.',
+          syntax: '_.dropWhile(array, predicate)',
+          example: `_.dropWhile([1, 2, 3, 4, 5], n => n < 3)
+// Output: [3, 4, 5]`,
+          playground: {
+            data: [{score: 50}, {score: 60}, {score: 80}, {score: 90}],
+            expression: '_.dropWhile($, item => item.score < 70)'
+          }
+        },
+        {
+          name: '_.uniq(array)',
+          description: 'Removes duplicate values from array.',
+          syntax: '_.uniq(array)',
+          example: `_.uniq([1, 2, 1, 3, 2, 4])
+// Output: [1, 2, 3, 4]`,
+          playground: {
+            data: ["apple", "banana", "apple", "cherry", "banana", "date"],
+            expression: '_.uniq($)'
+          }
+        },
+        {
+          name: '_.sample(collection)',
+          description: 'Gets a random element from collection.',
+          syntax: '_.sample(collection)',
+          example: `_.sample([1, 2, 3, 4, 5])
+// Output: (random element)`,
+          playground: {
+            data: ["🍎", "🍊", "🍋", "🍌", "🍉", "🍇"],
+            expression: '_.sample($)'
+          }
+        },
+        {
+          name: '_.sampleSize(collection, n)',
+          description: 'Gets n random elements from collection.',
+          syntax: '_.sampleSize(collection, n)',
+          example: `_.sampleSize([1, 2, 3, 4, 5], 3)
+// Output: (3 random elements)`,
+          playground: {
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            expression: '_.sampleSize($, 3)'
+          }
+        },
+        {
+          name: '_.flatten(array)',
+          description: 'Flattens array one level deep.',
+          syntax: '_.flatten(array)',
+          example: `_.flatten([[1, 2], [3, [4]], 5])
+// Output: [1, 2, 3, [4], 5]`,
+          playground: {
+            data: [[1, 2], [3, 4], [[5, 6]]],
+            expression: '_.flatten($)'
+          }
+        },
+        {
+          name: '_.flattenDeep(array)',
+          description: 'Recursively flattens array.',
+          syntax: '_.flattenDeep(array)',
+          example: `_.flattenDeep([1, [2, [3, [4]], 5]])
+// Output: [1, 2, 3, 4, 5]`,
+          playground: {
+            data: [1, [2, [3, [4]], 5], [[6]]],
+            expression: '_.flattenDeep($)'
+          }
+        },
+        {
+          name: '_.chunk(array, size)',
+          description: 'Splits array into groups of size.',
+          syntax: '_.chunk(array, size)',
+          example: `_.chunk([1, 2, 3, 4, 5, 6, 7], 3)
+// Output: [[1, 2, 3], [4, 5, 6], [7]]`,
+          playground: {
+            data: ["a", "b", "c", "d", "e", "f", "g", "h"],
+            expression: '_.chunk($, 3)'
+          }
+        },
+        {
+          name: '_.reverse(array)',
+          description: 'Reverses array (mutates original).',
+          syntax: '_.reverse(array)',
+          example: `_.reverse([1, 2, 3, 4])
+// Output: [4, 3, 2, 1]`,
+          playground: {
+            data: ["first", "second", "third", "fourth"],
+            expression: '_.reverse([...$])'
           }
         }
       ]
@@ -610,6 +742,28 @@ _.pullAllBy(arr, [{x: 1}, {x: 3}], 'x');
             data: [[{x: 1, y: 2}, {x: 2, y: 1}], [{x: 1, y: 3}, {x: 3, y: 2}]],
             expression: '_.xorWith(...$, (a, b) => a.x === b.x)'
           }
+        },
+        {
+          name: '_.countBy(collection, iteratee)',
+          description: 'Creates object of counts by iteratee result.',
+          syntax: '_.countBy(collection, iteratee)',
+          example: `_.countBy([4.3, 6.1, 6.4], Math.floor)
+// Output: {4: 1, 6: 2}`,
+          playground: {
+            data: ["apple", "banana", "apricot", "blueberry", "avocado"],
+            expression: '_.countBy($, fruit => fruit[0])'
+          }
+        },
+        {
+          name: '_.keyBy(collection, iteratee)',
+          description: 'Creates object keyed by iteratee result.',
+          syntax: '_.keyBy(collection, iteratee)',
+          example: `_.keyBy([{id: 'a1', name: 'Alice'}], 'id')
+// Output: {'a1': {id: 'a1', name: 'Alice'}}`,
+          playground: {
+            data: [{id: 1, name: "Alice"}, {id: 2, name: "Bob"}, {id: 3, name: "Charlie"}],
+            expression: '_.keyBy($, "id")'
+          }
         }
       ]
     },
@@ -701,6 +855,85 @@ _.add(0.1, 0.2)  // 0.30000000000000004`,
             data: [7, 8],
             expression: '_.multiply(...$)'
           }
+        },
+        {
+          name: '_.divide(dividend, divisor)',
+          description: 'Divides two numbers.',
+          syntax: '_.divide(dividend, divisor)',
+          example: `_.divide(6, 4)  // 1.5`,
+          playground: {
+            data: [100, 25],
+            expression: '_.divide(...$)'
+          }
+        },
+        {
+          name: '_.ceil(number, precision)',
+          description: 'Rounds up to precision.',
+          syntax: '_.ceil(number, precision)',
+          example: `_.ceil(4.006)     // 5
+_.ceil(6.004, 2)  // 6.01
+_.ceil(6040, -2)  // 6100`,
+          playground: {
+            data: 4.12345,
+            expression: '({ default: _.ceil($), precision2: _.ceil($, 2), precisionNeg1: _.ceil($, -1) })'
+          }
+        },
+        {
+          name: '_.floor(number, precision)',
+          description: 'Rounds down to precision.',
+          syntax: '_.floor(number, precision)',
+          example: `_.floor(4.006)     // 4
+_.floor(0.046, 2)  // 0.04
+_.floor(4060, -2)  // 4000`,
+          playground: {
+            data: 4.98765,
+            expression: '({ default: _.floor($), precision2: _.floor($, 2), precisionNeg1: _.floor($, -1) })'
+          }
+        },
+        {
+          name: '_.round(number, precision)',
+          description: 'Rounds to precision.',
+          syntax: '_.round(number, precision)',
+          example: `_.round(4.006)     // 4
+_.round(4.006, 2)  // 4.01
+_.round(4060, -2)  // 4100`,
+          playground: {
+            data: 4.56789,
+            expression: '({ default: _.round($), precision2: _.round($, 2), precisionNeg1: _.round($, -1) })'
+          }
+        },
+        {
+          name: '_.min(array)',
+          description: 'Gets minimum value from array.',
+          syntax: '_.min(array)',
+          example: `_.min([4, 2, 8, 6])  // 2
+_.min([])            // undefined`,
+          playground: {
+            data: [10, 5, 40, 3, 25],
+            expression: '_.min($)'
+          }
+        },
+        {
+          name: '_.max(array)',
+          description: 'Gets maximum value from array.',
+          syntax: '_.max(array)',
+          example: `_.max([4, 2, 8, 6])  // 8
+_.max([])            // undefined`,
+          playground: {
+            data: [10, 5, 40, 3, 25],
+            expression: '_.max($)'
+          }
+        },
+        {
+          name: '_.minBy(array, iteratee)',
+          description: 'Gets element with minimum iteratee value.',
+          syntax: '_.minBy(array, iteratee)',
+          example: `_.minBy([{n: 3}, {n: 1}, {n: 4}], 'n')
+// Output: {n: 1}`,
+          playground: {
+            data: [{name: "Alice", score: 85}, {name: "Bob", score: 92}, {name: "Charlie", score: 78}],
+            expression: '_.minBy($, "score")'
+          }
         }
       ]
     },
@@ -757,7 +990,7 @@ _.set(obj, 'a.b.d', 4);
 // obj is now {a: {b: {c: 3, d: 4}}}`,
           playground: {
             data: {user: {name: "Alice"}},
-            expression: '(() => { const obj = _.cloneDeep($); _.set(obj, "user.profile.age", 25); return obj; })()'
+            expression: '_.set($, "user.profile.age", 25); $'
           }
         },
         {
@@ -851,7 +1084,7 @@ _.assignIn({c: 3}, new Foo)
 // Output: {a: 3}`,
           playground: {
             data: {count: 10},
-            expression: '_.assignWith({}, $, {count: 5}, (objValue, srcValue) => _.isUndefined(objValue) ? srcValue : objValue + srcValue)'
+            expression: '_.assignWith({}, $, {count: 5}, (objValue, srcValue) => objValue === undefined ? srcValue : objValue + srcValue)'
           }
         },
         {
@@ -875,6 +1108,72 @@ _.assignIn({c: 3}, new Foo)
           playground: {
             data: {user: {name: "Alice", email: "alice@example.com"}, settings: {theme: "dark"}},
             expression: '_.at($, ["user.name", "settings.theme", "settings.language"])'
+          }
+        },
+        {
+          name: '_.keys(object)',
+          description: 'Gets object keys.',
+          syntax: '_.keys(object)',
+          example: `_.keys({a: 1, b: 2, c: 3})
+// Output: ['a', 'b', 'c']`,
+          playground: {
+            data: {name: "Alice", age: 25, city: "NYC"},
+            expression: '_.keys($)'
+          }
+        },
+        {
+          name: '_.values(object)',
+          description: 'Gets object values.',
+          syntax: '_.values(object)',
+          example: `_.values({a: 1, b: 2, c: 3})
+// Output: [1, 2, 3]`,
+          playground: {
+            data: {name: "Alice", age: 25, city: "NYC"},
+            expression: '_.values($)'
+          }
+        },
+        {
+          name: '_.entries(object)',
+          description: 'Gets key-value pairs (alias for toPairs).',
+          syntax: '_.entries(object)',
+          example: `_.entries({a: 1, b: 2})
+// Output: [['a', 1], ['b', 2]]`,
+          playground: {
+            data: {x: 10, y: 20, z: 30},
+            expression: '_.entries($)'
+          }
+        },
+        {
+          name: '_.fromPairs(pairs)',
+          description: 'Creates object from key-value pairs.',
+          syntax: '_.fromPairs(pairs)',
+          example: `_.fromPairs([['a', 1], ['b', 2]])
+// Output: {a: 1, b: 2}`,
+          playground: {
+            data: [["name", "Alice"], ["age", 25], ["city", "NYC"]],
+            expression: '_.fromPairs($)'
+          }
+        },
+        {
+          name: '_.invert(object)',
+          description: 'Swaps keys and values.',
+          syntax: '_.invert(object)',
+          example: `_.invert({a: 1, b: 2, c: 1})
+// Output: {1: 'c', 2: 'b'}`,
+          playground: {
+            data: {alice: "admin", bob: "user", charlie: "admin"},
+            expression: '_.invert($)'
+          }
+        },
+        {
+          name: '_.merge(object, ...sources)',
+          description: 'Deep merges objects.',
+          syntax: '_.merge(object, ...sources)',
+          example: `_.merge({a: {b: 1}}, {a: {c: 2}})
+// Output: {a: {b: 1, c: 2}}`,
+          playground: {
+            data: {user: {name: "Alice", preferences: {theme: "dark"}}},
+            expression: '_.merge({}, $, {user: {preferences: {notifications: true}}})'
           }
         }
       ]
@@ -1042,6 +1341,39 @@ _.deburr('João')     // 'Joao'`,
             data: "Héllö Wörld, çà và?",
             expression: '_.deburr($)'
           }
+        },
+        {
+          name: '_.upperFirst(string)',
+          description: 'Capitalizes first character.',
+          syntax: '_.upperFirst(string)',
+          example: `_.upperFirst('fred')   // 'Fred'
+_.upperFirst('FRED')   // 'FRED'`,
+          playground: {
+            data: "hello world",
+            expression: '_.upperFirst($)'
+          }
+        },
+        {
+          name: '_.lowerFirst(string)',
+          description: 'Lowercases first character.',
+          syntax: '_.lowerFirst(string)',
+          example: `_.lowerFirst('Fred')   // 'fred'
+_.lowerFirst('FRED')   // 'fRED'`,
+          playground: {
+            data: "Hello World",
+            expression: '_.lowerFirst($)'
+          }
+        },
+        {
+          name: '_.capitalize(string)',
+          description: 'Capitalizes first character and lowercases rest.',
+          syntax: '_.capitalize(string)',
+          example: `_.capitalize('FRED')   // 'Fred'
+_.capitalize('fReD')   // 'Fred'`,
+          playground: {
+            data: "hELLO wORLD",
+            expression: '_.capitalize($)'
+          }
         }
       ]
     },
@@ -1071,6 +1403,114 @@ _.range(0, 10, 2)    // [0, 2, 4, 6, 8]`,
           playground: {
             data: null,
             expression: '_.range(1, 11)'
+          }
+        },
+        {
+          name: '_.size(collection)',
+          description: 'Gets size of collection.',
+          syntax: '_.size(collection)',
+          example: `_.size([1, 2, 3])        // 3
+_.size({a: 1, b: 2})     // 2
+_.size('hello')          // 5`,
+          playground: {
+            data: {a: 1, b: 2, c: 3, d: 4},
+            expression: '_.size($)'
+          }
+        },
+        {
+          name: '_.isEmpty(value)',
+          description: 'Checks if value is empty.',
+          syntax: '_.isEmpty(value)',
+          example: `_.isEmpty([])        // true
+_.isEmpty({})        // true
+_.isEmpty('')        // true
+_.isEmpty([1, 2])    // false`,
+          playground: {
+            data: [],
+            expression: '({ empty: _.isEmpty($), notEmpty: _.isEmpty([1, 2, 3]) })'
+          }
+        },
+        {
+          name: '_.identity(value)',
+          description: 'Returns the value unchanged.',
+          syntax: '_.identity(value)',
+          example: `_.identity(42)       // 42
+_.identity({a: 1})   // {a: 1}`,
+          playground: {
+            data: "Hello World",
+            expression: '_.identity($)'
+          }
+        },
+        {
+          name: '_.constant(value)',
+          description: 'Returns a function that always returns the value.',
+          syntax: '_.constant(value)',
+          example: `const always42 = _.constant(42);
+always42()  // 42
+always42()  // 42`,
+          playground: {
+            data: "fixed value",
+            expression: 'const fn = _.constant($); ({ first: fn(), second: fn(), third: fn() })'
+          }
+        },
+        {
+          name: '_.times(n, iteratee)',
+          description: 'Invokes iteratee n times.',
+          syntax: '_.times(n, iteratee)',
+          example: `_.times(3, () => Math.random())
+// [0.123..., 0.456..., 0.789...]
+_.times(5, i => i)  // [0, 1, 2, 3, 4]`,
+          playground: {
+            data: 5,
+            expression: '_.times($, i => i * i)'
+          }
+        },
+        {
+          name: '_.clamp(number, lower, upper)',
+          description: 'Clamps number within bounds.',
+          syntax: '_.clamp(number, lower, upper)',
+          example: `_.clamp(-10, -5, 5)  // -5
+_.clamp(10, -5, 5)   // 5
+_.clamp(3, -5, 5)    // 3`,
+          playground: {
+            data: [15, 0, 10],
+            expression: '_.clamp(...$)'
+          }
+        },
+        {
+          name: '_.random(lower, upper, floating)',
+          description: 'Generates random number.',
+          syntax: '_.random(lower, upper, floating)',
+          example: `_.random(0, 5)        // integer between 0-5
+_.random(5)           // integer between 0-5
+_.random(1.2, 5.2)    // float between 1.2-5.2`,
+          playground: {
+            data: null,
+            expression: '({ int: _.random(1, 10), float: _.random(1.0, 10.0, true) })'
+          }
+        },
+        {
+          name: '_.chain(value)',
+          description: 'Creates lodash wrapper for chaining.',
+          syntax: '_.chain(value)',
+          example: `_.chain([1, 2, 3])
+  .map(n => n * 2)
+  .filter(n => n > 2)
+  .value()  // [4, 6]`,
+          playground: {
+            data: [1, 2, 3, 4, 5],
+            expression: '_.chain($).map(n => n * n).filter(n => n > 10).value()'
+          }
+        },
+        {
+          name: '_.value() / _.valueOf()',
+          description: 'Extracts wrapped value.',
+          syntax: '_.value() / _.valueOf()',
+          example: `_([1, 2, 3]).map(n => n * 2).value()
+// [2, 4, 6]`,
+          playground: {
+            data: [1, 2, 3],
+            expression: '_($).map(n => n * 2).value()'
           }
         }
       ]

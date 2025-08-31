@@ -103,7 +103,12 @@ declare global {
     .input-section {
       textarea {
         min-height: 180px;
+        max-height: 300px;
       }
+    }
+
+    .output {
+      max-height: 300px;
     }
 
     label {

@@ -11,6 +11,17 @@ const methodsCode = methodsMatch[1];
 const createMethods = new Function(`return ${methodsCode}`);
 const methods = createMethods();
 
+// Extend Lodash interface with method declarations
+export interface Lodash {
+  assignIn(...sources: unknown[]): Lodash;
+  assignWith(...args: unknown[]): Lodash;
+  pick(...keys: string[]): Lodash;
+  keys(): Lodash;
+  values(): Lodash;
+  entries(): Lodash;
+  value(): unknown;
+}
+
 export class Lodash {
   _value: unknown;
   __isLodash: boolean;
@@ -81,9 +92,9 @@ function createLodashInstance(value: unknown): Lodash | undefined {
   if (value === null || value === undefined) {
     return undefined;
   }
-  
+
   const lodash = new Lodash(value);
-  
+
   // Create proxy to handle property access
   return new Proxy(lodash, {
     get(target, prop) {
@@ -95,7 +106,7 @@ function createLodashInstance(value: unknown): Lodash | undefined {
         }
         return value;
       }
-      
+
       // Handle numeric indices for arrays
       if (typeof prop === 'string' && !Number.isNaN(Number(prop))) {
         const index = Number(prop);
@@ -103,45 +114,61 @@ function createLodashInstance(value: unknown): Lodash | undefined {
           return target._value[index];
         }
       }
-      
+
       // Check wrapped value properties
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+      if (
+        target._value !== null &&
+        target._value !== undefined &&
+        typeof target._value === 'object'
+      ) {
         const obj = target._value as Record<string, unknown>;
         if (prop in obj) {
           const valueFromData = obj[prop as string];
-          
+
           // Return the property value, wrapping it if it's an object
-          if (valueFromData !== null && valueFromData !== undefined && typeof valueFromData === 'object') {
+          if (
+            valueFromData !== null &&
+            valueFromData !== undefined &&
+            typeof valueFromData === 'object'
+          ) {
             return createLodashInstance(valueFromData);
           }
           return valueFromData;
         }
       }
-      
+
       return undefined;
     },
-    
+
     set(target, prop, value) {
       // Allow setting properties on the wrapped value
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+      if (
+        target._value !== null &&
+        target._value !== undefined &&
+        typeof target._value === 'object'
+      ) {
         (target._value as Record<string, unknown>)[prop as string] = value;
         return true;
       }
       return false;
     },
-    
+
     has(target, prop) {
       if (prop in target) return true;
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+      if (
+        target._value !== null &&
+        target._value !== undefined &&
+        typeof target._value === 'object'
+      ) {
         return prop in (target._value as object);
       }
       return false;
-    }
+    },
   }) as Lodash;
 }
 
-// Export the lodash function
-export function _(...args: unknown[]): Lodash | undefined {
+// Create the lodash function
+function _(...args: unknown[]): Lodash | undefined {
   if (args.length === 0) {
     return undefined;
   }
@@ -242,6 +269,8 @@ export interface LodashStatic {
   invert(object: object): { [key: string]: string };
   merge<T>(object: T, ...sources: Partial<T>[]): T;
   defaults<T>(object: T, ...sources: Partial<T>[]): T;
+  assignIn<T>(object: T, ...sources: Partial<T>[]): T;
+  assignWith<T>(object: T, ...args: unknown[]): T;
 
   // String methods
   camelCase(string: string): string;
@@ -264,5 +293,9 @@ export interface LodashStatic {
   random(lower: number, upper?: number, floating?: boolean): number;
 }
 
+// Cast _ to LodashStatic
+const _typed = _ as unknown as LodashStatic;
+
 // Export _ as LodashStatic
-export const lodash: LodashStatic = _ as LodashStatic;
+export const lodash: LodashStatic = _typed;
+export { _typed as _ };

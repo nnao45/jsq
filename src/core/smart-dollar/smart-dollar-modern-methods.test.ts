@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
 import { createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
@@ -34,10 +34,7 @@ describe('Smart Dollar Modern Methods', () => {
 
       it('should support foldRight', async () => {
         const data = ['a', 'b', 'c', 'd'];
-        const result = await evaluator.evaluate(
-          '$.foldRight("", (x, acc) => acc + x)',
-          data
-        );
+        const result = await evaluator.evaluate('$.foldRight("", (x, acc) => acc + x)', data);
         expect(result).toBe('dcba');
       });
     });
@@ -51,10 +48,7 @@ describe('Smart Dollar Modern Methods', () => {
 
       it('should support scanRight', async () => {
         const data = [1, 2, 3, 4];
-        const result = await evaluator.evaluate(
-          '$.scanRight((x, acc) => x + acc, 0)',
-          data
-        );
+        const result = await evaluator.evaluate('$.scanRight((x, acc) => x + acc, 0)', data);
         expect(result).toEqual([10, 9, 7, 4, 0]);
       });
     });
@@ -64,22 +58,30 @@ describe('Smart Dollar Modern Methods', () => {
         const data = [1, 2, 3];
         // Store the other array in a separate evaluation or modify the test approach
         const result = await evaluator.evaluate('$.zip(["a", "b", "c", "d"])', data);
-        expect(result).toEqual([[1, 'a'], [2, 'b'], [3, 'c']]);
+        expect(result).toEqual([
+          [1, 'a'],
+          [2, 'b'],
+          [3, 'c'],
+        ]);
       });
 
       it('should support zipWith custom function', async () => {
         const data = [1, 2, 3];
-        const result = await evaluator.evaluate(
-          '$.zipWith([10, 20, 30], (a, b) => a + b)',
-          data
-        );
+        const result = await evaluator.evaluate('$.zipWith([10, 20, 30], (a, b) => a + b)', data);
         expect(result).toEqual([11, 22, 33]);
       });
 
       it('should support unzip', async () => {
-        const data = [[1, 'a'], [2, 'b'], [3, 'c']];
+        const data = [
+          [1, 'a'],
+          [2, 'b'],
+          [3, 'c'],
+        ];
         const result = await evaluator.evaluate('$.unzip()', data);
-        expect(result).toEqual([[1, 2, 3], ['a', 'b', 'c']]);
+        expect(result).toEqual([
+          [1, 2, 3],
+          ['a', 'b', 'c'],
+        ]);
       });
     });
 
@@ -95,13 +97,21 @@ describe('Smart Dollar Modern Methods', () => {
       it('should create sliding windows', async () => {
         const data = [1, 2, 3, 4, 5];
         const result = await evaluator.evaluate('$.sliding(3)', data);
-        expect(result).toEqual([[1, 2, 3], [2, 3, 4], [3, 4, 5]]);
+        expect(result).toEqual([
+          [1, 2, 3],
+          [2, 3, 4],
+          [3, 4, 5],
+        ]);
       });
 
       it('should support custom step', async () => {
         const data = [1, 2, 3, 4, 5, 6];
         const result = await evaluator.evaluate('$.sliding(2, 2)', data);
-        expect(result).toEqual([[1, 2], [3, 4], [5, 6]]);
+        expect(result).toEqual([
+          [1, 2],
+          [3, 4],
+          [5, 6],
+        ]);
       });
     });
 
@@ -109,7 +119,11 @@ describe('Smart Dollar Modern Methods', () => {
       it('should add indices to elements', async () => {
         const data = ['a', 'b', 'c'];
         const result = await evaluator.evaluate('$.enumerate()', data);
-        expect(result).toEqual([[0, 'a'], [1, 'b'], [2, 'c']]);
+        expect(result).toEqual([
+          [0, 'a'],
+          [1, 'b'],
+          [2, 'c'],
+        ]);
       });
     });
   });
@@ -159,13 +173,19 @@ describe('Smart Dollar Modern Methods', () => {
       it('should split with span', async () => {
         const data = [1, 2, 3, 4, 5];
         const result = await evaluator.evaluate('$.span(x => x < 4)', data);
-        expect(result).toEqual([[1, 2, 3], [4, 5]]);
+        expect(result).toEqual([
+          [1, 2, 3],
+          [4, 5],
+        ]);
       });
 
       it('should split with breakAt', async () => {
         const data = [1, 2, 3, 4, 5];
         const result = await evaluator.evaluate('$.breakAt(x => x >= 4)', data);
-        expect(result).toEqual([[1, 2, 3], [4, 5]]);
+        expect(result).toEqual([
+          [1, 2, 3],
+          [4, 5],
+        ]);
       });
     });
 
@@ -178,10 +198,7 @@ describe('Smart Dollar Modern Methods', () => {
 
     describe('unfold', () => {
       it('should generate from seed', async () => {
-        const result = await evaluator.evaluate(
-          '$().unfold(x => x > 0 ? [x, x - 1] : null)',
-          10
-        );
+        const result = await evaluator.evaluate('$().unfold(x => x > 0 ? [x, x - 1] : null)', 10);
         expect(result).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
       });
     });
@@ -198,7 +215,11 @@ describe('Smart Dollar Modern Methods', () => {
 
     describe('intercalate', () => {
       it('should join arrays with separator', async () => {
-        const data = [[1, 2], [3, 4], [5, 6]];
+        const data = [
+          [1, 2],
+          [3, 4],
+          [5, 6],
+        ];
         const result = await evaluator.evaluate('$.intercalate(0)', data);
         expect(result).toEqual([1, 2, 0, 3, 4, 0, 5, 6]);
       });
@@ -206,9 +227,16 @@ describe('Smart Dollar Modern Methods', () => {
 
     describe('transpose', () => {
       it('should transpose matrix', async () => {
-        const data = [[1, 2, 3], [4, 5, 6]];
+        const data = [
+          [1, 2, 3],
+          [4, 5, 6],
+        ];
         const result = await evaluator.evaluate('$.transpose()', data);
-        expect(result).toEqual([[1, 4], [2, 5], [3, 6]]);
+        expect(result).toEqual([
+          [1, 4],
+          [2, 5],
+          [3, 6],
+        ]);
       });
     });
 
@@ -254,7 +282,10 @@ describe('Smart Dollar Modern Methods', () => {
           '$.tee(arr => arr.filter(x => x % 2 === 0), arr => arr.map(x => x * 2))',
           data
         );
-        expect(result).toEqual([[2, 4], [2, 4, 6, 8, 10]]);
+        expect(result).toEqual([
+          [2, 4],
+          [2, 4, 6, 8, 10],
+        ]);
       });
     });
 
@@ -269,10 +300,7 @@ describe('Smart Dollar Modern Methods', () => {
     describe('benchmark', () => {
       it('should measure and transform', async () => {
         const data = [1, 2, 3, 4, 5];
-        const result = await evaluator.evaluate(
-          '$.benchmark(arr => arr.map(x => x * 2))',
-          data
-        );
+        const result = await evaluator.evaluate('$.benchmark(arr => arr.map(x => x * 2))', data);
         expect(result).toEqual([2, 4, 6, 8, 10]);
       });
     });
@@ -280,10 +308,7 @@ describe('Smart Dollar Modern Methods', () => {
     describe('memoize', () => {
       it('should memoize function results', async () => {
         const data = [5];
-        const result = await evaluator.evaluate(
-          '$.memoize(arr => arr[0] * arr[0])',
-          data
-        );
+        const result = await evaluator.evaluate('$.memoize(arr => arr[0] * arr[0])', data);
         expect(result).toBe(25);
       });
     });
@@ -296,9 +321,9 @@ describe('Smart Dollar Modern Methods', () => {
           data
         );
         expect(result).toEqual([
-          [2, 4, 6, 8],      // even numbers
-          [7, 9],            // odd numbers > 5
-          [1, 3, 5],         // rest
+          [2, 4, 6, 8], // even numbers
+          [7, 9], // odd numbers > 5
+          [1, 3, 5], // rest
         ]);
       });
     });

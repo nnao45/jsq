@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/lodash-methods/lodash-methods.component').then(m => m.LodashMethodsComponent)
   },
   {
+    path: 'js-operations',
+    loadComponent: () => import('./pages/js-operations/js-operations.component').then(m => m.JsOperationsComponent)
+  },
+  {
     path: '**',
     redirectTo: ''
   }
