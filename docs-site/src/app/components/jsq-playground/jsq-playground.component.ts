@@ -256,7 +256,7 @@ export class JsqPlaygroundComponent implements OnInit, OnDestroy {
         await this.jsq.initialize?.();
       } else {
         // Dynamic import for the browser bundle
-        const module = await import('/jsq/jsq-browser.js' as any);
+        const module = await import('./jsq-browser.js' as any);
         this.jsq = module.jsq || module.JSQ;
         await this.jsq.initialize?.();
       }

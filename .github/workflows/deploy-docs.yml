@@ -61,6 +61,8 @@ jobs:
         run: |
           mkdir -p docs-site/public
           cp examples/web-ui/dist/jsq-browser.js docs-site/public/
+          cp examples/web-ui/dist/*.jsq-browser.js docs-site/public/
+          cp examples/web-ui/dist/*.wasm docs-site/public/ || true
           cp examples/web-ui/dist/jsq-browser.js.map docs-site/public/ || true
           
       - name: Cache dependencies - docs-site
@@ -81,6 +83,8 @@ jobs:
         run: |
           if [ -f docs-site/public/jsq-browser.js ]; then
             cp docs-site/public/jsq-browser.js docs-site/dist/jsq-docs/browser/
+            cp docs-site/public/*.jsq-browser.js docs-site/dist/jsq-docs/browser/
+            cp docs-site/public/*.wasm docs-site/dist/jsq-docs/browser/ || true
             cp docs-site/public/jsq-browser.js.map docs-site/dist/jsq-docs/browser/ || true
           fi
           
