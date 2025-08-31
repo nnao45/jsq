@@ -642,6 +642,13 @@ export class ChainableWrapper {
   }
 
   /**
+   * Split array at first element that matches predicate
+   */
+  breakAt(predicate: (item: unknown, index?: number) => boolean): ChainableWrapper {
+    return this.span((item, index) => !predicate(item, index));
+  }
+
+  /**
    * Take elements until predicate is true (exclusive)
    */
   takeUntil(predicate: (item: unknown, index?: number) => boolean): ChainableWrapper {
@@ -733,6 +740,29 @@ export class ChainableWrapper {
       for (let i = 0; i < this.data.length; i++) {
         acc = fn(acc, this.data[i], i);
         result.push(acc);
+      }
+      return new ChainableWrapper(result);
+    }
+    return new ChainableWrapper([initial]);
+  }
+
+  /**
+   * Scan (alias for scanLeft)
+   */
+  scan<T>(fn: (acc: T, item: unknown, index?: number) => T, initial: T): ChainableWrapper {
+    return this.scanLeft(fn, initial);
+  }
+
+  /**
+   * Scan from right to left
+   */
+  scanRight<T>(fn: (item: unknown, acc: T, index?: number) => T, initial: T): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      const result: T[] = [initial];
+      let acc = initial;
+      for (let i = this.data.length - 1; i >= 0; i--) {
+        acc = fn(this.data[i], acc, i);
+        result.unshift(acc);
       }
       return new ChainableWrapper(result);
     }
@@ -908,6 +938,23 @@ export class ChainableWrapper {
   }
 
   // Functional programming methods
+
+  /**
+   * Standard reduce operation
+   */
+  reduce<T>(fn: (acc: T, item: unknown, index?: number) => T, initial: T): T {
+    if (Array.isArray(this.data)) {
+      return this.data.reduce((acc, item, index) => fn(acc, item, index), initial);
+    }
+    return initial;
+  }
+
+  /**
+   * Fold (alias for reduce)
+   */
+  fold<T>(fn: (acc: T, item: unknown, index?: number) => T, initial: T): T {
+    return this.reduce(fn, initial);
+  }
 
   /**
    * Left fold (reduce from left to right)
@@ -1269,24 +1316,70 @@ export class ChainableWrapper {
   /**
    * Zip multiple arrays together
    */
-  zip(others: unknown[][]): ChainableWrapper {
+  zip(others: unknown[][] | unknown[]): ChainableWrapper {
+    // Handle single array argument (SmartDollar style)
+    const otherArrays = Array.isArray(others) && others.length > 0 && !Array.isArray(others[0]) 
+      ? [others] 
+      : others as unknown[][];
+      
     if (!Array.isArray(this.data)) {
-      return new ChainableWrapper([this.data, ...others.map(arr => arr[0] || null)]);
+      return new ChainableWrapper([this.data, ...otherArrays.map(arr => arr[0] || null)]);
     }
 
     const thisArray = this.data as unknown[];
-    const minLength = Math.min(thisArray.length, ...others.map(arr => arr.length));
+    const minLength = Math.min(thisArray.length, ...otherArrays.map(arr => arr.length));
     const result: unknown[][] = [];
 
     for (let i = 0; i < minLength; i++) {
       const zipped = [thisArray[i]];
-      for (const other of others) {
+      for (const other of otherArrays) {
         zipped.push(other[i]);
       }
       result.push(zipped);
     }
 
     return new ChainableWrapper(result);
+  }
+
+  /**
+   * Zip with custom combining function
+   */
+  zipWith(other: unknown[], fn: (a: unknown, b: unknown, index: number) => unknown): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper([]);
+    }
+
+    const thisArray = this.data as unknown[];
+    const otherArray = Array.isArray(other) ? other : [];
+    const minLength = Math.min(thisArray.length, otherArray.length);
+    const result: unknown[] = [];
+
+    for (let i = 0; i < minLength; i++) {
+      result.push(fn(thisArray[i], otherArray[i], i));
+    }
+
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Unzip array of pairs into two arrays
+   */
+  unzip(): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper([[], []]);
+    }
+
+    const first: unknown[] = [];
+    const second: unknown[] = [];
+
+    for (const item of this.data) {
+      if (Array.isArray(item) && item.length >= 2) {
+        first.push(item[0]);
+        second.push(item[1]);
+      }
+    }
+
+    return new ChainableWrapper([first, second]);
   }
 
   /**
@@ -1464,6 +1557,283 @@ export class ChainableWrapper {
     } else {
       return new ChainableWrapper([value, this.data]);
     }
+  }
+
+  /**
+   * Generate array by repeatedly applying function
+   */
+  iterate(fn: (value: unknown, index: number) => unknown, times: number): ChainableWrapper {
+    const results: unknown[] = [];
+    let current = this.data;
+    for (let i = 0; i < times; i++) {
+      results.push(current);
+      current = fn(current, i);
+    }
+    return new ChainableWrapper(results);
+  }
+
+  /**
+   * Generate array from a seed value
+   */
+  unfold(fn: (seed: unknown) => [unknown, unknown] | null | undefined, seed?: unknown): ChainableWrapper {
+    const actualSeed = seed !== undefined ? seed : this.data;
+    const results: unknown[] = [];
+    let current = actualSeed;
+    let next = fn(current);
+    
+    while (next !== null && next !== undefined) {
+      if (Array.isArray(next) && next.length === 2) {
+        results.push(next[0]);
+        current = next[1];
+        next = fn(current);
+      } else {
+        break;
+      }
+    }
+    
+    return new ChainableWrapper(results);
+  }
+
+  /**
+   * Repeat array elements
+   */
+  cycle(times = 1): ChainableWrapper {
+    if (!Array.isArray(this.data) || this.data.length === 0) {
+      return new ChainableWrapper([]);
+    }
+    
+    const result: unknown[] = [];
+    for (let i = 0; i < times; i++) {
+      result.push(...this.data);
+    }
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Join array of arrays with separator
+   */
+  intercalate(separator: unknown): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper([]);
+    }
+    
+    const result: unknown[] = [];
+    for (let i = 0; i < this.data.length; i++) {
+      if (i > 0 && separator !== undefined) {
+        if (Array.isArray(separator)) {
+          result.push(...separator);
+        } else {
+          result.push(separator);
+        }
+      }
+      if (Array.isArray(this.data[i])) {
+        result.push(...this.data[i] as unknown[]);
+      } else {
+        result.push(this.data[i]);
+      }
+    }
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Transpose matrix (array of arrays)
+   */
+  transpose(): ChainableWrapper {
+    if (!Array.isArray(this.data) || this.data.length === 0) {
+      return new ChainableWrapper([]);
+    }
+    
+    const matrix = this.data;
+    const maxLength = Math.max(...matrix.map(row => Array.isArray(row) ? row.length : 0));
+    const result: unknown[][] = [];
+    
+    for (let col = 0; col < maxLength; col++) {
+      const column: unknown[] = [];
+      for (let row = 0; row < matrix.length; row++) {
+        if (Array.isArray(matrix[row]) && col < (matrix[row] as unknown[]).length) {
+          column.push((matrix[row] as unknown[])[col]);
+        }
+      }
+      result.push(column);
+    }
+    
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Split stream into multiple branches
+   */
+  tee(...fns: ((value: unknown) => unknown)[]): ChainableWrapper {
+    const results = fns.map(fn => fn(this.data));
+    return new ChainableWrapper(results);
+  }
+
+  /**
+   * Log value and return it (for debugging chains)
+   */
+  debug(label?: string): ChainableWrapper {
+    const prefix = label ? `[${label}] ` : '';
+    console.log(`${prefix}Debug:`, this.data);
+    return this;
+  }
+
+  /**
+   * Measure execution time of function
+   */
+  benchmark(fn: (value: unknown) => unknown, label?: string): ChainableWrapper {
+    const start = performance.now();
+    const result = fn(this.data);
+    const end = performance.now();
+    const duration = end - start;
+    const prefix = label ? `[${label}] ` : '';
+    console.log(`${prefix}Benchmark: ${duration}ms`);
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Create memoized version of function
+   */
+  memoize(fn: (value: unknown) => unknown, keyFn?: (value: unknown) => string): ChainableWrapper {
+    const cache = new Map<string, unknown>();
+    const key = keyFn ? keyFn(this.data) : JSON.stringify(this.data);
+    
+    if (cache.has(key)) {
+      return new ChainableWrapper(cache.get(key));
+    }
+    
+    const result = fn(this.data);
+    cache.set(key, result);
+    return new ChainableWrapper(result);
+  }
+
+  /**
+   * Partition by multiple predicates
+   */
+  partitionBy(...predicates: ((item: unknown, index?: number) => boolean)[]): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper(Array(predicates.length + 1).fill([]));
+    }
+    
+    const partitions: unknown[][] = Array(predicates.length + 1).fill(null).map(() => []);
+    
+    for (let i = 0; i < this.data.length; i++) {
+      let matched = false;
+      for (let j = 0; j < predicates.length; j++) {
+        if (predicates[j](this.data[i], i)) {
+          partitions[j].push(this.data[i]);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        partitions[predicates.length].push(this.data[i]);
+      }
+    }
+    
+    return new ChainableWrapper(partitions);
+  }
+
+  /**
+   * Get first element
+   */
+  head(): unknown {
+    if (Array.isArray(this.data)) {
+      return this.data[0];
+    }
+    return undefined;
+  }
+
+  /**
+   * Get all elements except first
+   */
+  tail(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.slice(1));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  /**
+   * Get all elements except last
+   */
+  init(): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper(this.data.slice(0, -1));
+    }
+    return new ChainableWrapper([]);
+  }
+
+  /**
+   * Get last element
+   */
+  last(): unknown {
+    if (Array.isArray(this.data)) {
+      return this.data[this.data.length - 1];
+    }
+    return undefined;
+  }
+
+  /**
+   * Prepend element to list
+   */
+  cons(element: unknown): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper([element, ...this.data]);
+    }
+    return new ChainableWrapper([element]);
+  }
+
+  /**
+   * Append element to list
+   */
+  snoc(element: unknown): ChainableWrapper {
+    if (Array.isArray(this.data)) {
+      return new ChainableWrapper([...this.data, element]);
+    }
+    return new ChainableWrapper([element]);
+  }
+
+
+  /**
+   * Sliding window over array (alias for windowed)
+   */
+  sliding(size: number, step = 1): ChainableWrapper {
+    return this.windowed(size, step);
+  }
+
+  /**
+   * Add index to each element as [index, value] pairs
+   */
+  enumerate(): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper([]);
+    }
+    
+    const enumerated: [number, unknown][] = [];
+    for (let i = 0; i < this.data.length; i++) {
+      enumerated.push([i, this.data[i]]);
+    }
+    return new ChainableWrapper(enumerated);
+  }
+
+  /**
+   * Group by multiple key functions
+   */
+  groupByMultiple(...keyFns: ((item: unknown, index?: number) => unknown)[]): ChainableWrapper {
+    if (!Array.isArray(this.data)) {
+      return new ChainableWrapper({});
+    }
+    
+    const groups: Record<string, { keys: unknown[]; items: unknown[] }> = {};
+    for (let i = 0; i < this.data.length; i++) {
+      const keys = keyFns.map(fn => fn(this.data[i], i));
+      const keyStr = JSON.stringify(keys);
+      if (!groups[keyStr]) {
+        groups[keyStr] = { keys, items: [] };
+      }
+      groups[keyStr].items.push(this.data[i]);
+    }
+    return new ChainableWrapper(Object.values(groups));
   }
 
   // Make ChainableWrapper iterable when wrapping arrays for spread operator support

@@ -76,12 +76,76 @@ Object.entries(methods).forEach(([name, fn]) => {
   };
 });
 
+// Internal lodash creation function
+function createLodashInstance(value: unknown): Lodash | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  
+  const lodash = new Lodash(value);
+  
+  // Create proxy to handle property access
+  return new Proxy(lodash, {
+    get(target, prop) {
+      // Check if it's a lodash method first
+      if (prop in target) {
+        const value = target[prop];
+        if (typeof value === 'function') {
+          return value.bind(target);
+        }
+        return value;
+      }
+      
+      // Handle numeric indices for arrays
+      if (typeof prop === 'string' && !Number.isNaN(Number(prop))) {
+        const index = Number(prop);
+        if (Array.isArray(target._value) && index >= 0 && index < target._value.length) {
+          return target._value[index];
+        }
+      }
+      
+      // Check wrapped value properties
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+        const obj = target._value as Record<string, unknown>;
+        if (prop in obj) {
+          const valueFromData = obj[prop as string];
+          
+          // Return the property value, wrapping it if it's an object
+          if (valueFromData !== null && valueFromData !== undefined && typeof valueFromData === 'object') {
+            return createLodashInstance(valueFromData);
+          }
+          return valueFromData;
+        }
+      }
+      
+      return undefined;
+    },
+    
+    set(target, prop, value) {
+      // Allow setting properties on the wrapped value
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+        (target._value as Record<string, unknown>)[prop as string] = value;
+        return true;
+      }
+      return false;
+    },
+    
+    has(target, prop) {
+      if (prop in target) return true;
+      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
+        return prop in (target._value as object);
+      }
+      return false;
+    }
+  }) as Lodash;
+}
+
 // Export the lodash function
 export function _(...args: unknown[]): Lodash | undefined {
   if (args.length === 0) {
     return undefined;
   }
-  return new Lodash(args[0]);
+  return createLodashInstance(args[0]);
 }
 
 // Add static methods to _ (like _.chunk, _.filter, etc)

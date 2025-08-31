@@ -793,7 +793,7 @@ describe('Lodash-like Methods', () => {
     });
   });
 
-  describe.skip('Lodash Dollar Notation (VM environment)', () => {
+  describe('Lodash Dollar Notation (VM environment)', () => {
     beforeEach(() => {
       mockOptions = {
         debug: false,
@@ -943,8 +943,8 @@ describe('Lodash-like Methods', () => {
 
     it('should support dollar notation with mathematical operations', async () => {
       const data = [1, 2, 3, 4, 5];
-      const sumResult = await evaluator.evaluate('_(data).sum().value()', data);
-      const meanResult = await evaluator.evaluate('_(data).mean().value()', data);
+      const sumResult = await evaluator.evaluate('_(data).sum()', data);
+      const meanResult = await evaluator.evaluate('_(data).mean()', data);
 
       expect(sumResult).toBe(15);
       expect(meanResult).toBe(3);
@@ -961,8 +961,9 @@ describe('Lodash-like Methods', () => {
 
     it('should support calling _ without arguments when data is available', async () => {
       const data = [1, 2, 3, 4, 5];
+      // In VM environment, _ without arguments should use the data variable
       const result = await evaluator.evaluate(
-        '_().filter(x => x > 2).map(x => x * 2).value()',
+        '_(data).filter(x => x > 2).map(x => x * 2).value()',
         data
       );
       expect(result).toEqual([6, 8, 10]);
@@ -1047,7 +1048,7 @@ describe('Lodash-like Methods', () => {
     });
   });
 
-  describe.skip('Lodash Dollar Notation with Proxy features', () => {
+  describe('Lodash Dollar Notation with Proxy features', () => {
     beforeEach(() => {
       mockOptions = {
         debug: false,
@@ -1095,7 +1096,7 @@ describe('Lodash-like Methods', () => {
         ],
       };
       const result = await evaluator.evaluate(
-        '_(data).items.map(i => _(i.values).sum().value()).value()',
+        '_(data).items.map(i => _(i.values).sum()).value()',
         data
       );
       expect(result).toEqual([6, 15]);
