@@ -86,7 +86,6 @@ export class VMAdvancedFeatures {
       function* (generator: Generator) {
         const result = [];
         for (const value of generator) {
-          // @ts-expect-error
           result.push(value);
         }
         return result;
@@ -100,7 +99,6 @@ export class VMAdvancedFeatures {
       async function* (generator: AsyncGenerator) {
         const result = [];
         for await (const value of generator) {
-          // @ts-expect-error
           result.push(value);
         }
         return result;

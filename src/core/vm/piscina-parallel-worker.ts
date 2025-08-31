@@ -90,9 +90,8 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
   // Process lines with line numbers
   for (let i = 0; i < data.length; i++) {
-    // @ts-expect-error
     const { result, error } = await processLine(data[i], expression || '', i + 1);
-    
+
     if (error) {
       errors.push(error);
       if (options.verbose) {
