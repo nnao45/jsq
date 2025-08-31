@@ -155,6 +155,7 @@ ASYNC_METHODS.forEach(methodName => {
     arr = [this.data];
   }
   for (let i = 0; i < arr.length; i++) {
+    // @ts-expect-error
     results.push(await fn(arr[i], i, arr));
   }
   return new ChainableWrapper(results);

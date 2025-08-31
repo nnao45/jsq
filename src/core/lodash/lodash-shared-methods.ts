@@ -471,6 +471,27 @@ globalThis.lodashMethods = {
     return sum;
   },
   
+  sumBy: function(iteratee) {
+    if (this._value === null || this._value === undefined) {
+      return 0;
+    }
+    const arr = Array.from(this._value);
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const val = arr[i];
+      let num;
+      if (typeof iteratee === 'string') {
+        num = Number(val?.[iteratee]) || 0;
+      } else if (typeof iteratee === 'function') {
+        num = Number(iteratee(val)) || 0;
+      } else {
+        num = Number(val) || 0;
+      }
+      sum += num;
+    }
+    return sum;
+  },
+  
   mean: function() {
     if (this._value === null || this._value === undefined) {
       return NaN;
@@ -482,6 +503,69 @@ globalThis.lodashMethods = {
       sum += Number(arr[i]) || 0;
     }
     return sum / arr.length;
+  },
+  
+  meanBy: function(iteratee) {
+    if (this._value === null || this._value === undefined) {
+      return NaN;
+    }
+    const arr = Array.from(this._value);
+    if (arr.length === 0) return NaN;
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const val = arr[i];
+      let num;
+      if (typeof iteratee === 'string') {
+        num = Number(val?.[iteratee]) || 0;
+      } else if (typeof iteratee === 'function') {
+        num = Number(iteratee(val)) || 0;
+      } else {
+        num = Number(val) || 0;
+      }
+      sum += num;
+    }
+    return sum / arr.length;
+  },
+  
+  add: function(addend) {
+    const augend = Number(this._value) || 0;
+    return augend + (Number(addend) || 0);
+  },
+  
+  subtract: function(subtrahend) {
+    const minuend = Number(this._value) || 0;
+    return minuend - (Number(subtrahend) || 0);
+  },
+  
+  multiply: function(multiplicand) {
+    const multiplier = Number(this._value) || 0;
+    return multiplier * (Number(multiplicand) || 0);
+  },
+  
+  divide: function(divisor) {
+    const dividend = Number(this._value) || 0;
+    return dividend / (Number(divisor) || 1);
+  },
+  
+  ceil: function(precision) {
+    const num = Number(this._value) || 0;
+    precision = precision || 0;
+    const factor = Math.pow(10, precision);
+    return Math.ceil(num * factor) / factor;
+  },
+  
+  floor: function(precision) {
+    const num = Number(this._value) || 0;
+    precision = precision || 0;
+    const factor = Math.pow(10, precision);
+    return Math.floor(num * factor) / factor;
+  },
+  
+  round: function(precision) {
+    const num = Number(this._value) || 0;
+    precision = precision || 0;
+    const factor = Math.pow(10, precision);
+    return Math.round(num * factor) / factor;
   },
   
   min: function() {

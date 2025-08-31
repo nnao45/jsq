@@ -122,7 +122,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   const replPath = path.join(__dirname, 'repl.js');
-  const replArgs = [];
+  const replArgs: string[] = [];
 
   if (options.safe) replArgs.push('--safe');
   if (options.debug) replArgs.push('--debug');
@@ -343,7 +343,10 @@ async function handleStreamingMode(
 
   if (options.parallel) {
     // Parallel processing - use Piscina for better performance
-    const transformStream = processor.createPiscinaParallelTransformStream(expression, streamOptions);
+    const transformStream = processor.createPiscinaParallelTransformStream(
+      expression,
+      streamOptions
+    );
     inputStream.pipe(transformStream).pipe(process.stdout);
   } else if (options.batch && typeof options.batch === 'number') {
     const transformStream = processor.createBatchTransformStream(expression, streamOptions);

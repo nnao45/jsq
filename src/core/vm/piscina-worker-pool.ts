@@ -73,10 +73,12 @@ export class PiscinaWorkerPool {
     } catch (error) {
       return {
         results: [],
-        errors: [{
-          line: -1,
-          message: error instanceof Error ? error.message : 'Unknown error'
-        }]
+        errors: [
+          {
+            line: -1,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ],
       };
     }
   }

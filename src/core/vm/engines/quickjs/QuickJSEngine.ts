@@ -272,7 +272,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
 
     // Clear references
     // Intentionally clearing reference to prevent memory leaks
-    (this as any).vm = undefined;
+    this.vm = undefined as unknown as QuickJSContext;
   }
 }
 
