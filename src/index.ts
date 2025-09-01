@@ -2,6 +2,7 @@
 
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cpus } from 'node:os';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
@@ -392,7 +393,14 @@ function createStreamOptions(options: JsqOptions, detectedFormat: string) {
   if (typeof options.batch === 'number') {
     result.batchSize = options.batch;
   } else if (options.parallel) {
-    result.batchSize = 200;
+    // Optimize batch size based on CPU count and worker count
+    const cpuCount = cpus().length;
+    const workerCount = typeof options.parallel === 'number' ? options.parallel : cpuCount;
+    // Use larger batches for better throughput (100-500 per worker)
+    result.batchSize = Math.min(500, Math.max(100, Math.floor(1000 / workerCount)));
+    if (options.verbose) {
+      console.error(`📦 Auto-selected batch size: ${result.batchSize} (${workerCount} workers)`);
+    }
   }
 
   if (options.parallel) {
