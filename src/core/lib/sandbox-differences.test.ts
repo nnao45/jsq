@@ -389,7 +389,7 @@ describe('VM Sandbox Mode (Default) Behavior', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toContain('Expression evaluation failed');
-        expect((error as Error).message).toContain('potentially dangerous patterns');
+        expect((error as Error).message).toContain('Expression evaluation failed: Security error: Expression contains dangerous patterns: eval');
       }
     });
 

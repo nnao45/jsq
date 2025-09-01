@@ -107,7 +107,7 @@ describe('Security Integration Tests', () => {
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toContain('Expression evaluation failed');
         expect((error as Error).message).toContain(
-          'Expression contains potentially dangerous patterns'
+          'Expression evaluation failed: Security error: Expression contains dangerous patterns: execSync, exec'
         );
       }
 
