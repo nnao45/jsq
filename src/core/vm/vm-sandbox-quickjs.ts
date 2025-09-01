@@ -8,6 +8,8 @@ import type {
 import type { ApplicationContext } from '../application-context';
 import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine';
 import { VMEngineFactory } from './VMEngineFactory';
+import { QuickJSVMPool } from './quickjs-vm-pool';
+import { cpus } from 'node:os';
 
 /**
  * QuickJS-based VM Sandbox implementation
@@ -17,6 +19,8 @@ export class VMSandboxQuickJS {
   private config: VMSandboxConfig;
   private appContext: ApplicationContext;
   // private engine: VMEngine | null = null;
+  private static vmPool: QuickJSVMPool | null = null;
+  private useVMPool: boolean;
 
   constructor(appContext: ApplicationContext, options: Partial<VMSandboxConfig> = {}) {
     this.appContext = appContext;
@@ -31,6 +35,22 @@ export class VMSandboxQuickJS {
       recycleIsolates: options.recycleIsolates ?? false,
       isolatePoolSize: this.validatePositiveNumber(options.isolatePoolSize, 1),
     };
+
+    // Enable VM pooling by default (can be disabled for testing)
+    this.useVMPool = process.env.DISABLE_VM_POOL !== 'true';
+
+    // Initialize the shared VM pool if enabled and not already created
+    if (this.useVMPool && !VMSandboxQuickJS.vmPool) {
+      // Use CPU count for pool size, with a reasonable max limit
+      const cpuCount = cpus().length;
+      const poolSize = Math.min(Math.floor(cpuCount / 2), 8); // CPU数の半分、最大8
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(
+          `🚀 Initializing VM pool with ${poolSize} instances (${cpuCount} vCPUs detected)`
+        );
+      }
+      VMSandboxQuickJS.vmPool = new QuickJSVMPool(appContext, this.config, poolSize, 100); // Optimized pool size
+    }
   }
 
   // private async getEngine(): Promise<VMEngine> {
@@ -58,13 +78,20 @@ export class VMSandboxQuickJS {
     }
 
     try {
-      // QuickJSでは毎回新しいエンジンを作成する（メモリリークを防ぐため）
-      const factory = new VMEngineFactory(this.appContext);
-      engine = factory.create('quickjs');
-      await engine.initialize(this.config);
+      // Use VM pool if enabled, otherwise create new engine
+      if (this.useVMPool && VMSandboxQuickJS.vmPool) {
+        const pooled = await VMSandboxQuickJS.vmPool.acquire();
+        engine = pooled.engine;
+        execContext = pooled.execContext;
+      } else {
+        // QuickJSでは毎回新しいエンジンを作成する（メモリリークを防ぐため）
+        const factory = new VMEngineFactory(this.appContext);
+        engine = factory.create('quickjs');
+        await engine.initialize(this.config);
 
-      // Create a new execution context
-      execContext = await engine.createContext();
+        // Create a new execution context
+        execContext = await engine.createContext();
+      }
 
       // Set up console - always set it up when console is passed in context
       // This ensures console.log works properly in jsq
@@ -328,15 +355,21 @@ export class VMSandboxQuickJS {
 
       throw this.createSandboxError(error, 0);
     } finally {
-      // エンジンも破棄する（QuickJSのメモリリーク防止）
+      // Release VM back to pool or dispose if not pooled
       if (engine) {
-        try {
-          // In test environment, skip disposal to avoid GC assertion
-          if (process.env.NODE_ENV !== 'test') {
-            await engine.dispose();
+        if (this.useVMPool && VMSandboxQuickJS.vmPool) {
+          // Release back to pool
+          VMSandboxQuickJS.vmPool.release(engine);
+        } else {
+          // エンジンも破棄する（QuickJSのメモリリーク防止）
+          try {
+            // In test environment, skip disposal to avoid GC assertion
+            if (process.env.NODE_ENV !== 'test') {
+              await engine.dispose();
+            }
+          } catch {
+            // Ignore dispose errors
           }
-        } catch {
-          // Ignore dispose errors
         }
       }
     }
@@ -574,9 +607,11 @@ export class VMSandboxQuickJS {
   }
 
   async dispose(): Promise<void> {
-    // QuickJSでは毎回新しいエンジンを作成しているので、
-    // ここでは特にdisposeする必要はない
-    // this.engine = null;
+    // Dispose the VM pool when the sandbox is disposed
+    if (this.useVMPool && VMSandboxQuickJS.vmPool) {
+      await VMSandboxQuickJS.vmPool.dispose();
+      VMSandboxQuickJS.vmPool = null;
+    }
   }
 
   getConfig(): VMSandboxConfig {
