@@ -17,30 +17,10 @@ export interface FormattedError {
 
 export class ErrorFormatter {
   static formatError(error: FormattedError, input: string): string {
-    const lines: string[] = [];
-
-    // エラータイプとメッセージ
     const typeLabel = ErrorFormatter.getTypeLabel(error.type);
-    lines.push(chalk.bold.red(`${typeLabel}: ${error.message}`));
-
-    // 詳細情報
-    if (error.detail) {
-      lines.push(chalk.gray(`DETAIL: ${error.detail}`));
-    }
-
-    // 位置情報とコンテキスト
-    if (error.position && input) {
-      lines.push('');
-      lines.push(...ErrorFormatter.formatErrorContext(input, error.position));
-    }
-
-    // 提案
-    if (error.suggestion) {
-      lines.push('');
-      lines.push(chalk.yellow(`HINT: ${error.suggestion}`));
-    }
-
-    return lines.join('\n');
+    const detail = error.detail ? ` (${error.detail})` : '';
+    const position = error.position ? ` at line ${error.position.line}:${error.position.column}` : '';
+    return chalk.bold.red(`${typeLabel}: ${error.message}${detail}${position}`);
   }
 
   private static getTypeLabel(type: FormattedError['type']): string {

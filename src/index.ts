@@ -60,7 +60,6 @@ const commonOptions = [
   ['--sandbox', 'Legacy option (deprecated, VM isolation is now default)'],
   ['--memory-limit <mb>', 'Memory limit in MB (default: 128)'],
   ['--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)'],
-  ['--repl', 'Start interactive REPL mode'],
   ['-w, --watch', 'Watch input file for changes and re-execute expression'],
   ['--oneline', 'Output JSON in a single line (no pretty-printing)'],
   ['--color', 'Enable colored output'],
@@ -88,16 +87,20 @@ const mainCommand = program.argument('[expression]', 'JavaScript expression to e
 addCommonOptions(mainCommand).action(
   async (expression: string | undefined, options: JsqOptions) => {
     try {
+      if (!expression) {
+        // Check if it's an interactive terminal for REPL
+        if (process.stdin.isTTY && !process.env.JSQ_NO_STDIN) {
+          await handleReplMode(options);
+          return;
+        } else {
+          // Non-interactive environment, show error
+          throw new Error('No expression provided');
+        }
+      }
+      
       if (options.repl) {
         await handleReplMode(options);
         return;
-      }
-
-      if (!expression) {
-        console.error(
-          'Error: No expression provided. Use: jsq "expression" < input.json or jsq --repl'
-        );
-        process.exit(1);
       }
 
       prepareOptions(options);
@@ -121,7 +124,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const replPath = path.join(__dirname, 'repl.js');
+  const replPath = path.join(__dirname, 'simple-repl.js');
   const replArgs: string[] = [];
 
   if (options.safe) replArgs.push('--safe');
@@ -211,9 +214,6 @@ async function processOnce(expression: string, options: JsqOptions): Promise<voi
 
     // Give cleanup handlers time to run
     await new Promise(resolve => setImmediate(resolve));
-
-    // Force exit after cleanup
-    exitCleanly(0);
   }
 }
 

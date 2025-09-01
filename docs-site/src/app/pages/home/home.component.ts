@@ -45,9 +45,9 @@ import { ZardCardComponent } from '@shared/components/card/card.component';
           </z-card>
           
           <z-card class="bg-muted transition-all hover:-translate-y-1 hover:shadow-lg">
-            <div class="text-5xl mb-4">⚡</div>
-            <h3 class="text-xl font-semibold mb-3 text-foreground">Multi-CPU Parallel Processing</h3>
-            <p class="text-muted-foreground leading-relaxed">Leverage all available CPU cores for blazingly fast JSON processing - 10-20x faster than jq on multi-core systems</p>
+            <div class="text-5xl mb-4">🌐</div>
+            <h3 class="text-xl font-semibold mb-3 text-foreground">Run Data Transform Anywhere</h3>
+            <p class="text-muted-foreground leading-relaxed">Works seamlessly across browsers, Node.js, Deno, and Bun - process JSON with the same code everywhere</p>
           </z-card>
           
           <z-card class="bg-muted transition-all hover:-translate-y-1 hover:shadow-lg">
@@ -98,7 +98,7 @@ cat data.json | jsq '
           <h3>🔒 Security First Design</h3>
           <p>Unlike other JavaScript-based tools, jsq prioritizes security:</p>
           <ul>
-            <li><strong>VM isolation by default</strong> - All code runs in a secure sandbox</li>
+            <li><strong>VM isolation by default</strong> - jsq evaluates expressions exclusively on <a href="https://github.com/justjake/quickjs-emscripten" target="_blank">quickjs-emscripten</a>, enabling pure and isolated code execution while supporting flexible JavaScript method chaining</li>
             <li><strong>Resource limits</strong> - Control memory and CPU usage</li>
             <li><strong>No filesystem/network access</strong> - Unless explicitly enabled with <code>--unsafe</code></li>
           </ul>

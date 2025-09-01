@@ -172,6 +172,19 @@ describe('CLI E2E Tests', () => {
     });
   };
 
+  // Helper function for tests that expect JSON output
+  const runJsqForJSON = async (
+    args: string[],
+    input?: string,
+    options: { timeout?: number; cwd?: string } = {}
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+    // Add --compact option if not already present
+    if (!args.includes('--compact') && !args.includes('-c')) {
+      args = ['--compact', ...args];
+    }
+    return runJsq(args, input, options);
+  };
+
   describe('Basic CLI Operations', () => {
     it('should handle simple property access with file input', async () => {
       const result = await runJsq([
@@ -185,7 +198,7 @@ describe('CLI E2E Tests', () => {
     });
 
     it('should handle array operations with chaining', async () => {
-      const result = await runJsq([
+      const result = await runJsqForJSON([
         '$.users.value.filter(u => u.active).map(u => u.name)',
         '--file',
         path.join(testDataDir, 'users.json'),
@@ -208,7 +221,7 @@ describe('CLI E2E Tests', () => {
     });
 
     it('should handle complex transformations', async () => {
-      const result = await runJsq([
+      const result = await runJsqForJSON([
         '$.users.value.filter(u => u.department === "engineering").map(u => ({name: u.name, level: u.age > 30 ? "senior" : "junior"}))',
         '--file',
         path.join(testDataDir, 'users.json'),
@@ -324,7 +337,7 @@ describe('CLI E2E Tests', () => {
 
   describe('Complex Query Scenarios', () => {
     it('should handle deep nested object queries', async () => {
-      const result = await runJsq([
+      const result = await runJsqForJSON([
         '$.company.departments.find(d => d.name === "Engineering").teams.map(t => t.name)',
         '--file',
         path.join(testDataDir, 'nested.json'),
@@ -380,10 +393,10 @@ describe('CLI E2E Tests', () => {
 
       const result = await runJsq(['$.test', '--file', invalidJsonFile]);
 
-      // 現在の実装では無効なJSONでも正常終了して空の出力を返すっぽい
-      // TODO: 本来はエラーを返すべき
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe('');
+      // Invalid JSON should return error
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Error:');
+      expect(result.stderr).toContain('SYNTAX ERROR');
 
       await fs.unlink(invalidJsonFile);
     });
@@ -395,10 +408,10 @@ describe('CLI E2E Tests', () => {
         path.join(testDataDir, 'users.json'),
       ]);
 
-      // 現在の実装では無効な式でも正常終了して空の出力を返すっぽい
-      // TODO: 本来はエラーを返すべき
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe('');
+      // Invalid expression should return error
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Error:');
+      expect(result.stderr).toContain('unexpected token');
     });
 
     it('should handle empty files gracefully', async () => {
@@ -541,7 +554,7 @@ describe('CLI E2E Tests', () => {
       const apiFile = path.join(testDataDir, 'api-response.json');
       await fs.writeFile(apiFile, JSON.stringify(apiResponse));
 
-      const result = await runJsq([
+      const result = await runJsqForJSON([
         '$.data.users.map(u => ({id: u.user_id, name: u.first_name + " " + u.last_name, email: u.email_address}))',
         '--file',
         apiFile,
@@ -603,7 +616,7 @@ describe('CLI E2E Tests', () => {
     it('should work in Unix pipeline', async () => {
       const testInput = JSON.stringify({ numbers: [1, 2, 3, 4, 5] });
 
-      const result = await runJsq(['$.numbers.map(n => n * 2)'], testInput);
+      const result = await runJsqForJSON(['$.numbers.map(n => n * 2)'], testInput);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([2, 4, 6, 8, 10]);
@@ -618,7 +631,7 @@ describe('CLI E2E Tests', () => {
         ],
       });
 
-      const result = await runJsq(['$.data.filter(d => d.score > 90).pluck("name")'], testInput);
+      const result = await runJsqForJSON(['$.data.filter(d => d.score > 90).pluck("name")'], testInput);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Alice', 'Charlie']);

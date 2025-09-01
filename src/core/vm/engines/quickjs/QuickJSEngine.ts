@@ -218,7 +218,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
         }
       }
     } catch (error) {
-      console.error('QuickJS eval failed with code:', code);
+      // Error logged at higher level
       throw error;
     }
   }
