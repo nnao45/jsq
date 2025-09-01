@@ -103,15 +103,17 @@ cat data.json | jsq '
             <li><strong>No filesystem/network access</strong> - Unless explicitly enabled with <code>--unsafe</code></li>
           </ul>
 
-          <h3>⚡ Blazing Fast Performance</h3>
-          <p>With multi-CPU parallel processing:</p>
-          <pre><code class="language-bash"># Process massive datasets in parallel
-cat huge-logs.jsonl | jsq --parallel 8 '
-  $.filter(log => log.level === "error")
-   .groupBy(log => log.service)
-'
-
-# 20x faster than jq on multi-core systems!</code></pre>
+          <h3>🔥 Superior to Other Tools</h3>
+          <p>jsq combines the best of all JSON processors:</p>
+          <ul>
+            <li><strong>vs jq</strong> - Familiar JavaScript syntax instead of custom DSL, 20x faster with parallel processing</li>
+            <li><strong>vs fx</strong> - 85+ built-in methods vs basic JS operations, streaming support for large files</li>
+            <li><strong>vs jello</strong> - No Python runtime required, VM isolation for security, real-time REPL</li>
+            <li><strong>vs gojq/jaq</strong> - Cross-platform (Node.js/Deno/Bun), interactive development experience</li>
+          </ul>
+          <pre><code class="language-bash"># jsq: Parallel processing for massive performance
+cat million-records.jsonl | jsq --parallel 8 '$.filter(r => r.active)'
+# 2 seconds vs jq's 40 seconds!</code></pre>
         </div>
       </div>
     </section>
