@@ -278,7 +278,7 @@ export class VMSandboxQuickJS {
           await execContext.eval('delete globalThis.__result__');
         } catch (e) {
           // If unwrapping fails, use original value
-          console.error('Failed to unwrap SmartDollar:', e);
+          // Silently ignore unwrap failures
         }
       }
 
@@ -306,13 +306,7 @@ export class VMSandboxQuickJS {
       // const executionTime = Math.max(1, Date.now() - startTime);
 
       // Debug: Log the original error only in verbose mode
-      if (process.env.NODE_ENV !== 'test' && process.env.DEBUG) {
-        console.error('VMSandboxQuickJS execute error:', error);
-        if (error instanceof Error) {
-          console.error('Error message:', error.message);
-          console.error('Error stack:', error.stack);
-        }
-      }
+      // Error details are handled at higher level
 
       // Don't release context here - it will be released with engine disposal
 

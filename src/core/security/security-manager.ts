@@ -1,6 +1,5 @@
 import type { JsqOptions } from '@/types/cli';
 import type { SandboxCapabilities, VMSandboxConfig } from '@/types/sandbox';
-import { ErrorFormatter } from '@/utils/error-formatter';
 
 export interface SecurityLevel {
   allowNetwork: boolean;
@@ -114,9 +113,8 @@ export class SecurityManager {
       }
 
       if (foundPatterns.length > 0) {
-        errors.push(`Expression contains potentially dangerous patterns`);
-        const error = ErrorFormatter.parseSecurityError(foundPatterns, expression);
-        formattedError = ErrorFormatter.formatError(error, expression);
+        errors.push(`Expression contains dangerous patterns: ${foundPatterns.join(', ')}`);
+        formattedError = `Security error: Expression contains dangerous patterns: ${foundPatterns.join(', ')}`;
       }
     }
 

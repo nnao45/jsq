@@ -63,6 +63,19 @@ describe('Integration Tests', () => {
     });
   };
 
+  // Helper function for tests that expect JSON output
+  const runJsqForJSON = (
+    expression: string,
+    input: string,
+    options: string[] = []
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+    // Add --compact option if not already present
+    if (!options.includes('--compact') && !options.includes('-c')) {
+      options = ['--compact', ...options];
+    }
+    return runJsq(expression, input, options);
+  };
+
   describe('Basic CLI functionality', () => {
     it('should process simple JSON with $ syntax', async () => {
       const input = '{"name": "Alice", "age": 30}';
@@ -82,7 +95,7 @@ describe('Integration Tests', () => {
       ]);
       const expression = '$.filter(u => u.age > 27).pluck("name")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       // Debug output
       console.log('stdout:', result.stdout);
@@ -106,7 +119,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.users.filter(u => u.department === "engineering").sortBy("salary").pluck("name")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Alice', 'Charlie']);
@@ -156,12 +169,10 @@ describe('Integration Tests', () => {
 
       const result = await runJsq(expression, input);
 
-      // The parser preprocesses JSON and converts {invalid json} to {"invalid": "json"}
-      // So it actually succeeds instead of failing
-      expect(result.exitCode).toBe(0);
-      // Since the JSON is preprocessed successfully, there should be no output
-      // because $.test doesn't exist in {"invalid": "json"}
-      expect(result.stdout.trim()).toBe('');
+      // The parser tries to preprocess but still fails with syntax error
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Error:');
+      expect(result.stderr).toContain('SYNTAX ERROR');
     }, 10000);
 
     it('should handle invalid expressions', async () => {
@@ -170,10 +181,10 @@ describe('Integration Tests', () => {
 
       const result = await runJsq(expression, input);
 
-      // Invalid expressions are evaluated as undefined and return empty output
-      // The current implementation doesn't throw errors for undefined references
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.trim()).toBe('');
+      // Invalid expressions are evaluated and cause syntax errors
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Error:');
+      expect(result.stderr).toContain('unexpected token');
     }, 10000);
 
     it('should handle missing expression argument', async () => {
@@ -225,7 +236,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.items.filter(repo => repo.language === "TypeScript").sortBy("stargazers_count").pluck("name")';
 
-      const result = await runJsq(expression, JSON.stringify(githubApiResponse));
+      const result = await runJsqForJSON(expression, JSON.stringify(githubApiResponse));
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['awesome-project', 'useful-tool']);
@@ -248,7 +259,7 @@ describe('Integration Tests', () => {
           .pluck('service')
       `;
 
-      const result = await runJsq(expression, JSON.stringify(logData));
+      const result = await runJsqForJSON(expression, JSON.stringify(logData));
 
       expect(result.exitCode).toBe(0);
       const output = JSON.parse(result.stdout);
@@ -290,7 +301,7 @@ describe('Integration Tests', () => {
           }))
       `;
 
-      const result = await runJsq(expression, JSON.stringify(ecommerceData));
+      const result = await runJsqForJSON(expression, JSON.stringify(ecommerceData));
 
       expect(result.exitCode).toBe(0);
       const output = JSON.parse(result.stdout);
@@ -388,7 +399,7 @@ describe('Integration Tests', () => {
       const input = '{"numbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
       const expression = '$.numbers.filter(n => n % 2 === 0)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([2, 4, 6, 8, 10]);
@@ -398,7 +409,7 @@ describe('Integration Tests', () => {
       const input = '{"prices": [10, 20, 30]}';
       const expression = '$.prices.map(p => p * 1.1)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([11, 22, 33]);
@@ -420,7 +431,7 @@ describe('Integration Tests', () => {
         '{"products": [{"name": "laptop", "category": "electronics"}, {"name": "book", "category": "education"}, {"name": "phone", "category": "electronics"}]}';
       const expression = '$.products.where("category", "electronics")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([
@@ -434,7 +445,7 @@ describe('Integration Tests', () => {
         '{"employees": [{"name": "Alice", "salary": 50000}, {"name": "Bob", "salary": 60000}, {"name": "Charlie", "salary": 70000}]}';
       const expression = '$.employees.pluck("salary")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       if (result.stdout === '') {
         console.error('Empty stdout. stderr:', result.stderr);
@@ -449,7 +460,7 @@ describe('Integration Tests', () => {
         '{"items": [{"name": "Zebra", "price": 100}, {"name": "Apple", "price": 50}, {"name": "Banana", "price": 75}]}';
       const expression = '$.items.sortBy("name")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       const output = JSON.parse(result.stdout);
@@ -462,7 +473,7 @@ describe('Integration Tests', () => {
       const input = '{"sequence": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
       const expression = '$.sequence.take(3)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([1, 2, 3]);
@@ -472,7 +483,7 @@ describe('Integration Tests', () => {
       const input = '{"sequence": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}';
       const expression = '$.sequence.skip(7)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([8, 9, 10]);
@@ -518,7 +529,7 @@ describe('Integration Tests', () => {
       const input = '{"config": {"host": "localhost", "port": 3000, "secure": true}}';
       const expression = 'Object.keys($.config)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       const keys = JSON.parse(result.stdout);
@@ -531,7 +542,7 @@ describe('Integration Tests', () => {
       const input = '{"settings": {"debug": true, "timeout": 5000}}';
       const expression = 'Object.values($.settings)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       const values = JSON.parse(result.stdout);
@@ -556,7 +567,7 @@ describe('Integration Tests', () => {
         '{"data": [{"score": 85, "grade": "B"}, {"score": 92, "grade": "A"}, {"score": 78, "grade": "C"}, {"score": 96, "grade": "A"}]}';
       const expression = '$.data.filter(d => d.score > 80).sortBy("score").take(2).pluck("grade")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['B', 'A']);
@@ -577,7 +588,7 @@ describe('Integration Tests', () => {
       const input = '{"data": [{"value": 10}, {"value": null}, {"value": 20}]}';
       const expression = '$.data.filter(d => d.value !== null).pluck("value")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([10, 20]);
@@ -589,7 +600,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.company.departments.filter(d => d.name === "Engineering")[0].employees.map(e => e.name)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Alice', 'Bob']);
@@ -629,7 +640,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.logs.filter(l => l.level !== "INFO").sortBy("duration").pluck("service")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['api', 'db']);
@@ -641,7 +652,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.inventory.where("category", "electronics").filter(i => i.quantity > 60).pluck("item")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['phone']);
@@ -675,7 +686,7 @@ describe('Integration Tests', () => {
       const expression =
         '$.posts.filter(p => p.likes > 50).sortBy("likes").take(2).pluck("author")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['alice', 'bob']);
@@ -686,7 +697,7 @@ describe('Integration Tests', () => {
         '{"servers": [{"name": "web-1", "cpu": 75, "memory": 80, "status": "healthy"}, {"name": "web-2", "cpu": 45, "memory": 60, "status": "healthy"}, {"name": "db-1", "cpu": 90, "memory": 95, "status": "warning"}, {"name": "cache-1", "cpu": 25, "memory": 30, "status": "healthy"}]}';
       const expression = '$.servers.filter(s => s.cpu > 70 || s.memory > 85).pluck("name")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['web-1', 'db-1']);
@@ -708,7 +719,7 @@ describe('Integration Tests', () => {
         '{"config": {"services": [{"name": "api", "port": 3000, "enabled": true}, {"name": "worker", "port": 3001, "enabled": false}, {"name": "scheduler", "port": 3002, "enabled": true}]}}';
       const expression = '$.config.services.filter(s => s.enabled).pluck("port")';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([3000, 3002]);
@@ -719,7 +730,7 @@ describe('Integration Tests', () => {
         '{"teams": [{"name": "frontend", "members": [{"name": "Alice", "skills": ["React", "TypeScript"]}, {"name": "Bob", "skills": ["Vue", "JavaScript"]}]}, {"name": "backend", "members": [{"name": "Charlie", "skills": ["Node.js", "Python"]}, {"name": "David", "skills": ["Go", "Rust"]}]}]}';
       const expression = '$.teams.filter(t => t.name === "frontend")[0].members.map(m => m.skills)';
 
-      const result = await runJsq(expression, input);
+      const result = await runJsqForJSON(expression, input);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([

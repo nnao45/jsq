@@ -455,18 +455,20 @@ export class ExpressionEvaluator {
             'VM module not found. Please ensure all dependencies are properly installed.'
           );
         }
-        // Format VM errors with detailed position if possible
-        const formattedError = ErrorFormatter.parseExpressionError(error, expression);
         // Check if it's a QuickJS initialization error
         if (error.message.includes('QuickJS initialization failed')) {
           throw error; // Re-throw the descriptive error as-is
         }
 
-        formattedError.type = 'runtime';
-        formattedError.message = 'VM execution failed';
-        formattedError.detail = error.message;
-        const errorMessage = ErrorFormatter.formatError(formattedError, expression);
-        throw new Error(errorMessage);
+        // Extract simple error message
+        let simpleMessage = error.message;
+        // Try to extract the actual error from QuickJS output
+        const match = simpleMessage.match(/"message":"([^"]+)"/);
+        if (match) {
+          simpleMessage = match[1];
+        }
+        
+        throw new Error(simpleMessage);
       }
       throw error;
     }

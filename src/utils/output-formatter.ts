@@ -14,6 +14,7 @@ export class OutputFormatter {
   private options: FormatterOptions;
   private indentSize: number;
   private useColor: boolean;
+  private verbose: boolean;
 
   constructor(options: JsqOptions) {
     this.options = {
@@ -30,6 +31,9 @@ export class OutputFormatter {
 
     // Determine color usage
     this.useColor = this.shouldUseColor(options);
+    
+    // Store verbose flag
+    this.verbose = options.verbose || false;
   }
 
   private parseIndentSize(indent: string | number | undefined): number {
@@ -54,6 +58,11 @@ export class OutputFormatter {
       return this.formatCompact(data);
     }
 
+    // Default to simple format (option 2) unless verbose flag is set
+    if (!this.verbose) {
+      return this.formatSimple(data);
+    }
+
     return this.formatPretty(data);
   }
 
@@ -75,6 +84,16 @@ export class OutputFormatter {
   private formatPretty(data: unknown): string {
     const json = JSON.stringify(data, this.getReplacer(), this.indentSize);
     return this.useColor ? this.colorize(json) : json;
+  }
+
+  private formatSimple(data: unknown): string {
+    // Simple format (option 2): Arrays print each element on a new line, everything else on one line
+    if (Array.isArray(data)) {
+      return data.map(item => JSON.stringify(item, this.getReplacer())).join('\n');
+    }
+    
+    // For non-arrays, just output as compact JSON
+    return JSON.stringify(data, this.getReplacer());
   }
 
   private getReplacer(): ((key: string, value: unknown) => unknown) | undefined {

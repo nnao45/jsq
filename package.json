@@ -10,7 +10,7 @@
     "jsq-deno": "bin/jsq-deno"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/repl/standalone-repl.ts --bundle --platform=node --target=node16 --outfile=dist/repl.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/piscina-parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/piscina-parallel-worker.js --format=esm --packages=external",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/simple-repl.ts --bundle --platform=node --target=node16 --outfile=dist/simple-repl.js --format=esm --packages=external && esbuild src/ink-repl.tsx --bundle --platform=node --target=node16 --outfile=dist/ink-repl.js --format=esm --packages=external --loader:.tsx=tsx && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/piscina-parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/piscina-parallel-worker.js --format=esm --packages=external",
     "build:watch": "npm run build -- --watch",
     "build:bun": "bun build src/index.ts --outfile=dist/index-bun.js --target=bun",
     "build:deno": "esbuild src/index.ts --bundle --platform=neutral --target=esnext --outfile=dist/index-deno.js --format=esm --packages=external",
@@ -19,6 +19,8 @@
     "build:browser:watch": "webpack --config scripts/build-browser/webpack.config.js --watch",
     "build:web": "vite build",
     "dev": "tsx src/index.ts",
+    "dev:repl": "tsx src/simple-repl.ts",
+    "dev:ink-repl": "tsx src/ink-repl.tsx",
     "dev:bun": "bun run src/index.ts",
     "dev:deno": "deno run --allow-all src/index.ts",
     "dev:web": "vite",
@@ -83,6 +85,7 @@
     "commander": "^11.1.0",
     "csv-parse": "^6.1.0",
     "ink": "^4.4.1",
+    "ink-ui": "^0.4.0",
     "joi": "^17.11.0",
     "js-yaml": "^4.1.0",
     "papaparse": "^5.5.3",
