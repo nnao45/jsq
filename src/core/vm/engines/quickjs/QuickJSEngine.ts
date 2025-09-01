@@ -97,129 +97,124 @@ export class QuickJSExecutionContext implements VMExecutionContext {
   }
 
   async eval(code: string, options?: EvalOptions): Promise<unknown> {
-    try {
-      const result = this.vm.evalCode(code, options?.filename);
+    const result = this.vm.evalCode(code, options?.filename);
 
-      if ('error' in result && result.error) {
-        let errorMsg = 'Unknown error';
-        let errorDetails = '';
-        let errorType = 'Unknown';
+    if ('error' in result && result.error) {
+      let errorMsg = 'Unknown error';
+      let errorDetails = '';
+      let errorType = 'Unknown';
 
-        try {
-          // Try to get error type
-          const errorTypeProp = this.vm.getProp(result.error, 'name');
-          if (this.vm.typeof(errorTypeProp) === 'string') {
-            errorType = this.vm.getString(errorTypeProp);
-          }
-          errorTypeProp.dispose();
-        } catch (_e) {
-          // Failed to get error type
-        }
-
-        try {
-          // エラーメッセージを取得
-          const dumpResult = result.error != null ? this.vm.dump(result.error) : null;
-
-          if (dumpResult && typeof dumpResult === 'object') {
-            if ('message' in dumpResult) {
-              errorMsg = dumpResult.message || errorMsg;
-            }
-            if ('stack' in dumpResult) {
-              errorDetails = dumpResult.stack || '';
-            }
-            // その他のプロパティも含める
-            errorMsg = JSON.stringify(dumpResult);
-          } else if (typeof dumpResult === 'string') {
-            errorMsg = dumpResult;
-          }
-        } catch (_e) {
-          // dumpが失敗した場合はmessageプロパティを試す
-          try {
-            const msgProp = this.vm.getProp(result.error, 'message');
-            if (this.vm.typeof(msgProp) === 'string') {
-              errorMsg = this.vm.getString(msgProp);
-            }
-            msgProp.dispose();
-          } catch (_e2) {
-            // Failed to get error message
-          }
-        }
-
-        // Dispose the error handle
-        if (result.error) {
-          result.error.dispose();
-        }
-
-        // Include code snippet for debugging
-        const codeSnippet = code.length > 100 ? `${code.substring(0, 100)}...` : code;
-        throw new Error(
-          `${errorType}: ${errorMsg}\nCode: ${codeSnippet}${errorDetails ? `\nStack: ${errorDetails}` : ''}`
-        );
-      }
-
-      // result.valueが存在することを確認
-      if (!('value' in result) || !result.value) {
-        throw new Error('No result value from eval');
-      }
-
-      // Execute pending jobs first for async code
-      const maxIterations = 100;
-      let lastJobCount = -1;
-
-      for (let i = 0; i < maxIterations; i++) {
-        const jobResult = this.runtime.executePendingJobs();
-
-        if ('error' in jobResult && jobResult.error) {
-          // Error executing jobs
-          if ('value' in result) {
-            result.value.dispose();
-          }
-          jobResult.error.dispose();
-          jobResult.dispose();
-          throw new Error('Error executing pending jobs');
-        }
-
-        const jobCount = 'value' in jobResult ? jobResult.value : 0;
-        jobResult.dispose();
-
-        if (jobCount === 0) {
-          // No more jobs to execute
-          break;
-        }
-
-        // Prevent infinite loop
-        if (jobCount === lastJobCount) {
-          break;
-        }
-        lastJobCount = jobCount;
-      }
-
-      // Try to dump the result after executing jobs
       try {
-        if ('value' in result) {
-          const value = this.vm.dump(result.value);
-          result.value.dispose();
-          return value;
-        } else {
-          throw new Error('No value in result');
+        // Try to get error type
+        const errorTypeProp = this.vm.getProp(result.error, 'name');
+        if (this.vm.typeof(errorTypeProp) === 'string') {
+          errorType = this.vm.getString(errorTypeProp);
         }
-      } catch (dumpError) {
-        // If dump still fails, handle the error
-        if ('value' in result) {
-          result.value.dispose();
-        }
+        errorTypeProp.dispose();
+      } catch (_e) {
+        // Failed to get error type
+      }
 
-        if (dumpError instanceof Error && dumpError.message.includes('Lifetime not alive')) {
-          throw new Error(
-            `Failed to resolve async operation: Promise may have been resolved but handle was disposed`
-          );
-        } else {
-          throw new Error(`Failed to dump result: ${dumpError}`);
+      try {
+        // エラーメッセージを取得
+        const dumpResult = result.error != null ? this.vm.dump(result.error) : null;
+
+        if (dumpResult && typeof dumpResult === 'object') {
+          if ('message' in dumpResult) {
+            errorMsg = dumpResult.message || errorMsg;
+          }
+          if ('stack' in dumpResult) {
+            errorDetails = dumpResult.stack || '';
+          }
+          // その他のプロパティも含める
+          errorMsg = JSON.stringify(dumpResult);
+        } else if (typeof dumpResult === 'string') {
+          errorMsg = dumpResult;
+        }
+      } catch (_e) {
+        // dumpが失敗した場合はmessageプロパティを試す
+        try {
+          const msgProp = this.vm.getProp(result.error, 'message');
+          if (this.vm.typeof(msgProp) === 'string') {
+            errorMsg = this.vm.getString(msgProp);
+          }
+          msgProp.dispose();
+        } catch (_e2) {
+          // Failed to get error message
         }
       }
-    } catch (error) {
-      // Error logged at higher level
-      throw error;
+
+      // Dispose the error handle
+      if (result.error) {
+        result.error.dispose();
+      }
+
+      // Include code snippet for debugging
+      const codeSnippet = code.length > 100 ? `${code.substring(0, 100)}...` : code;
+      throw new Error(
+        `${errorType}: ${errorMsg}\nCode: ${codeSnippet}${errorDetails ? `\nStack: ${errorDetails}` : ''}`
+      );
+    }
+
+    // result.valueが存在することを確認
+    if (!('value' in result) || !result.value) {
+      throw new Error('No result value from eval');
+    }
+
+    // Execute pending jobs first for async code
+    const maxIterations = 100;
+    let lastJobCount = -1;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const jobResult = this.runtime.executePendingJobs();
+
+      if ('error' in jobResult && jobResult.error) {
+        // Error executing jobs
+        if ('value' in result) {
+          result.value.dispose();
+        }
+        jobResult.error.dispose();
+        jobResult.dispose();
+        throw new Error('Error executing pending jobs');
+      }
+
+      const jobCount = 'value' in jobResult ? jobResult.value : 0;
+      jobResult.dispose();
+
+      if (jobCount === 0) {
+        // No more jobs to execute
+        break;
+      }
+
+      // Prevent infinite loop
+      if (jobCount === lastJobCount) {
+        break;
+      }
+      lastJobCount = jobCount;
+    }
+
+    // Try to dump the result after executing jobs
+    try {
+      if ('value' in result) {
+        const value = this.vm.dump(result.value);
+        result.value.dispose();
+        return value;
+      } else {
+        throw new Error('No value in result');
+      }
+    } catch (dumpError) {
+      // If dump still fails, handle the error
+      if ('value' in result) {
+        result.value.dispose();
+      }
+
+      if (dumpError instanceof Error && dumpError.message.includes('Lifetime not alive')) {
+        throw new Error(
+          `Failed to resolve async operation: Promise may have been resolved but handle was disposed`
+        );
+      } else {
+        throw new Error(`Failed to dump result: ${dumpError}`);
+      }
     }
   }
 

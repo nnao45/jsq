@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { render, Box, Text } from 'ink';
+import { Box, render, Text } from 'ink';
 import { TextInput } from 'ink-ui';
-import type { JsqOptions } from '@/types/cli';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { JsqProcessor } from '@/core/lib/processor';
-import { readFileByFormat, detectFileFormat } from '@/utils/file-input';
+import type { JsqOptions } from '@/types/cli';
+import { detectFileFormat, readFileByFormat } from '@/utils/file-input';
 import { OutputFormatter } from '@/utils/output-formatter';
 
 interface ReplState {
@@ -15,6 +16,7 @@ interface ReplState {
   currentInput: string;
   result: string | null;
   error: string | null;
+  lastError: string | null;
   processor: JsqProcessor;
   options: JsqOptions;
 }
@@ -27,7 +29,10 @@ async function loadInitialData(options: JsqOptions): Promise<unknown> {
   return {};
 }
 
-const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({ initialData, options }) => {
+const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({
+  initialData,
+  options,
+}) => {
   const [state, setState] = useState<ReplState>({
     data: initialData,
     history: [],
@@ -35,33 +40,42 @@ const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({ init
     currentInput: '',
     result: null,
     error: null,
+    lastError: null,
     processor: new JsqProcessor(options),
     options,
   });
 
-  const evaluateExpression = useCallback(async (input: string) => {
-    if (!input.trim()) {
-      setState(prev => ({ ...prev, result: null, error: null }));
-      return;
-    }
+  const evaluateExpression = useCallback(
+    async (input: string) => {
+      if (!input.trim()) {
+        setState(prev => ({ ...prev, result: null, error: null }));
+        return;
+      }
 
-    try {
-      const result = await state.processor.process(input, JSON.stringify(state.data));
-      const formatted = OutputFormatter.format(result.data, state.options);
-      setState(prev => ({ ...prev, result: formatted, error: null }));
-    } catch (err) {
-      setState(prev => ({ 
-        ...prev, 
-        result: null, 
-        error: err instanceof Error ? err.message : String(err) 
-      }));
-    }
-  }, [state.processor, state.data, state.options]);
+      try {
+        const result = await state.processor.process(input, JSON.stringify(state.data));
+        const formatted = OutputFormatter.format(result.data, state.options);
+        setState(prev => ({ ...prev, result: formatted, error: null }));
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        setState(prev => ({
+          ...prev,
+          result: null,
+          error,
+          lastError: error,
+        }));
+      }
+    },
+    [state.processor, state.data, state.options]
+  );
 
-  const handleInputChange = useCallback((value: string) => {
-    setState(prev => ({ ...prev, currentInput: value }));
-    evaluateExpression(value);
-  }, [evaluateExpression]);
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setState(prev => ({ ...prev, currentInput: value, error: null }));
+      evaluateExpression(value);
+    },
+    [evaluateExpression]
+  );
 
   const handleSubmit = useCallback((value: string) => {
     if (value.trim()) {
@@ -69,41 +83,44 @@ const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({ init
         ...prev,
         history: [...prev.history, value],
         historyIndex: prev.history.length + 1,
-        currentInput: ''
+        currentInput: '',
       }));
     }
   }, []);
 
-  const handleKeyDown = useCallback((_input: string, key: any) => {
-    if (key.upArrow && state.historyIndex > 0) {
-      const newIndex = state.historyIndex - 1;
-      const historicalValue = state.history[newIndex];
-      setState(prev => ({
-        ...prev,
-        historyIndex: newIndex,
-        currentInput: historicalValue
-      }));
-      evaluateExpression(historicalValue);
-    } else if (key.downArrow) {
-      if (state.historyIndex < state.history.length - 1) {
-        const newIndex = state.historyIndex + 1;
+  const handleKeyDown = useCallback(
+    (_input: string, key: { upArrow?: boolean; downArrow?: boolean; escape?: boolean }) => {
+      if (key.upArrow && state.historyIndex > 0) {
+        const newIndex = state.historyIndex - 1;
         const historicalValue = state.history[newIndex];
         setState(prev => ({
           ...prev,
           historyIndex: newIndex,
-          currentInput: historicalValue
+          currentInput: historicalValue,
         }));
         evaluateExpression(historicalValue);
-      } else if (state.historyIndex === state.history.length - 1) {
-        setState(prev => ({
-          ...prev,
-          historyIndex: state.history.length,
-          currentInput: ''
-        }));
-        evaluateExpression('');
+      } else if (key.downArrow) {
+        if (state.historyIndex < state.history.length - 1) {
+          const newIndex = state.historyIndex + 1;
+          const historicalValue = state.history[newIndex];
+          setState(prev => ({
+            ...prev,
+            historyIndex: newIndex,
+            currentInput: historicalValue,
+          }));
+          evaluateExpression(historicalValue);
+        } else if (state.historyIndex === state.history.length - 1) {
+          setState(prev => ({
+            ...prev,
+            historyIndex: state.history.length,
+            currentInput: '',
+          }));
+          evaluateExpression('');
+        }
       }
-    }
-  }, [state.history, state.historyIndex, evaluateExpression]);
+    },
+    [state.history, state.historyIndex, evaluateExpression]
+  );
 
   useEffect(() => {
     return () => {
@@ -121,7 +138,7 @@ const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({ init
           <Text>Loaded data from: {options.file}</Text>
         </Box>
       )}
-      
+
       <Box marginBottom={1}>
         <Text>{'> '}</Text>
         <TextInput
@@ -137,7 +154,7 @@ const ReplApp: React.FC<{ initialData: unknown; options: JsqOptions }> = ({ init
           <Text color="green">{state.result}</Text>
         </Box>
       )}
-      
+
       {state.error && (
         <Box>
           <Text color="red">Error: {state.error}</Text>
@@ -156,16 +173,16 @@ async function startInkRepl() {
     safe: args.includes('--safe'),
     color: true,
   };
-  
+
   // Handle file option
   const fileIndex = args.indexOf('--file');
   if (fileIndex !== -1 && fileIndex < args.length - 1) {
     options.file = args[fileIndex + 1];
   }
-  
+
   // Load initial data
   const initialData = await loadInitialData(options);
-  
+
   // Render the app
   render(<ReplApp initialData={initialData} options={options} />);
 }

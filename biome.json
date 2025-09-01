@@ -41,7 +41,8 @@
       },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "warn",
+        "noUnsafeDeclarationMerging": "off"
       },
       "performance": {
         "noDelete": "warn"

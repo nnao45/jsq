@@ -26,17 +26,11 @@ console.log('2. assignWith with customizer:', result2);
 console.log('   Expected: { a: 1, b: 5, c: 4 }\n');
 
 // Test chainable forms
-const result3 = _({})
-  .assignIn(child)
-  .pick('a', 'b')
-  .value();
+const result3 = _({}).assignIn(child).pick('a', 'b').value();
 console.log('3. Chainable assignIn:', result3);
 console.log('   Expected: { a: 1, b: 2 }\n');
 
-const result4 = _({})
-  .assignWith(obj1, obj2, customizer)
-  .keys()
-  .value();
+const result4 = _({}).assignWith(obj1, obj2, customizer).keys().value();
 console.log('4. Chainable assignWith + keys:', result4);
 console.log('   Expected: ["a", "b", "c"]\n');
 

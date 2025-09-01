@@ -179,10 +179,9 @@ describe('CLI E2E Tests', () => {
     options: { timeout?: number; cwd?: string } = {}
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
     // Add --compact option if not already present
-    if (!args.includes('--compact') && !args.includes('-c')) {
-      args = ['--compact', ...args];
-    }
-    return runJsq(args, input, options);
+    const argsWithCompact =
+      !args.includes('--compact') && !args.includes('-c') ? ['--compact', ...args] : args;
+    return runJsq(argsWithCompact, input, options);
   };
 
   describe('Basic CLI Operations', () => {
@@ -631,7 +630,10 @@ describe('CLI E2E Tests', () => {
         ],
       });
 
-      const result = await runJsqForJSON(['$.data.filter(d => d.score > 90).pluck("name")'], testInput);
+      const result = await runJsqForJSON(
+        ['$.data.filter(d => d.score > 90).pluck("name")'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Alice', 'Charlie']);

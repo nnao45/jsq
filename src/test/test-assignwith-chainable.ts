@@ -29,10 +29,7 @@ console.log('   Expected: { a: 1, b: 5, c: 4 }\n');
 // Test chaining with other methods
 const obj6 = { a: 1, b: 2, c: 3 };
 const obj7 = { b: 4, d: 5 };
-const result3 = _(obj6)
-  .assignWith(obj7, customizer)
-  .pick('a', 'b', 'd')
-  .value();
+const result3 = _(obj6).assignWith(obj7, customizer).pick('a', 'b', 'd').value();
 console.log('3. Chained with pick:', result3);
 console.log('   Expected: { a: 1, b: 6, d: 5 }\n');
 

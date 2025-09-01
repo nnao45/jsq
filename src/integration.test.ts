@@ -70,10 +70,11 @@ describe('Integration Tests', () => {
     options: string[] = []
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
     // Add --compact option if not already present
-    if (!options.includes('--compact') && !options.includes('-c')) {
-      options = ['--compact', ...options];
-    }
-    return runJsq(expression, input, options);
+    const finalOptions =
+      !options.includes('--compact') && !options.includes('-c')
+        ? ['--compact', ...options]
+        : options;
+    return runJsq(expression, input, finalOptions);
   };
 
   describe('Basic CLI functionality', () => {
