@@ -467,7 +467,7 @@ export class ExpressionEvaluator {
         if (match) {
           simpleMessage = match[1];
         }
-        
+
         throw new Error(simpleMessage);
       }
       throw error;

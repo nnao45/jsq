@@ -8,44 +8,9 @@ describe('No Input CLI Integration Tests', () => {
   const __dirname = dirname(__filename);
   const binPath = join(__dirname, '../../bin/jsq');
 
-  const runJsq = (
+  const runJsqForJSON = (
     expression: string
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
-    return new Promise(resolve => {
-      const child = spawn('node', [binPath, expression], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          NODE_ENV: 'test',
-          JSQ_NO_STDIN: 'true',
-        },
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout?.on('data', data => {
-        stdout += data.toString();
-      });
-
-      child.stderr?.on('data', data => {
-        stderr += data.toString();
-      });
-
-      child.on('close', code => {
-        resolve({
-          stdout: stdout.trim(),
-          stderr: stderr.trim(),
-          exitCode: code || 0,
-        });
-      });
-
-      // Close stdin immediately to simulate no input
-      child.stdin?.end();
-    });
-  };
-
-  const runJsqForJSON = (expression: string): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
     return new Promise(resolve => {
       const child = spawn('node', [binPath, '--compact', expression], {
         stdio: ['pipe', 'pipe', 'pipe'],

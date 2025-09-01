@@ -276,7 +276,7 @@ export class VMSandboxQuickJS {
 
           // Clean up
           await execContext.eval('delete globalThis.__result__');
-        } catch (e) {
+        } catch (_e) {
           // If unwrapping fails, use original value
           // Silently ignore unwrap failures
         }

@@ -31,7 +31,7 @@ export class OutputFormatter {
 
     // Determine color usage
     this.useColor = this.shouldUseColor(options);
-    
+
     // Store verbose flag
     this.verbose = options.verbose || false;
   }
@@ -91,7 +91,7 @@ export class OutputFormatter {
     if (Array.isArray(data)) {
       return data.map(item => JSON.stringify(item, this.getReplacer())).join('\n');
     }
-    
+
     // For non-arrays, just output as compact JSON
     return JSON.stringify(data, this.getReplacer());
   }

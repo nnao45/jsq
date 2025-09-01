@@ -17,12 +17,6 @@ import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
 import { detectRuntime } from '@/utils/runtime';
 
-// Helper function to exit cleanly without QuickJS GC errors
-function exitCleanly(code: number): void {
-  // The isProcessExiting flag will be set by the exit handler
-  process.exit(code);
-}
-
 // Set up process exit handlers to prevent QuickJS GC issues
 setupProcessExitHandlers();
 
@@ -97,7 +91,7 @@ addCommonOptions(mainCommand).action(
           throw new Error('No expression provided');
         }
       }
-      
+
       if (options.repl) {
         await handleReplMode(options);
         return;

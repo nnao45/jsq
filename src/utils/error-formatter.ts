@@ -16,10 +16,12 @@ export interface FormattedError {
 }
 
 export class ErrorFormatter {
-  static formatError(error: FormattedError, input: string): string {
+  static formatError(error: FormattedError, _input: string): string {
     const typeLabel = ErrorFormatter.getTypeLabel(error.type);
     const detail = error.detail ? ` (${error.detail})` : '';
-    const position = error.position ? ` at line ${error.position.line}:${error.position.column}` : '';
+    const position = error.position
+      ? ` at line ${error.position.line}:${error.position.column}`
+      : '';
     return chalk.bold.red(`${typeLabel}: ${error.message}${detail}${position}`);
   }
 
@@ -34,59 +36,60 @@ export class ErrorFormatter {
     }
   }
 
-  private static formatErrorContext(input: string, position: ErrorPosition): string[] {
-    const lines: string[] = [];
-    const inputLines = input.split('\n');
-
-    // エラー位置の計算
-    let currentLine = 1;
-    let _currentColumn = 1;
-    let charIndex = 0;
-
-    // 実際のエラー位置を探す
-    for (let i = 0; i < input.length && currentLine < position.line; i++) {
-      if (input[i] === '\n') {
-        currentLine++;
-        _currentColumn = 1;
-      } else {
-        _currentColumn++;
-      }
-      charIndex++;
-    }
-
-    // 列位置まで移動
-    for (let i = 1; i < position.column && charIndex < input.length; i++) {
-      charIndex++;
-    }
-
-    // コンテキストの表示（前後1行を含む）
-    const startLine = Math.max(0, position.line - 2);
-    const endLine = Math.min(inputLines.length, position.line + 1);
-
-    lines.push(chalk.blue(`LINE ${position.line}:${position.column}`));
-    lines.push('');
-
-    for (let i = startLine; i < endLine; i++) {
-      const lineNum = i + 1;
-      const lineContent = inputLines[i];
-      const lineNumStr = String(lineNum).padStart(4, ' ');
-
-      if (lineNum === position.line) {
-        // エラー行をハイライト
-        lines.push(chalk.gray(`${lineNumStr} | `) + chalk.white(lineContent));
-
-        // エラー位置を指す矢印
-        const arrowLine =
-          ' '.repeat(6 + position.column - 1) + chalk.red('^'.repeat(position.length || 1));
-        lines.push(arrowLine);
-      } else {
-        // 前後の行
-        lines.push(chalk.gray(`${lineNumStr} | ${lineContent}`));
-      }
-    }
-
-    return lines;
-  }
+  // Commented out unused method - keeping for potential future use
+  // private static formatErrorContext(input: string, position: ErrorPosition): string[] {
+  //   const lines: string[] = [];
+  //   const inputLines = input.split('\n');
+  //
+  //   // エラー位置の計算
+  //   let currentLine = 1;
+  //   let _currentColumn = 1;
+  //   let charIndex = 0;
+  //
+  //   // 実際のエラー位置を探す
+  //   for (let i = 0; i < input.length && currentLine < position.line; i++) {
+  //     if (input[i] === '\n') {
+  //       currentLine++;
+  //       _currentColumn = 1;
+  //     } else {
+  //       _currentColumn++;
+  //     }
+  //     charIndex++;
+  //   }
+  //
+  //   // 列位置まで移動
+  //   for (let i = 1; i < position.column && charIndex < input.length; i++) {
+  //     charIndex++;
+  //   }
+  //
+  //   // コンテキストの表示（前後1行を含む）
+  //   const startLine = Math.max(0, position.line - 2);
+  //   const endLine = Math.min(inputLines.length, position.line + 1);
+  //
+  //   lines.push(chalk.blue(`LINE ${position.line}:${position.column}`));
+  //   lines.push('');
+  //
+  //   for (let i = startLine; i < endLine; i++) {
+  //     const lineNum = i + 1;
+  //     const lineContent = inputLines[i];
+  //     const lineNumStr = String(lineNum).padStart(4, ' ');
+  //
+  //     if (lineNum === position.line) {
+  //       // エラー行をハイライト
+  //       lines.push(chalk.gray(`${lineNumStr} | `) + chalk.white(lineContent));
+  //
+  //       // エラー位置を指す矢印
+  //       const arrowLine =
+  //         ' '.repeat(6 + position.column - 1) + chalk.red('^'.repeat(position.length || 1));
+  //       lines.push(arrowLine);
+  //     } else {
+  //       // 前後の行
+  //       lines.push(chalk.gray(`${lineNumStr} | ${lineContent}`));
+  //     }
+  //   }
+  //
+  //   return lines;
+  // }
 
   static parseJSONError(error: Error, input: string): FormattedError {
     const message = error.message;
