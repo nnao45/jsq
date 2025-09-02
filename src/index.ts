@@ -91,13 +91,13 @@ addCommonOptions(mainCommand).action(
           // Non-interactive environment, try to read stdin and start REPL
           const stdinData = await readStdin();
           if (stdinData !== 'null') {
-            // Have stdin data, but check if we can start REPL
-            if (process.stdin.isTTY) {
+            // Have stdin data, check if stdout is TTY for REPL output
+            if (process.stdout.isTTY) {
               options.stdinData = stdinData;
               await handleReplMode(options);
               return;
             } else {
-              // Can't start REPL without TTY
+              // Can't start REPL without TTY for output
               throw new Error('No expression provided');
             }
           } else {

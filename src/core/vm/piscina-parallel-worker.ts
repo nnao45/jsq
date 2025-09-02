@@ -8,8 +8,8 @@ import { ExpressionEvaluator } from '../lib/evaluator';
 import { JsonParser } from '../lib/parser';
 
 interface WorkerTask {
-  type?: 'init' | 'process';
-  data?: string[];
+  type?: 'init' | 'process' | 'eval';
+  data?: string[] | string;
   expression?: string;
   options?: JsqOptions;
 }
@@ -85,12 +85,33 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
   initializeWorker(options);
 
+  // Handle single evaluation for REPL mode
+  if (task.type === 'eval' && typeof data === 'string') {
+    try {
+      const parsed = parser!.parse(data);
+      const result = await evaluator!.evaluate(expression, parsed);
+      return { results: [result] };
+    } catch (error) {
+      return {
+        results: [],
+        errors: [
+          {
+            line: 1,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ],
+      };
+    }
+  }
+
+  // Handle batch processing
   const results: unknown[] = [];
   const errors: Array<{ line: number; message: string }> = [];
 
   // Process lines with line numbers
-  for (let i = 0; i < data.length; i++) {
-    const { result, error } = await processLine(data[i], expression || '', i + 1);
+  const dataArray = Array.isArray(data) ? data : [data];
+  for (let i = 0; i < dataArray.length; i++) {
+    const { result, error } = await processLine(dataArray[i], expression || '', i + 1);
 
     if (error) {
       errors.push(error);

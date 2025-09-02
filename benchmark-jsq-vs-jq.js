@@ -69,7 +69,7 @@ for (const scenario of scenarios) {
   
   // Test jsq single-threaded
   try {
-    const cmd = `cat ${scenario.file} | node ./dist/index.js --stream '${scenario.jsqQuery}' 2>/dev/null | wc -l`;
+    const cmd = `cat ${scenario.file} | bun run ./dist/index.js --stream '${scenario.jsqQuery}' 2>/dev/null | wc -l`;
     const start = process.hrtime.bigint();
     const output = execSync(cmd, { encoding: 'utf-8' }).trim();
     const end = process.hrtime.bigint();
@@ -83,7 +83,7 @@ for (const scenario of scenarios) {
   const workerCounts = [2, 4, 8, Math.floor(CPU_COUNT / 2), CPU_COUNT];
   for (const workers of [...new Set(workerCounts)].filter(w => w > 0 && w <= CPU_COUNT)) {
     try {
-      const cmd = `cat ${scenario.file} | node ./dist/index.js --stream --parallel ${workers} '${scenario.jsqQuery}' 2>/dev/null | wc -l`;
+      const cmd = `cat ${scenario.file} | bun run ./dist/index.js --stream --parallel ${workers} '${scenario.jsqQuery}' 2>/dev/null | wc -l`;
       const start = process.hrtime.bigint();
       const output = execSync(cmd, { encoding: 'utf-8' }).trim();
       const end = process.hrtime.bigint();
@@ -142,7 +142,7 @@ const minimalResults = {};
 // jsq tests
 for (const workers of [1, 8, CPU_COUNT]) {
   try {
-    const cmd = `cat ./tmp/minimal.jsonl | node ./dist/index.js --stream --parallel ${workers} '$.x' 2>&1 | grep -c '^1$' || true`;
+    const cmd = `cat ./tmp/minimal.jsonl | bun run ./dist/index.js --stream --parallel ${workers} '$.x' 2>&1 | grep -c '^1$' || true`;
     const start = process.hrtime.bigint();
     execSync(cmd);
     const end = process.hrtime.bigint();
