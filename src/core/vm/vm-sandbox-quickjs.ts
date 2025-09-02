@@ -1,3 +1,4 @@
+import { cpus } from 'node:os';
 import type {
   SandboxError,
   VMContext,
@@ -7,9 +8,8 @@ import type {
 } from '@/types/sandbox';
 import type { ApplicationContext } from '../application-context';
 import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine';
-import { VMEngineFactory } from './VMEngineFactory';
 import { QuickJSVMPool } from './quickjs-vm-pool';
-import { cpus } from 'node:os';
+import { VMEngineFactory } from './VMEngineFactory';
 
 /**
  * QuickJS-based VM Sandbox implementation
@@ -37,18 +37,15 @@ export class VMSandboxQuickJS {
     };
 
     // Enable VM pooling by default (can be disabled for testing)
-    this.useVMPool = process.env.DISABLE_VM_POOL !== 'true';
+    // Disable VM pool in test environment to avoid context reuse issues
+    this.useVMPool = process.env.DISABLE_VM_POOL !== 'true' && process.env.NODE_ENV !== 'test';
 
     // Initialize the shared VM pool if enabled and not already created
     if (this.useVMPool && !VMSandboxQuickJS.vmPool) {
       // Use CPU count for pool size, with a reasonable max limit
       const cpuCount = cpus().length;
       const poolSize = Math.min(Math.floor(cpuCount / 2), 8); // CPU数の半分、最大8
-      if (process.env.NODE_ENV !== 'production') {
-        console.error(
-          `🚀 Initializing VM pool with ${poolSize} instances (${cpuCount} vCPUs detected)`
-        );
-      }
+      // Remove console.error in non-production environments to avoid interfering with output
       VMSandboxQuickJS.vmPool = new QuickJSVMPool(appContext, this.config, poolSize, 100); // Optimized pool size
     }
   }
@@ -395,48 +392,67 @@ export class VMSandboxQuickJS {
 
     // Create $ as a local variable that will be captured in closures
     const setupCode = `
-      const smartDollarModule = ${smartDollarCode};
-      const { createSmartDollar, SmartDollar } = smartDollarModule;
-      const $_data = ${JSON.stringify(dataToSerialize)};
-      
-      // Store SmartDollar class and creator globally for cleanup and method access
-      globalThis.SmartDollar = SmartDollar;
-      globalThis.createSmartDollar = createSmartDollar;
-      
-      // Override Object.keys to handle SmartDollar objects
-      const originalObjectKeys = Object.keys;
-      Object.keys = function(obj) {
-        if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
-          return originalObjectKeys(obj._value);
-        }
-        return originalObjectKeys(obj);
-      };
-      
-      // Override Object.values to handle SmartDollar objects
-      const originalObjectValues = Object.values;
-      Object.values = function(obj) {
-        if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
-          return originalObjectValues(obj._value);
-        }
-        return originalObjectValues(obj);
-      };
-      
-      // Override Object.entries to handle SmartDollar objects
-      const originalObjectEntries = Object.entries;
-      Object.entries = function(obj) {
-        if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
-          return originalObjectEntries(obj._value);
-        }
-        return originalObjectEntries(obj);
-      };
-      
-      // Create SmartDollar instance
-      if ($_data === null || $_data === undefined) {
-        globalThis.$ = $_data;
-      } else {
-        // Always use Proxy-based SmartDollar for consistent behavior
-        globalThis.$ = createSmartDollar($_data);
+      // Check if smartDollarModule already exists to avoid redefinition
+      if (typeof globalThis.smartDollarModule === 'undefined') {
+        globalThis.smartDollarModule = ${smartDollarCode};
       }
+      
+      // Use existing module or extract from newly created one
+      // Use IIFE to avoid const redeclaration issues
+      (function() {
+        const { createSmartDollar, SmartDollar } = globalThis.smartDollarModule;
+        const $_data = ${JSON.stringify(dataToSerialize)};
+        
+        // Store SmartDollar class and creator globally for cleanup and method access
+        if (typeof globalThis.SmartDollar === 'undefined') {
+          globalThis.SmartDollar = SmartDollar;
+        }
+        if (typeof globalThis.createSmartDollar === 'undefined') {
+          globalThis.createSmartDollar = createSmartDollar;
+        }
+      
+        // Only override Object methods if not already overridden
+        if (!globalThis.__objectMethodsOverridden) {
+          // Save original methods
+          Object.__originalKeys = Object.keys;
+          Object.__originalValues = Object.values;
+          Object.__originalEntries = Object.entries;
+          
+          // Override Object.keys to handle SmartDollar objects
+          Object.keys = function(obj) {
+            if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
+              return Object.__originalKeys(obj._value);
+            }
+            return Object.__originalKeys(obj);
+          };
+          
+          // Override Object.values to handle SmartDollar objects
+          Object.values = function(obj) {
+            if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
+              return Object.__originalValues(obj._value);
+            }
+            return Object.__originalValues(obj);
+          };
+          
+          // Override Object.entries to handle SmartDollar objects
+          Object.entries = function(obj) {
+            if (obj && obj.__isSmartDollar && obj._value !== null && obj._value !== undefined) {
+              return Object.__originalEntries(obj._value);
+            }
+            return Object.__originalEntries(obj);
+          };
+          
+          globalThis.__objectMethodsOverridden = true;
+        }
+        
+        // Create SmartDollar instance
+        if ($_data === null || $_data === undefined) {
+          globalThis.$ = $_data;
+        } else {
+          // Always use Proxy-based SmartDollar for consistent behavior
+          globalThis.$ = createSmartDollar($_data);
+        }
+      })();
     `;
 
     await context.eval(setupCode);

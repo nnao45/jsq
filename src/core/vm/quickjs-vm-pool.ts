@@ -1,8 +1,8 @@
-import type { QuickJSRuntime, QuickJSContext } from 'quickjs-emscripten';
-import { QuickJSEngine } from './engines/quickjs/QuickJSEngine.js';
-import type { ApplicationContext } from '../application-context.js';
-import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine.js';
+import type { QuickJSContext, QuickJSRuntime } from 'quickjs-emscripten';
 import type { VMSandboxConfig } from '@/types/sandbox.js';
+import type { ApplicationContext } from '../application-context.js';
+import { QuickJSEngine } from './engines/quickjs/QuickJSEngine.js';
+import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine.js';
 
 interface PooledVM {
   engine: QuickJSEngine;
@@ -88,8 +88,10 @@ export class QuickJSVMPool {
 
     // Get the internal QuickJS runtime and context from the engine
     // We need to access private properties, so we'll use type assertion
+    // biome-ignore lint/suspicious/noExplicitAny: Need to access internal QuickJS properties
     const engineInternal = engine as any;
     const runtime = engineInternal.runtime;
+    // biome-ignore lint/suspicious/noExplicitAny: Need to access internal QuickJS properties
     const contextInternal = execContext as any;
     const context = contextInternal.vm;
 
@@ -105,12 +107,54 @@ export class QuickJSVMPool {
   }
 
   private async resetContext(context: QuickJSContext): Promise<void> {
-    // Clear console calls
+    // Clear console calls and reset SmartDollar state
     try {
       const clearCode = `
+        // Clear console calls
         if (typeof globalThis.__consoleCalls !== 'undefined') {
           globalThis.__consoleCalls = [];
         }
+        
+        // Clear SmartDollar-related globals explicitly
+        // Use a more thorough cleanup approach
+        const smartDollarGlobals = [
+          'smartDollarModule',
+          'createSmartDollar', 
+          'SmartDollar',
+          '$',
+          '_',
+          '__objectMethodsOverridden',
+          '__result__',
+          'smartDollarMethods'
+        ];
+        
+        smartDollarGlobals.forEach(key => {
+          try {
+            if (typeof globalThis[key] !== 'undefined') {
+              delete globalThis[key];
+            }
+          } catch (e) {
+            // Some properties might be non-configurable
+            try {
+              globalThis[key] = undefined;
+            } catch {}
+          }
+        });
+        
+        // Reset Object method overrides
+        if (typeof Object.__originalKeys !== 'undefined') {
+          Object.keys = Object.__originalKeys;
+          delete Object.__originalKeys;
+        }
+        if (typeof Object.__originalValues !== 'undefined') {
+          Object.values = Object.__originalValues;
+          delete Object.__originalValues;
+        }
+        if (typeof Object.__originalEntries !== 'undefined') {
+          Object.entries = Object.__originalEntries;
+          delete Object.__originalEntries;
+        }
+        
         // Clear any user-defined globals
         const userGlobals = Object.keys(globalThis).filter(key => {
           const builtins = ['Object', 'Function', 'Array', 'String', 'Boolean', 'Number',
@@ -119,12 +163,18 @@ export class QuickJSVMPool {
             'Uint8ClampedArray', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array',
             'Float32Array', 'Float64Array', 'undefined', 'null', 'Infinity', 'NaN',
             'console', 'globalThis', 'eval', 'parseInt', 'parseFloat', 'isNaN', 'isFinite',
-            'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
-            '__consoleCalls', '$', '_', 'SmartDollar', 'createSmartDollar'];
+            'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent'];
           return !builtins.includes(key);
         });
+        
         userGlobals.forEach(key => {
-          try { delete globalThis[key]; } catch {}
+          try { 
+            delete globalThis[key]; 
+          } catch {
+            try {
+              globalThis[key] = undefined;
+            } catch {}
+          }
         });
       `;
       const result = context.evalCode(clearCode);

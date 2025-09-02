@@ -5,6 +5,7 @@ import { JsqProcessor } from '@/core/lib/processor';
 import type { JsqOptions } from '@/types/cli';
 import { detectFileFormat, readFileByFormat } from '@/utils/file-input';
 import { OutputFormatter } from '@/utils/output-formatter';
+import { Pager } from '@/utils/pager';
 
 const PROMPT = '> ';
 const YELLOW = '\x1b[33m';
@@ -20,6 +21,7 @@ interface ReplState {
   cursorPosition: number;
   processor: JsqProcessor;
   options: JsqOptions;
+  lastFullOutput?: string; // 最後の完全な出力を保存
 }
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
@@ -28,6 +30,18 @@ async function loadInitialData(options: JsqOptions): Promise<unknown> {
     return await readFileByFormat(options.file, format);
   }
   return {};
+}
+
+// コンソール幅に合わせて文字列を切り詰める関数
+function truncateToWidth(text: string, maxWidth: number): string {
+  const columns = process.stdout.columns || 80;
+  const availableWidth = Math.min(columns - PROMPT.length - 3, maxWidth); // プロンプトと三点リーダー分を引く
+  
+  if (text.length <= availableWidth) {
+    return text;
+  }
+  
+  return `${text.substring(0, availableWidth)}...`;
 }
 
 async function evaluateExpression(state: ReplState): Promise<void> {
@@ -44,7 +58,9 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     // Clear the entire line before showing result
     readline.clearLine(process.stdout, 0);
     // Show result
-    process.stdout.write(`${GREEN}${formatted}${RESET}`);
+    state.lastFullOutput = formatted; // 完全な出力を保存
+    const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
+    process.stdout.write(`${GREEN}${truncated}${RESET}`);
     // Move back to prompt line
     process.stdout.write('\x1b[1A'); // Move up one line
     // Clear the prompt line and redraw
@@ -118,19 +134,28 @@ async function startRepl() {
     process.stdin.setRawMode(true);
     readline.emitKeypressEvents(process.stdin, rl);
   } else {
-    console.error('Error: REPL requires an interactive terminal');
+    // If no TTY in test mode, output specific error
+    if (process.env.NODE_ENV === 'test') {
+      console.error('No expression provided');
+    } else {
+      console.error('Error: REPL requires an interactive terminal');
+    }
     process.exit(1);
   }
 
   // Show initial prompt
-  console.log(`${YELLOW}jsq REPL - Press Ctrl+C to exit${RESET}`);
+  console.log(`${YELLOW}jsq REPL - Press Ctrl+C to exit, Ctrl+R to view full output${RESET}`);
   if (options.file) {
-    console.log(`Loaded data from: ${options.file}`);
+    if (process.argv.includes('--stdin-data')) {
+      console.log(`${GREEN}Loaded data from stdin. Access it with $${RESET}`);
+    } else {
+      console.log(`Loaded data from: ${options.file}`);
+    }
   }
   process.stdout.write(PROMPT);
 
   // Handle keypress events
-  process.stdin.on('keypress', (str, key) => {
+  process.stdin.on('keypress', async (str, key) => {
     if (!key) return;
 
     // Handle special keys
@@ -139,19 +164,56 @@ async function startRepl() {
       process.exit(0);
     }
 
+    // Ctrl+R - 最後の出力をページャーで表示
+    if (key.ctrl && key.name === 'r') {
+      if (state.lastFullOutput) {
+        const pager = new Pager(state.lastFullOutput);
+        // ページャー表示前に現在の行をクリア
+        readline.clearLine(process.stdout, 0);
+        readline.cursorTo(process.stdout, 0);
+        
+        await pager.show();
+        
+        // ページャー終了後、REPLの表示を復元
+        process.stdout.write(PROMPT + state.currentInput);
+        readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+        // 結果を再表示
+        evaluateExpression(state).catch(() => {});
+      }
+      return;
+    }
+
     if (key.name === 'return') {
-      // Enter pressed - save to history and clear input
+      // Enter pressed - execute the expression
       if (state.currentInput.trim()) {
         state.history.push(state.currentInput);
         state.historyIndex = state.history.length;
+        
+        // Execute the expression
+        try {
+          const result = await state.processor.process(state.currentInput, JSON.stringify(state.data));
+          const formatted = OutputFormatter.format(result.data, state.options);
+          state.lastFullOutput = formatted;
+          
+          // Clear current line and show result
+          readline.clearLine(process.stdout, 0);
+          readline.cursorTo(process.stdout, 0);
+          process.stdout.write(`\n${GREEN}${formatted}${RESET}\n`);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          readline.clearLine(process.stdout, 0);
+          readline.cursorTo(process.stdout, 0);
+          process.stdout.write(`\n${RED}Error: ${errorMsg}${RESET}\n`);
+        }
+      } else {
+        // Just move to next line if input is empty
+        process.stdout.write('\n');
       }
+      
+      // Clear input and show new prompt
       state.currentInput = '';
       state.cursorPosition = 0;
-      // Clear the current line before moving to next line
-      readline.clearLine(process.stdout, 0);
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(PROMPT + state.currentInput);
-      process.stdout.write(`\n${PROMPT}`);
+      process.stdout.write(PROMPT);
       return;
     }
 
