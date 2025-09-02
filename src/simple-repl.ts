@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
+import { dirname, join } from 'node:path';
 import * as readline from 'node:readline';
-import { JsqProcessor } from '@/core/lib/processor';
+import { fileURLToPath } from 'node:url';
+import Piscina from 'piscina';
 import type { JsqOptions } from '@/types/cli';
 import { detectFileFormat, readFileByFormat } from '@/utils/file-input';
 import { OutputFormatter } from '@/utils/output-formatter';
@@ -19,7 +21,7 @@ interface ReplState {
   historyIndex: number;
   currentInput: string;
   cursorPosition: number;
-  processor: JsqProcessor;
+  piscina: Piscina;
   options: JsqOptions;
   lastFullOutput?: string; // 最後の完全な出力を保存
 }
@@ -48,8 +50,18 @@ async function evaluateExpression(state: ReplState): Promise<void> {
   if (!state.currentInput.trim()) return;
 
   try {
-    const result = await state.processor.process(state.currentInput, JSON.stringify(state.data));
-    const formatted = OutputFormatter.format(result.data, state.options);
+    const result = await state.piscina.run({
+      type: 'eval',
+      data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
+      expression: state.currentInput,
+      options: state.options,
+    });
+
+    if (result.errors && result.errors.length > 0) {
+      throw new Error(result.errors[0].message);
+    }
+
+    const formatted = OutputFormatter.format(result.results[0], state.options);
 
     // Save cursor position
     readline.cursorTo(process.stdout, 0);
@@ -111,6 +123,18 @@ async function startRepl() {
   // Load initial data
   const initialData = await loadInitialData(options);
 
+  // Get the directory of this file
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+
+  // Create Piscina instance with single worker for REPL
+  const piscina = new Piscina({
+    filename: join(__dirname, 'piscina-parallel-worker.js'),
+    minThreads: 1,
+    maxThreads: 1,
+    idleTimeout: 60000, // Keep worker alive for 1 minute of inactivity
+  });
+
   // Initialize state
   const state: ReplState = {
     data: initialData,
@@ -118,28 +142,57 @@ async function startRepl() {
     historyIndex: -1,
     currentInput: '',
     cursorPosition: 0,
-    processor: new JsqProcessor(options),
+    piscina,
     options,
   };
 
+  // Determine input source for REPL
+  let inputStream = process.stdin;
+  let isPipedInput = false;
+
+  // If stdin is not TTY but stdout is, we need to open /dev/tty for input
+  if (!process.stdin.isTTY && process.stdout.isTTY) {
+    try {
+      const tty = await import('node:tty');
+      const fs = await import('node:fs');
+
+      // Open /dev/tty as a TTY stream with proper raw mode support
+      const fd = fs.openSync('/dev/tty', 'r+');
+      inputStream = new tty.ReadStream(fd);
+      inputStream.setRawMode(true);
+      isPipedInput = true;
+    } catch (error) {
+      console.error('Error: Cannot open terminal for input');
+      await piscina.destroy();
+      process.exit(1);
+    }
+  }
+
   // Set up readline interface
   const rl = readline.createInterface({
-    input: process.stdin,
+    input: inputStream,
     output: process.stdout,
     prompt: PROMPT,
   });
 
   // Enable raw mode for character-by-character input
-  if (process.stdin.isTTY && process.stdin.setRawMode) {
+  if (inputStream === process.stdin && process.stdin.isTTY && process.stdin.setRawMode) {
     process.stdin.setRawMode(true);
     readline.emitKeypressEvents(process.stdin, rl);
+  } else if (isPipedInput) {
+    // inputStream is already in raw mode from above
+    readline.emitKeypressEvents(inputStream, rl);
+  } else if (process.stdout.isTTY) {
+    // Can still run REPL in a limited mode
+    readline.emitKeypressEvents(inputStream, rl);
   } else {
-    // If no TTY in test mode, output specific error
+    // Neither stdin nor stdout is TTY
     if (process.env.NODE_ENV === 'test') {
       console.error('No expression provided');
     } else {
       console.error('Error: REPL requires an interactive terminal');
     }
+    await piscina.destroy();
     process.exit(1);
   }
 
@@ -155,12 +208,13 @@ async function startRepl() {
   process.stdout.write(PROMPT);
 
   // Handle keypress events
-  process.stdin.on('keypress', async (str, key) => {
+  inputStream.on('keypress', async (str, key) => {
     if (!key) return;
 
     // Handle special keys
     if (key.ctrl && key.name === 'c') {
       console.log('\nBye!');
+      await state.piscina.destroy();
       process.exit(0);
     }
 
@@ -191,11 +245,18 @@ async function startRepl() {
 
         // Execute the expression
         try {
-          const result = await state.processor.process(
-            state.currentInput,
-            JSON.stringify(state.data)
-          );
-          const formatted = OutputFormatter.format(result.data, state.options);
+          const result = await state.piscina.run({
+            type: 'eval',
+            data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
+            expression: state.currentInput,
+            options: state.options,
+          });
+
+          if (result.errors && result.errors.length > 0) {
+            throw new Error(result.errors[0].message);
+          }
+
+          const formatted = OutputFormatter.format(result.results[0], state.options);
           state.lastFullOutput = formatted;
 
           // Clear current line and show result
@@ -254,7 +315,7 @@ async function startRepl() {
       // Move cursor left
       if (state.cursorPosition > 0) {
         state.cursorPosition--;
-        readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+        readline.moveCursor(process.stdout, -1, 0);
       }
       return;
     }
@@ -263,52 +324,91 @@ async function startRepl() {
       // Move cursor right
       if (state.cursorPosition < state.currentInput.length) {
         state.cursorPosition++;
-        readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+        readline.moveCursor(process.stdout, 1, 0);
       }
       return;
     }
 
+    if (key.name === 'home' || (key.ctrl && key.name === 'a')) {
+      // Move to beginning of line
+      readline.cursorTo(process.stdout, PROMPT.length);
+      state.cursorPosition = 0;
+      return;
+    }
+
+    if (key.name === 'end' || (key.ctrl && key.name === 'e')) {
+      // Move to end of line
+      readline.cursorTo(process.stdout, PROMPT.length + state.currentInput.length);
+      state.cursorPosition = state.currentInput.length;
+      return;
+    }
+
     if (key.name === 'backspace') {
-      // Handle backspace
-      if (state.cursorPosition > 0 && state.currentInput.length > 0) {
-        state.currentInput =
-          state.currentInput.slice(0, state.cursorPosition - 1) +
-          state.currentInput.slice(state.cursorPosition);
+      // Delete character before cursor
+      if (state.cursorPosition > 0) {
+        const before = state.currentInput.substring(0, state.cursorPosition - 1);
+        const after = state.currentInput.substring(state.cursorPosition);
+        state.currentInput = before + after;
         state.cursorPosition--;
+
+        // Redraw the line
         readline.clearLine(process.stdout, 0);
         readline.cursorTo(process.stdout, 0);
         process.stdout.write(PROMPT + state.currentInput);
         readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+
+        // Update result as user types
         evaluateExpression(state).catch(() => {});
       }
       return;
     }
 
-    // Regular character input
-    if (str) {
+    if (key.name === 'delete') {
+      // Delete character at cursor
+      if (state.cursorPosition < state.currentInput.length) {
+        const before = state.currentInput.substring(0, state.cursorPosition);
+        const after = state.currentInput.substring(state.cursorPosition + 1);
+        state.currentInput = before + after;
+
+        // Redraw the line
+        readline.clearLine(process.stdout, 0);
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(PROMPT + state.currentInput);
+        readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+
+        // Update result as user types
+        evaluateExpression(state).catch(() => {});
+      }
+      return;
+    }
+
+    // Handle regular character input
+    if (str && !key.ctrl && !key.meta && key.name !== 'escape') {
       // Insert character at cursor position
-      state.currentInput =
-        state.currentInput.slice(0, state.cursorPosition) +
-        str +
-        state.currentInput.slice(state.cursorPosition);
-      state.cursorPosition++;
-      // Redraw the entire line
+      const before = state.currentInput.substring(0, state.cursorPosition);
+      const after = state.currentInput.substring(state.cursorPosition);
+      state.currentInput = before + str + after;
+      state.cursorPosition += str.length;
+
+      // Redraw the line
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
       process.stdout.write(PROMPT + state.currentInput);
       readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+
+      // Update result as user types
       evaluateExpression(state).catch(() => {});
     }
   });
 
-  // Handle cleanup
+  // Handle process exit
   process.on('exit', async () => {
-    await state.processor.dispose();
+    await state.piscina.destroy();
   });
 }
 
 // Start the REPL
 startRepl().catch(error => {
-  console.error('Failed to start REPL:', error);
+  console.error('Fatal error:', error);
   process.exit(1);
 });
