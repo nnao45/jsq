@@ -790,7 +790,11 @@ describe('CLI E2E Tests', () => {
 
   describe('Edge Cases and Limitations', () => {
     it('should handle flatten on nested arrays', async () => {
-      const testInput = JSON.stringify([[1, 2], [3, 4], [5, 6]]);
+      const testInput = JSON.stringify([
+        [1, 2],
+        [3, 4],
+        [5, 6],
+      ]);
 
       const result = await runJsqForJSON(['$.flatten()'], testInput);
 
@@ -862,9 +866,16 @@ describe('CLI E2E Tests', () => {
     });
 
     it('should handle spread operator in array operations', async () => {
-      const testInput = JSON.stringify([[1, 2], [3, 4], [5, 6]]);
+      const testInput = JSON.stringify([
+        [1, 2],
+        [3, 4],
+        [5, 6],
+      ]);
 
-      const result = await runJsqForJSON(['$.reduce((acc, arr) => [...acc, ...arr], [])'], testInput);
+      const result = await runJsqForJSON(
+        ['$.reduce((acc, arr) => [...acc, ...arr], [])'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([1, 2, 3, 4, 5, 6]);
@@ -880,11 +891,7 @@ describe('CLI E2E Tests', () => {
     });
 
     it('should handle arrow function shorthand syntax', async () => {
-      const testInput = JSON.stringify([
-        { value: 10 },
-        { value: 20 },
-        { value: 30 },
-      ]);
+      const testInput = JSON.stringify([{ value: 10 }, { value: 20 }, { value: 30 }]);
 
       const result = await runJsqForJSON(['$.pluck("value").map(v => v * v).sum()'], testInput);
 
@@ -909,9 +916,10 @@ describe('CLI E2E Tests', () => {
         ],
       });
 
-      const result = await runJsqForJSON([
-        '$.departments.flatMap(d => d.teams).flatMap(t => t.members).flatMap(m => m.skills)',
-      ], testInput);
+      const result = await runJsqForJSON(
+        ['$.departments.flatMap(d => d.teams).flatMap(t => t.members).flatMap(m => m.skills)'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       const skills = JSON.parse(result.stdout);
@@ -928,7 +936,10 @@ describe('CLI E2E Tests', () => {
         { user: null },
       ]);
 
-      const result = await runJsqForJSON(['$.map(item => item.user?.address?.city || "Unknown")'], testInput);
+      const result = await runJsqForJSON(
+        ['$.map(item => item.user?.address?.city || "Unknown")'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual(['Tokyo', 'Unknown', 'Unknown']);
@@ -956,9 +967,10 @@ describe('CLI E2E Tests', () => {
         { coords: [60] },
       ]);
 
-      const result = await runJsqForJSON([
-        '$.map(({coords: [x = 0, y = 0, z = 0]}) => ({x, y, z}))',
-      ], testInput);
+      const result = await runJsqForJSON(
+        ['$.map(({coords: [x = 0, y = 0, z = 0]}) => ({x, y, z}))'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([
@@ -969,15 +981,14 @@ describe('CLI E2E Tests', () => {
     });
 
     it('should handle rest parameters in functions', async () => {
-      const testInput = JSON.stringify([
-        [1, 2, 3, 4, 5],
-        [10, 20],
-        [100],
-      ]);
+      const testInput = JSON.stringify([[1, 2, 3, 4, 5], [10, 20], [100]]);
 
-      const result = await runJsqForJSON([
-        '$.map(arr => (([first, ...rest]) => ({first, rest, restSum: rest.reduce((a, b) => a + b, 0)}))(arr))',
-      ], testInput);
+      const result = await runJsqForJSON(
+        [
+          '$.map(arr => (([first, ...rest]) => ({first, rest, restSum: rest.reduce((a, b) => a + b, 0)}))(arr))',
+        ],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([
@@ -994,9 +1005,10 @@ describe('CLI E2E Tests', () => {
         { key: 'city', value: 'Tokyo' },
       ]);
 
-      const result = await runJsq([
-        '$.reduce((acc, {key, value}) => ({...acc, [key]: value}), {})',
-      ], testInput);
+      const result = await runJsq(
+        ['$.reduce((acc, {key, value}) => ({...acc, [key]: value}), {})'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual({
@@ -1014,9 +1026,12 @@ describe('CLI E2E Tests', () => {
       ]);
 
       // groupBy returns a plain object, so we need to use Object.values() instead of $.values()
-      const result = await runJsqForJSON([
-        'Object.values($.groupBy("category")).map(group => group.flatMap(item => item.values).reduce((a, b) => a + b, 0))',
-      ], testInput);
+      const result = await runJsqForJSON(
+        [
+          'Object.values($.groupBy("category")).map(group => group.flatMap(item => item.values).reduce((a, b) => a + b, 0))',
+        ],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       const sums = JSON.parse(result.stdout);
@@ -1027,9 +1042,10 @@ describe('CLI E2E Tests', () => {
       const testInput = JSON.stringify([1, 2, 3]);
 
       // Note: In VM environment, we simulate async with sync operations
-      const result = await runJsqForJSON([
-        '$.map(n => new Promise(resolve => resolve(n * n)))',
-      ], testInput);
+      const result = await runJsqForJSON(
+        ['$.map(n => new Promise(resolve => resolve(n * n)))'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       // Promises will be returned as objects in the VM
@@ -1044,28 +1060,29 @@ describe('CLI E2E Tests', () => {
         { name: 'Charlie', scores: [92, 95, 94] },
       ]);
 
-      const result = await runJsqForJSON([
-        '$.map(s => ({...s, avg: s.scores.reduce((a, b) => a + b, 0) / s.scores.length}))' +
-        '.filter(s => s.avg > 85)' +
-        '.sortBy("avg")' +
-        '.reverse()' +
-        '.map(s => `${s.name}: ${s.avg.toFixed(1)}`)',
-      ], testInput);
+      const result = await runJsqForJSON(
+        [
+          '$.map(s => ({...s, avg: s.scores.reduce((a, b) => a + b, 0) / s.scores.length}))' +
+            '.filter(s => s.avg > 85)' +
+            '.sortBy("avg")' +
+            '.reverse()' +
+            '.map(s => `${s.name}: ${s.avg.toFixed(1)}`)',
+        ],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
-      expect(JSON.parse(result.stdout)).toEqual([
-        'Charlie: 93.7',
-        'Alice: 88.3',
-      ]);
+      expect(JSON.parse(result.stdout)).toEqual(['Charlie: 93.7', 'Alice: 88.3']);
     });
 
     it('should handle Set and Map operations', async () => {
       const testInput = JSON.stringify([1, 2, 2, 3, 3, 3, 4, 4, 4, 4]);
 
       // Using uniqBy to simulate Set behavior
-      const result = await runJsqForJSON([
-        '$.uniqBy(x => x).map(x => [x, $.filter(n => n === x).length])',
-      ], testInput);
+      const result = await runJsqForJSON(
+        ['$.uniqBy(x => x).map(x => [x, $.filter(n => n === x).length])'],
+        testInput
+      );
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual([

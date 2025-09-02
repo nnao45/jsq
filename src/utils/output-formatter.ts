@@ -58,12 +58,22 @@ export class OutputFormatter {
       return this.formatCompact(data);
     }
 
-    // Default to simple format (option 2) unless verbose flag is set
-    if (!this.verbose) {
-      return this.formatSimple(data);
+    // Determine default format based on TTY status
+    // REPL mode (TTY): use simple format (compact)
+    // Pipe mode (non-TTY): use pretty format (formatted)
+    const isRepl = process.stdin.isTTY;
+
+    if (this.verbose) {
+      return this.formatPretty(data);
     }
 
-    return this.formatPretty(data);
+    // If not in REPL mode (piped), default to pretty format
+    if (!isRepl) {
+      return this.formatPretty(data);
+    }
+
+    // In REPL mode, default to simple format
+    return this.formatSimple(data);
   }
 
   // Static method for quick formatting
