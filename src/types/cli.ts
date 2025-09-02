@@ -24,6 +24,7 @@ export interface JsqOptions {
   indent?: string | number;
   compact?: boolean;
   sortKeys?: boolean;
+  stdinData?: string;
 }
 
 export interface JsqConfig {

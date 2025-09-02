@@ -72,7 +72,12 @@ if (typeof smartDollarMethods === 'undefined') {
     if (this._value === null || this._value === undefined) {
       return initial;
     }
-    return Array.from(this._value).reduce(fn, initial);
+    const arr = Array.from(this._value);
+    if (arguments.length === 1) {
+      // initialが省略された場合
+      return arr.reduce(fn);
+    }
+    return arr.reduce(fn, initial);
   },
   
   slice: function(start, end) {
@@ -356,6 +361,37 @@ if (typeof smartDollarMethods === 'undefined') {
       return Object.entries(this._value);
     }
     return [this._value];
+  },
+  
+  // Object methods
+  pick: function(...args) {
+    const result = {};
+    const obj = this._value;
+    // Support both array syntax and spread syntax
+    const keys = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+    if (obj && typeof obj === 'object') {
+      for (const key of keys) {
+        if (key in obj) {
+          result[key] = obj[key];
+        }
+      }
+    }
+    return createNewInstance.call(this, result);
+  },
+  
+  omit: function(...args) {
+    const result = {};
+    const obj = this._value;
+    // Support both array syntax and spread syntax
+    const keys = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+    if (obj && typeof obj === 'object') {
+      for (const key in obj) {
+        if (!keys.includes(key)) {
+          result[key] = obj[key];
+        }
+      }
+    }
+    return createNewInstance.call(this, result);
   },
   
   // Utility methods

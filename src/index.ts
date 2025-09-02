@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
+import { cpus } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cpus } from 'node:os';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
@@ -88,12 +88,30 @@ addCommonOptions(mainCommand).action(
           await handleReplMode(options);
           return;
         } else {
-          // Non-interactive environment, show error
-          throw new Error('No expression provided');
+          // Non-interactive environment, try to read stdin and start REPL
+          const stdinData = await readStdin();
+          if (stdinData !== 'null') {
+            // Have stdin data, but check if we can start REPL
+            if (process.stdin.isTTY) {
+              options.stdinData = stdinData;
+              await handleReplMode(options);
+              return;
+            } else {
+              // Can't start REPL without TTY
+              throw new Error('No expression provided');
+            }
+          } else {
+            // No stdin data and no expression
+            throw new Error('No expression provided');
+          }
         }
       }
 
       if (options.repl) {
+        // Check if REPL can be started
+        if (!process.stdin.isTTY) {
+          throw new Error('REPL requires an interactive terminal');
+        }
         await handleReplMode(options);
         return;
       }
@@ -116,6 +134,8 @@ addCommonOptions(mainCommand).action(
 async function handleReplMode(options: JsqOptions): Promise<void> {
   const { spawn } = await import('node:child_process');
   const path = await import('node:path');
+  const fs = await import('node:fs/promises');
+  const os = await import('node:os');
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
@@ -127,19 +147,59 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   if (options.verbose) replArgs.push('--verbose');
   if (options.file) replArgs.push('--file', options.file);
 
-  const replProcess = spawn('node', [replPath, ...replArgs], {
-    stdio: 'inherit',
-    cwd: process.cwd(),
-  });
+  // If we have stdin data, write it to a temp file and pass via --file
+  if (options.stdinData) {
+    const tmpDir = os.tmpdir();
+    const tmpFile = path.join(tmpDir, `jsq-stdin-${Date.now()}.json`);
 
-  replProcess.on('exit', code => {
-    process.exit(code || 0);
-  });
+    try {
+      // Write stdin data to temp file
+      await fs.writeFile(tmpFile, options.stdinData);
 
-  replProcess.on('error', error => {
-    console.error('Failed to start REPL:', error);
-    process.exit(1);
-  });
+      // Add temp file as --file argument
+      replArgs.push('--file', tmpFile);
+      replArgs.push('--stdin-data'); // Flag to indicate this is stdin data
+
+      const replProcess = spawn('node', [replPath, ...replArgs], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        env: process.env,
+      });
+
+      replProcess.on('exit', async code => {
+        // Clean up temp file
+        try {
+          await fs.unlink(tmpFile);
+        } catch (_e) {
+          // Ignore errors
+        }
+        process.exit(code || 0);
+      });
+
+      replProcess.on('error', error => {
+        console.error('Failed to start REPL:', error);
+        process.exit(1);
+      });
+    } catch (error) {
+      console.error('Failed to write stdin data:', error);
+      process.exit(1);
+    }
+  } else {
+    const replProcess = spawn('node', [replPath, ...replArgs], {
+      stdio: 'inherit',
+      cwd: process.cwd(),
+      env: process.env,
+    });
+
+    replProcess.on('exit', code => {
+      process.exit(code || 0);
+    });
+
+    replProcess.on('error', error => {
+      console.error('Failed to start REPL:', error);
+      process.exit(1);
+    });
+  }
 }
 
 function prepareOptions(options: JsqOptions): void {
