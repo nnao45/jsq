@@ -10,8 +10,8 @@ import { Pager } from '@/utils/pager';
 const PROMPT = '> ';
 const YELLOW = '\x1b[33m';
 const RESET = '\x1b[0m';
-const RED = '\x1b[31m';
 const GREEN = '\x1b[32m';
+const GRAY = '\x1b[90m';
 
 interface ReplState {
   data: unknown;
@@ -36,11 +36,11 @@ async function loadInitialData(options: JsqOptions): Promise<unknown> {
 function truncateToWidth(text: string, maxWidth: number): string {
   const columns = process.stdout.columns || 80;
   const availableWidth = Math.min(columns - PROMPT.length - 3, maxWidth); // プロンプトと三点リーダー分を引く
-  
+
   if (text.length <= availableWidth) {
     return text;
   }
-  
+
   return `${text.substring(0, availableWidth)}...`;
 }
 
@@ -79,7 +79,7 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     // Show error
     const errorMsg = error instanceof Error ? error.message : String(error);
     const shortError = errorMsg.split('\n')[0].substring(0, 80);
-    process.stdout.write(`${RED}Error: ${shortError}${RESET}`);
+    process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
     // Move back to prompt line
     process.stdout.write('\x1b[1A'); // Move up one line
     // Clear the prompt line and redraw
@@ -171,9 +171,9 @@ async function startRepl() {
         // ページャー表示前に現在の行をクリア
         readline.clearLine(process.stdout, 0);
         readline.cursorTo(process.stdout, 0);
-        
+
         await pager.show();
-        
+
         // ページャー終了後、REPLの表示を復元
         process.stdout.write(PROMPT + state.currentInput);
         readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
@@ -188,28 +188,31 @@ async function startRepl() {
       if (state.currentInput.trim()) {
         state.history.push(state.currentInput);
         state.historyIndex = state.history.length;
-        
+
         // Execute the expression
         try {
-          const result = await state.processor.process(state.currentInput, JSON.stringify(state.data));
+          const result = await state.processor.process(
+            state.currentInput,
+            JSON.stringify(state.data)
+          );
           const formatted = OutputFormatter.format(result.data, state.options);
           state.lastFullOutput = formatted;
-          
+
           // Clear current line and show result
           readline.clearLine(process.stdout, 0);
           readline.cursorTo(process.stdout, 0);
-          process.stdout.write(`\n${GREEN}${formatted}${RESET}\n`);
+          process.stdout.write(`${GREEN}${formatted}${RESET}\n`);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           readline.clearLine(process.stdout, 0);
           readline.cursorTo(process.stdout, 0);
-          process.stdout.write(`\n${RED}Error: ${errorMsg}${RESET}\n`);
+          process.stdout.write(`${GRAY}Error: ${errorMsg}${RESET}\n`);
         }
       } else {
         // Just move to next line if input is empty
-        process.stdout.write('\n');
+        // process.stdout.write('\n');
       }
-      
+
       // Clear input and show new prompt
       state.currentInput = '';
       state.cursorPosition = 0;
