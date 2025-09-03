@@ -111,12 +111,9 @@ addCommonOptions(mainCommand).action(
               await handleReplModeWithSubprocess(options);
               return;
             } else {
-              // Process normally with identity expression
-              expression = '$';
+              // When we have stdin data but no expression, start REPL mode
               options.stdinData = stdinData;
-              prepareOptions(options);
-              logRuntimeInfo(options);
-              await processExpression(expression, options);
+              await handleReplModeWithSubprocess(options);
               return;
             }
           } else {
@@ -210,7 +207,23 @@ function truncateToWidth(text: string, maxWidth: number): string {
 }
 
 async function evaluateExpression(state: ReplState): Promise<void> {
-  if (!state.currentInput.trim()) return;
+  if (!state.currentInput.trim()) {
+    // 入力が空の時は評価結果をクリア
+    const savedCursorPosition = state.cursorPosition;
+    
+    // 次の行に移動してクリア
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write('\n');
+    readline.clearLine(process.stdout, 0);
+    
+    // 元の行に戻ってプロンプトと入力を再表示
+    process.stdout.write('\x1b[1A');
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(PROMPT + state.currentInput);
+    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    return;
+  }
 
   try {
     let result: any;
@@ -337,7 +350,6 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 
   process.stdout.write(`${YELLOW}jsq REPL - Interactive JSON Query Tool${RESET}\n`);
   process.stdout.write(`Type expressions to query the data. Press Ctrl+C to exit.\n`);
-  process.stdout.write(`Type ${YELLOW}.help${RESET} for available commands.\n`);
   if (options.file) {
     process.stdout.write(`Loaded data from: ${options.file}\n`);
   } else if (options.stdinData || process.env.JSQ_INITIAL_DATA) {
