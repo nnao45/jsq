@@ -25,6 +25,7 @@ export interface JsqOptions {
   compact?: boolean;
   sortKeys?: boolean;
   stdinData?: string;
+  replFileMode?: boolean;
 }
 
 export interface JsqConfig {
