@@ -1,7 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { spawn, ChildProcess } from 'node:child_process';
-import { readFile, writeFile, unlink } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { afterEach, describe, expect, it } from 'vitest';
 
 describe('REPL File Mode', () => {
   let replProcess: ChildProcess;
@@ -57,15 +55,15 @@ describe('REPL File Mode', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // 式を入力（シミュレート）
-    replProcess.stdin?.write(testExpression + '\n');
+    replProcess.stdin?.write(`${testExpression}\n`);
 
     // 結果を待つ
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // 標準出力から結果を読み取る
-    const output = await new Promise<string>((resolve) => {
+    const output = await new Promise<string>(resolve => {
       let data = '';
-      replProcess.stdout?.on('data', (chunk) => {
+      replProcess.stdout?.on('data', chunk => {
         data += chunk.toString();
       });
       setTimeout(() => resolve(data), 1000);

@@ -1,8 +1,6 @@
-import { spawn, ChildProcess } from 'node:child_process';
-import { watch, FSWatcher } from 'node:fs';
-import { writeFile, readFile, unlink } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { JsqOptions } from '@/types/cli';
 
 interface ReplRequest {
@@ -23,7 +21,6 @@ export class ReplFileCommunicator {
   private inputFile: string;
   private outputFile: string;
   private workerProcess?: ChildProcess;
-  private outputWatcher?: FSWatcher;
   private pendingRequests: Map<string, (response: ReplResponse) => void> = new Map();
   private requestCounter = 0;
 
@@ -37,18 +34,18 @@ export class ReplFileCommunicator {
     // ワーカープロセスを起動
     // process.cwd()を使って確実にプロジェクトルートから相対的にパスを構築
     const workerPath = join(process.cwd(), 'dist', 'repl-file-worker.js');
-    
+
     console.error(`[DEBUG] Spawning worker: ${workerPath} with ID: ${this.workerId}`);
-    
+
     this.workerProcess = spawn('node', [workerPath, this.workerId], {
       stdio: ['ignore', 'inherit', 'inherit'],
       detached: false,
     });
-    
-    this.workerProcess.on('error', (err) => {
+
+    this.workerProcess.on('error', err => {
       console.error('[DEBUG] Worker process error:', err);
     });
-    
+
     this.workerProcess.on('exit', (code, signal) => {
       console.error(`[DEBUG] Worker process exited with code ${code} and signal ${signal}`);
     });
@@ -78,14 +75,14 @@ export class ReplFileCommunicator {
       const content = await readFile(this.outputFile, 'utf-8');
       console.error(`[DEBUG] Output file content length: ${content.length}`);
       console.error(`[DEBUG] Output file content: ${content.substring(0, 200)}`);
-      
+
       if (!content || content.trim() === '') {
         console.error('[DEBUG] Empty output file, ignoring');
         return;
       }
-      
+
       const response: ReplResponse = JSON.parse(content);
-      
+
       const callback = this.pendingRequests.get(response.requestId);
       if (callback) {
         console.error(`[DEBUG] Found callback for request: ${response.requestId}`);
@@ -114,15 +111,15 @@ export class ReplFileCommunicator {
     console.error(`[DEBUG] Writing request to: ${this.inputFile}`);
     console.error(`[DEBUG] Request content: ${JSON.stringify(request).substring(0, 200)}...`);
     await writeFile(this.inputFile, JSON.stringify(request));
-    
+
     // ファイルが書き込まれたことを確認
     const writtenContent = await readFile(this.inputFile, 'utf-8');
     console.error(`[DEBUG] Verified written content length: ${writtenContent.length}`);
 
     // レスポンスを待つ
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.pendingRequests.set(requestId, resolve);
-      
+
       // タイムアウト設定（30秒）
       setTimeout(() => {
         if (this.pendingRequests.has(requestId)) {
@@ -144,9 +141,9 @@ export class ReplFileCommunicator {
     // ワーカープロセスを終了
     if (this.workerProcess) {
       this.workerProcess.kill('SIGTERM');
-      
+
       // 終了を待つ
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         if (this.workerProcess) {
           this.workerProcess.on('exit', () => resolve());
           setTimeout(() => {
