@@ -54,7 +54,6 @@ describe('Parallel Processing', () => {
   beforeEach(() => {
     options = {
       verbose: false,
-      debug: false,
     };
     appContext = new ApplicationContext();
     processor = new JsqProcessor(options, appContext);
@@ -74,7 +73,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: true,
         batchSize: 2,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value * 2', streamOptions);
@@ -85,7 +83,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 4, // Use 4 workers
         batchSize: 3,
-        jsonLines: true,
       };
 
       const inputData = [
@@ -129,7 +126,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 2,
-        jsonLines: true,
       };
 
       const inputData = ['{"value": 1}', '{"value": 2}', '{"value": 3}'].join('\n');
@@ -170,7 +166,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 2,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value', streamOptions);
@@ -195,7 +190,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: false,
         batchSize: 10,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.value', streamOptions);
@@ -206,7 +200,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 2,
         batchSize: 5,
-        jsonLines: true,
       };
 
       // Generate larger dataset
@@ -255,7 +248,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: true,
         batchSize: 2,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);
@@ -266,7 +258,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: 3,
         batchSize: 2,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);
@@ -277,7 +268,6 @@ describe('Parallel Processing', () => {
       const streamOptions: StreamProcessingOptions = {
         parallel: '4',
         batchSize: 2,
-        jsonLines: true,
       };
 
       const transformStream = processor.createParallelTransformStream('$.test', streamOptions);

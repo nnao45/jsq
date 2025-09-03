@@ -3,11 +3,9 @@ import type { JsqOptions } from '../types/cli.js';
 
 interface FormatterOptions {
   oneline?: boolean | undefined;
-  color?: boolean | undefined;
   noColor?: boolean | undefined;
   indent?: string | number | undefined;
   compact?: boolean | undefined;
-  sortKeys?: boolean | undefined;
 }
 
 export class OutputFormatter {
@@ -19,11 +17,9 @@ export class OutputFormatter {
   constructor(options: JsqOptions) {
     this.options = {
       oneline: options.oneline,
-      color: options.color,
       noColor: options.noColor,
       indent: options.indent,
       compact: options.compact,
-      sortKeys: options.sortKeys,
     };
 
     // Determine indent size
@@ -44,7 +40,6 @@ export class OutputFormatter {
 
   private shouldUseColor(options: JsqOptions): boolean {
     if (options.noColor) return false;
-    if (options.color) return true;
     // Default: use color if stdout is a TTY
     return process.stdout.isTTY || false;
   }
@@ -107,19 +102,7 @@ export class OutputFormatter {
   }
 
   private getReplacer(): ((key: string, value: unknown) => unknown) | undefined {
-    if (!this.options.sortKeys) return undefined;
-
-    return (_key: string, value: unknown) => {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        return Object.keys(value)
-          .sort()
-          .reduce((sorted: Record<string, unknown>, key: string) => {
-            sorted[key] = (value as Record<string, unknown>)[key];
-            return sorted;
-          }, {});
-      }
-      return value;
-    };
+    return undefined;
   }
 
   private colorize(json: string): string {

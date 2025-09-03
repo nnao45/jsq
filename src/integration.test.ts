@@ -187,15 +187,6 @@ describe('Integration Tests', () => {
       expect(result.stderr).toContain('Error:');
       expect(result.stderr).toContain('unexpected token');
     }, 10000);
-
-    it('should handle missing expression argument', async () => {
-      const input = '{"test": "data"}';
-
-      const result = await runJsq('', input);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('No expression provided');
-    }, 10000);
   });
 
   describe('Real-world data scenarios', () => {

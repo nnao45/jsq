@@ -12,9 +12,7 @@ describe('JsqProcessor', () => {
     // Tests will rely on proper cleanup through isProcessExiting flag
 
     mockOptions = {
-      debug: false,
       verbose: false,
-      unsafe: false,
     };
     appContext = new ApplicationContext();
     processor = new JsqProcessor(mockOptions, appContext);
@@ -100,24 +98,6 @@ describe('JsqProcessor', () => {
       expect(result.metadata.processingTime).toBeGreaterThanOrEqual(0);
       expect(result.metadata.inputSize).toBe(input.length);
       expect(result.metadata.outputSize).toBeGreaterThan(0);
-    });
-
-    it('should include debug steps when debug mode is enabled', async () => {
-      const debugContext = new ApplicationContext();
-      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true }, debugContext);
-      const input = '{"test": "data"}';
-      const expression = '$.test';
-
-      const result = await debugProcessor.process(expression, input);
-
-      expect(result.metadata).toHaveProperty('steps');
-      expect(Array.isArray(result.metadata.steps)).toBe(true);
-      expect(result.metadata.steps).toContain('Parse JSON');
-      expect(result.metadata.steps).toContain('Evaluate expression');
-      expect(result.metadata.steps).toContain('Format output');
-
-      await debugProcessor.dispose();
-      await debugContext.dispose();
     });
 
     it('should measure processing time accurately', async () => {
@@ -281,7 +261,7 @@ describe('JsqProcessor', () => {
           production: {
             database: { host: 'prod-db.example.com', port: 5432 },
             redis: { host: 'prod-redis.example.com', port: 6379 },
-            features: { debug: false, cache: true },
+            features: { cache: true },
           },
         },
       };
@@ -388,22 +368,6 @@ describe('JsqProcessor', () => {
 
       await unsafeProcessor.dispose();
       await unsafeContext.dispose();
-    });
-
-    it('should work correctly with debug metadata', async () => {
-      const debugContext = new ApplicationContext();
-      const debugProcessor = new JsqProcessor({ ...mockOptions, debug: true }, debugContext);
-      const input = '{"array": [1, 2, 3]}';
-      const expression = '$.array.length';
-
-      const result = await debugProcessor.process(expression, input);
-
-      expect(result.data).toBe(3);
-      expect(result.metadata.steps).toBeDefined();
-      expect(result.metadata.steps.length).toBeGreaterThan(0);
-
-      await debugProcessor.dispose();
-      await debugContext.dispose();
     });
   });
 });

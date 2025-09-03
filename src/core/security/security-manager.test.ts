@@ -31,7 +31,7 @@ describe('SecurityManager', () => {
 
   describe('Sandbox Mode (Legacy Flag)', () => {
     it('should still work with explicit --sandbox flag', () => {
-      const options: JsqOptions = { sandbox: true };
+      const options: JsqOptions = {};
       const securityManager = new SecurityManager(options);
       const context = securityManager.getSecurityContext();
 
@@ -47,7 +47,7 @@ describe('SecurityManager', () => {
     // Test removed as warnings are no longer shown
 
     it('should use VM in sandbox mode', () => {
-      const options: JsqOptions = { sandbox: true };
+      const options: JsqOptions = {};
       const securityManager = new SecurityManager(options);
 
       expect(securityManager.shouldUseVM()).toBe(true);

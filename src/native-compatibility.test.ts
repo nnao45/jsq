@@ -10,10 +10,8 @@ describe('Native JavaScript Compatibility Tests', () => {
 
   beforeEach(() => {
     options = {
-      debug: false,
       verbose: false,
       unsafe: true,
-      safe: false,
     };
     appContext = createApplicationContext();
     evaluator = new ExpressionEvaluator(options, appContext);

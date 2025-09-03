@@ -10,7 +10,6 @@ describeWithVM('VM CLI Resource Limits', () => {
       'should pass memory limit from CLI options to VM',
       async () => {
         const options: JsqOptions = {
-          sandbox: true,
           memoryLimit: 5, // 5MB limit - smaller for more reliable test
         };
 
@@ -51,7 +50,6 @@ describeWithVM('VM CLI Resource Limits', () => {
 
     testWithVM('should work with default memory limit', async () => {
       const options: JsqOptions = {
-        sandbox: true,
         // No memoryLimit specified, should use default 128MB
       };
 
@@ -73,7 +71,6 @@ describeWithVM('VM CLI Resource Limits', () => {
   describe('CPU Time Limits via CLI options', () => {
     testWithVM('should pass CPU limit from CLI options to VM', async () => {
       const options: JsqOptions = {
-        sandbox: true,
         cpuLimit: 100, // 100ms limit
         verbose: true, // デバッグ用
       };
@@ -94,7 +91,6 @@ describeWithVM('VM CLI Resource Limits', () => {
 
     testWithVM('should work with default CPU limit', async () => {
       const options: JsqOptions = {
-        sandbox: true,
         // No cpuLimit specified, should use default 30000ms
       };
 
@@ -114,7 +110,6 @@ describeWithVM('VM CLI Resource Limits', () => {
   describe('Combined limits', () => {
     testWithVM('should handle both memory and CPU limits from CLI', async () => {
       const options: JsqOptions = {
-        sandbox: true,
         memoryLimit: 50, // 50MB
         cpuLimit: 2000, // 2s
       };
