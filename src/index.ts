@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
 import { cpus } from 'node:os';
 import { dirname, join } from 'node:path';
 import * as readline from 'node:readline';
@@ -82,11 +81,6 @@ const mainCommand = program.argument('[expression]', 'JavaScript expression to e
 addCommonOptions(mainCommand).action(
   async (expression: string | undefined, options: JsqOptions) => {
     try {
-      // サブプロセスREPLモードの場合はすぐにREPLを開始
-      if (process.env.JSQ_SUBPROCESS_REPL === 'true') {
-        await handleReplMode(options);
-        return;
-      }
 
       if (!expression) {
         // Check if it's an interactive terminal for REPL
@@ -143,14 +137,6 @@ interface ReplState {
 }
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
-  // サブプロセスREPLモードの場合、環境変数から初期データを読み込む
-  if (process.env.JSQ_SUBPROCESS_REPL === 'true' && process.env.JSQ_INITIAL_DATA) {
-    try {
-      return JSON.parse(process.env.JSQ_INITIAL_DATA);
-    } catch {
-      return process.env.JSQ_INITIAL_DATA;
-    }
-  }
 
   if (options.file) {
     const format = await detectFileFormat(options.file, options.fileFormat);
@@ -233,10 +219,19 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
 
     const formatted = OutputFormatter.format(result.results[0], state.options);
     state.lastFullOutput = formatted;
-    const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
-
+    
     // 現在のカーソル位置を保存
     const savedCursorPosition = state.cursorPosition;
+    
+    let displayText: string;
+    if (isFinalEval) {
+      // エンター押した時は整形された結果を表示
+      displayText = truncateToWidth(formatted, process.stdout.columns || 80);
+    } else {
+      // 即時評価時は1行にまとめる
+      const oneLine = formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      displayText = truncateToWidth(oneLine, process.stdout.columns || 80);
+    }
 
     // 次の行に移動
     readline.cursorTo(process.stdout, 0);
@@ -244,12 +239,13 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     readline.clearLine(process.stdout, 0);
 
     // 結果を表示
-    process.stdout.write(`${GREEN}${truncated}${RESET}`);
+    process.stdout.write(`${GREEN}${displayText}${RESET}`);
 
     // エンター押した時は元の行に戻らない
     if (!isFinalEval) {
-      // 元の行に戻ってプロンプトと入力を再表示
+      // 元の行に戻る（1行だけ下に移動したので、1行戻る）
       process.stdout.write('\x1b[1A');
+      // 元の行をクリアして再表示
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
       process.stdout.write(PROMPT + state.currentInput);
@@ -257,23 +253,19 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const shortError = errorMsg.split('\n')[0].substring(0, 80);
+    const shortError = errorMsg.split('\n')[0];
 
     // 現在のカーソル位置を保存
     const savedCursorPosition = state.cursorPosition;
 
-    // 次の行に移動
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write('\n');
-    readline.clearLine(process.stdout, 0);
-
-    // エラーを表示
-    process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
-
-    // エンター押した時は元の行に戻らない
-    if (!isFinalEval) {
-      // 元の行に戻ってプロンプトと入力を再表示
-      process.stdout.write('\x1b[1A');
+    if (isFinalEval) {
+      // エンター押した時は次の行にエラーを表示
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      readline.clearLine(process.stdout, 0);
+      process.stdout.write(`${GRAY}Error: ${shortError.substring(0, 80)}${RESET}`);
+    } else {
+      // リアルタイム評価時は同じ行をクリアして再描画（エラーは表示しない）
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
       process.stdout.write(PROMPT + state.currentInput);
@@ -332,17 +324,33 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   process.stdout.write(`Type expressions to query the data. Press Ctrl+C to exit.\n`);
   if (options.file) {
     process.stdout.write(`Loaded data from: ${options.file}\n`);
-  } else if (options.stdinData || process.env.JSQ_INITIAL_DATA) {
+  } else if (options.stdinData) {
     process.stdout.write(`Loaded data from stdin\n`);
   }
   process.stdout.write(`\n${PROMPT}`);
 
-  readline.emitKeypressEvents(process.stdin);
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
+  // パイプ経由でデータを受け取った場合、/dev/ttyから入力を取得
+  let inputStream = process.stdin;
+  if (!process.stdin.isTTY && options.stdinData) {
+    try {
+      const tty = await import('node:tty');
+      const fs = await import('node:fs');
+      const ttyFd = fs.openSync('/dev/tty', 'r+');
+      inputStream = new tty.ReadStream(ttyFd);
+      // @ts-ignore - ReadStreamの型定義にisTTYがないが実際は存在する
+      inputStream.isTTY = true;
+    } catch (e) {
+      console.error('Error: Cannot open TTY for input. REPL mode requires an interactive terminal.');
+      process.exit(1);
+    }
   }
 
-  process.stdin.on('keypress', async (str: string | undefined, key: readline.Key | undefined) => {
+  readline.emitKeypressEvents(inputStream);
+  if (inputStream.isTTY) {
+    inputStream.setRawMode(true);
+  }
+
+  inputStream.on('keypress', async (str: string | undefined, key: readline.Key | undefined) => {
     if (key?.ctrl) {
       switch (key.name) {
         case 'c':
@@ -442,10 +450,10 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             process.stdout.write(PROMPT + state.currentInput);
 
             await evaluateExpression(state, true); // isFinalEval = true
+            process.stdout.write(`\n${PROMPT}`);
           } else {
-            process.stdout.write('\n');
+            process.stdout.write(`\n${PROMPT}`);
           }
-          process.stdout.write(`\n${PROMPT}`);
           state.currentInput = '';
           state.cursorPosition = 0;
           break;
@@ -548,56 +556,12 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   });
 
   // Keep the process running
-  process.stdin.resume();
+  inputStream.resume();
 }
 
 async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {
-  // サブプロセスでREPLを起動
-  const args = ['dist/index.js'];
-
-  // オプションをサブプロセスに渡す
-  if (options.verbose) args.push('-v');
-  if (options.replFileMode) args.push('--repl-file-mode');
-  if (options.oneline) args.push('--oneline');
-  if (options.noColor) args.push('--no-color');
-  if (options.compact) args.push('--compact');
-  if (options.indent) args.push('--indent', String(options.indent));
-
-  // TTYを直接開いてREPLの入力にする
-  const tty = await import('node:tty');
-  const fs = await import('node:fs');
-
-  let stdinStream: NodeJS.ReadStream | 'inherit' | 'ignore' | undefined;
-  try {
-    // /dev/ttyを開いて新しい入力ストリームを作成
-    const ttyFd = fs.openSync('/dev/tty', 'r');
-    stdinStream = new tty.ReadStream(ttyFd);
-  } catch (_e) {
-    // /dev/ttyが使えない場合は通常のstdinを使う
-    stdinStream = process.stdin.isTTY ? 'inherit' : 'ignore';
-  }
-
-  const replProcess = spawn('node', args, {
-    stdio: [stdinStream, 'inherit', 'inherit'],
-    env: {
-      ...process.env,
-      JSQ_SUBPROCESS_REPL: 'true',
-      JSQ_INITIAL_DATA: options.stdinData || '',
-    },
-  });
-
-  // サブプロセスの終了を待つ
-  await new Promise<void>((resolve, reject) => {
-    replProcess.on('exit', code => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`REPL process exited with code ${code}`));
-      }
-    });
-
-    replProcess.on('error', reject);
-  });
+  // 子プロセスを作らず、直接REPLモードを起動
+  await handleReplMode(options);
 }
 
 function prepareOptions(options: JsqOptions): void {
