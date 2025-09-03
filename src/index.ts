@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 import { cpus } from 'node:os';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
+import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
 import { Command } from 'commander';
+import Piscina from 'piscina';
 import { JsqProcessor } from '@/core/lib/processor';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
 import type { JsqOptions } from '@/types/cli';
@@ -16,7 +19,9 @@ import {
 } from '@/utils/file-input';
 import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
+import { Pager } from '@/utils/pager';
 import { detectRuntime } from '@/utils/runtime';
+import { ReplFileCommunicator } from '@/utils/repl-file-communication';
 
 // Set up process exit handlers to prevent QuickJS GC issues
 setupProcessExitHandlers();
@@ -62,6 +67,8 @@ const commonOptions = [
   ['--indent <spaces>', 'Number of spaces for indentation (default: 2)'],
   ['--compact', 'Compact output (no spaces after separators)'],
   ['--sort-keys', 'Sort object keys alphabetically'],
+  ['--repl-file-mode', 'Use file-based communication for REPL (experimental)'],
+  ['-r, --repl', 'Start REPL after processing input'],
 ] as const;
 
 // Helper function to add options to a command
@@ -82,23 +89,35 @@ const mainCommand = program.argument('[expression]', 'JavaScript expression to e
 addCommonOptions(mainCommand).action(
   async (expression: string | undefined, options: JsqOptions) => {
     try {
+      // サブプロセスREPLモードの場合はすぐにREPLを開始
+      if (process.env.JSQ_SUBPROCESS_REPL === 'true') {
+        await handleReplMode(options);
+        return;
+      }
+      
       if (!expression) {
         // Check if it's an interactive terminal for REPL
         if (process.stdin.isTTY && !process.env.JSQ_NO_STDIN) {
           await handleReplMode(options);
           return;
         } else {
-          // Non-interactive environment, try to read stdin and start REPL
+          // Non-interactive environment, try to read stdin and process data
           const stdinData = await readStdin();
           if (stdinData !== 'null') {
-            // Have stdin data, check if stdout is TTY for REPL output
-            if (process.stdout.isTTY) {
+            // Have stdin data
+            if (options.repl) {
+              // Save stdin data and start REPL mode
               options.stdinData = stdinData;
-              await handleReplMode(options);
+              await handleReplModeWithSubprocess(options);
               return;
             } else {
-              // Can't start REPL without TTY for output
-              throw new Error('No expression provided');
+              // Process normally with identity expression
+              expression = '$';
+              options.stdinData = stdinData;
+              prepareOptions(options);
+              logRuntimeInfo(options);
+              await processExpression(expression, options);
+              return;
             }
           } else {
             // No stdin data and no expression
@@ -108,9 +127,14 @@ addCommonOptions(mainCommand).action(
       }
 
       if (options.repl) {
-        // Check if REPL can be started
+        // If stdin has data, read it first
         if (!process.stdin.isTTY) {
-          throw new Error('REPL requires an interactive terminal');
+          const stdinData = await readStdin();
+          if (stdinData !== 'null') {
+            options.stdinData = stdinData;
+            await handleReplModeWithSubprocess(options);
+            return;
+          }
         }
         await handleReplMode(options);
         return;
@@ -131,74 +155,399 @@ addCommonOptions(mainCommand).action(
   }
 );
 
-async function handleReplMode(options: JsqOptions): Promise<void> {
-  const { spawn } = await import('node:child_process');
-  const path = await import('node:path');
-  const fs = await import('node:fs/promises');
-  const os = await import('node:os');
+// REPL関連の定数と型定義
+const PROMPT = '> ';
+const YELLOW = '\x1b[33m';
+const RESET = '\x1b[0m';
+const GREEN = '\x1b[32m';
+const GRAY = '\x1b[90m';
 
+interface ReplState {
+  data: unknown;
+  history: string[];
+  historyIndex: number;
+  currentInput: string;
+  cursorPosition: number;
+  piscina?: Piscina;
+  fileCommunicator?: ReplFileCommunicator;
+  options: JsqOptions;
+  lastFullOutput?: string;
+}
+
+async function loadInitialData(options: JsqOptions): Promise<unknown> {
+  if (options.file) {
+    const format = await detectFileFormat(options.file, options.fileFormat);
+    return await readFileByFormat(options.file, format);
+  }
+  if (options.stdinData) {
+    try {
+      return JSON.parse(options.stdinData);
+    } catch {
+      return options.stdinData;
+    }
+  }
+  return {};
+}
+
+function truncateToWidth(text: string, maxWidth: number): string {
+  const columns = process.stdout.columns || 80;
+  const availableWidth = Math.min(columns - PROMPT.length - 3, maxWidth);
+
+  if (text.length <= availableWidth) {
+    return text;
+  }
+
+  return `${text.substring(0, availableWidth)}...`;
+}
+
+async function evaluateExpression(state: ReplState): Promise<void> {
+  if (!state.currentInput.trim()) return;
+
+  try {
+    let result: any;
+    
+    if (state.fileCommunicator) {
+      // ファイル通信モード
+      const response = await state.fileCommunicator.evaluate(
+        state.currentInput,
+        state.data,
+        state.options
+      );
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      result = { results: [response.result] };
+    } else if (state.piscina) {
+      // 通常のPiscinaモード
+      result = await state.piscina.run({
+        type: 'eval',
+        data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
+        expression: state.currentInput,
+        options: state.options,
+      });
+
+      if (result.errors && result.errors.length > 0) {
+        throw new Error(result.errors[0].message);
+      }
+    } else {
+      throw new Error('No evaluation engine available');
+    }
+
+    const formatted = OutputFormatter.format(result.results[0], state.options);
+
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write('\n');
+    readline.clearLine(process.stdout, 0);
+    state.lastFullOutput = formatted;
+    const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
+    process.stdout.write(`${GREEN}${truncated}${RESET}`);
+    process.stdout.write('\x1b[1A');
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(PROMPT + state.currentInput);
+    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+  } catch (error) {
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write('\n');
+    readline.clearLine(process.stdout, 0);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const shortError = errorMsg.split('\n')[0].substring(0, 80);
+    process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
+    process.stdout.write('\x1b[1A');
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(PROMPT + state.currentInput);
+    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+  }
+}
+
+function updateDisplay(state: ReplState): void {
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0);
+  process.stdout.write(PROMPT + state.currentInput);
+  readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+}
+
+async function handleReplMode(options: JsqOptions): Promise<void> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const replPath = path.join(__dirname, 'simple-repl.js');
-  const replArgs: string[] = [];
-
-  if (options.safe) replArgs.push('--safe');
-  if (options.debug) replArgs.push('--debug');
-  if (options.verbose) replArgs.push('--verbose');
-  if (options.file) replArgs.push('--file', options.file);
-
-  // If we have stdin data, write it to a temp file and pass via --file
-  if (options.stdinData) {
-    const tmpDir = os.tmpdir();
-    const tmpFile = path.join(tmpDir, `jsq-stdin-${Date.now()}.json`);
-
-    try {
-      // Write stdin data to temp file
-      await fs.writeFile(tmpFile, options.stdinData);
-
-      // Add temp file as --file argument
-      replArgs.push('--file', tmpFile);
-      replArgs.push('--stdin-data'); // Flag to indicate this is stdin data
-
-      const replProcess = spawn('node', [replPath, ...replArgs], {
-        stdio: 'inherit',
-        cwd: process.cwd(),
-        env: process.env,
-      });
-
-      replProcess.on('exit', async code => {
-        // Clean up temp file
-        try {
-          await fs.unlink(tmpFile);
-        } catch (_e) {
-          // Ignore errors
-        }
-        process.exit(code || 0);
-      });
-
-      replProcess.on('error', error => {
-        console.error('Failed to start REPL:', error);
-        process.exit(1);
-      });
-    } catch (error) {
-      console.error('Failed to write stdin data:', error);
-      process.exit(1);
-    }
+  
+  const data = await loadInitialData(options);
+  
+  let piscina: Piscina | undefined;
+  let fileCommunicator: ReplFileCommunicator | undefined;
+  
+  if (options.replFileMode) {
+    // ファイル通信モード
+    fileCommunicator = new ReplFileCommunicator();
+    await fileCommunicator.start();
   } else {
-    const replProcess = spawn('node', [replPath, ...replArgs], {
+    // 通常のPiscinaモード
+    piscina = new Piscina({
+      filename: join(__dirname, 'piscina-parallel-worker.js'),
+      minThreads: 1,
+      maxThreads: 1,
+      idleTimeout: 60000,
+    });
+  }
+
+  const state: ReplState = {
+    data,
+    history: [],
+    historyIndex: 0,
+    currentInput: '',
+    cursorPosition: 0,
+    piscina,
+    fileCommunicator,
+    options,
+  };
+
+  process.stdout.write(`${YELLOW}jsq REPL - Interactive JSON Query Tool${RESET}\n`);
+  process.stdout.write(`Type expressions to query the data. Press Ctrl+C to exit.\n`);
+  if (options.file) {
+    process.stdout.write(`Loaded data from: ${options.file}\n`);
+  } else if (options.stdinData) {
+    process.stdout.write(`Loaded data from stdin\n`);
+  }
+  process.stdout.write('\n' + PROMPT);
+  
+  console.error(`[DEBUG] process.stdin.isTTY: ${process.stdin.isTTY}`);
+  console.error(`[DEBUG] process.stdin.readable: ${process.stdin.readable}`);
+  console.error(`[DEBUG] process.env.JSQ_SUBPROCESS_REPL: ${process.env.JSQ_SUBPROCESS_REPL}`);
+
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+
+  process.stdin.on('keypress', async (str: string | undefined, key: any) => {
+    if (key && key.ctrl) {
+      switch (key.name) {
+        case 'c':
+          process.stdout.write('\n');
+          console.error('[DEBUG] Ctrl+C detected, cleaning up...');
+          if (state.piscina) {
+            await state.piscina.destroy();
+          }
+          if (state.fileCommunicator) {
+            await state.fileCommunicator.dispose();
+          }
+          process.exit(0);
+        case 'd':
+          if (state.currentInput.length === 0) {
+            process.stdout.write('\n');
+            if (state.piscina) {
+              await state.piscina.destroy();
+            }
+            if (state.fileCommunicator) {
+              await state.fileCommunicator.dispose();
+            }
+            process.exit(0);
+          }
+          break;
+        case 'l':
+          process.stdout.write('\x1bc');
+          updateDisplay(state);
+          break;
+        case 'a':
+          state.cursorPosition = 0;
+          updateDisplay(state);
+          break;
+        case 'e':
+          state.cursorPosition = state.currentInput.length;
+          updateDisplay(state);
+          break;
+        case 'k':
+          state.currentInput = state.currentInput.substring(0, state.cursorPosition);
+          updateDisplay(state);
+          break;
+        case 'u':
+          state.currentInput = state.currentInput.substring(state.cursorPosition);
+          state.cursorPosition = 0;
+          updateDisplay(state);
+          break;
+        case 'w':
+          const beforeCursor = state.currentInput.substring(0, state.cursorPosition);
+          const afterCursor = state.currentInput.substring(state.cursorPosition);
+          const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+          if (lastSpaceIndex >= 0) {
+            state.currentInput = beforeCursor.substring(0, lastSpaceIndex) + afterCursor;
+            state.cursorPosition = lastSpaceIndex;
+          } else {
+            state.currentInput = afterCursor;
+            state.cursorPosition = 0;
+          }
+          updateDisplay(state);
+          break;
+        case 'r':
+          if (state.lastFullOutput) {
+            process.stdout.write('\n');
+            const pager = new Pager();
+            await pager.display(state.lastFullOutput);
+            updateDisplay(state);
+            await evaluateExpression(state);
+          }
+          break;
+      }
+      return;
+    }
+
+    if (key && !key.ctrl && !key.meta) {
+      switch (key.name) {
+        case 'return':
+          if (state.currentInput.trim()) {
+            state.history.push(state.currentInput);
+            state.historyIndex = state.history.length;
+          }
+          process.stdout.write('\n');
+          await evaluateExpression(state);
+          process.stdout.write('\n' + PROMPT);
+          state.currentInput = '';
+          state.cursorPosition = 0;
+          break;
+        case 'up':
+          if (state.historyIndex > 0) {
+            state.historyIndex--;
+            state.currentInput = state.history[state.historyIndex];
+            state.cursorPosition = state.currentInput.length;
+            updateDisplay(state);
+            await evaluateExpression(state);
+          }
+          break;
+        case 'down':
+          if (state.historyIndex < state.history.length - 1) {
+            state.historyIndex++;
+            state.currentInput = state.history[state.historyIndex];
+            state.cursorPosition = state.currentInput.length;
+            updateDisplay(state);
+            await evaluateExpression(state);
+          } else if (state.historyIndex === state.history.length - 1) {
+            state.historyIndex = state.history.length;
+            state.currentInput = '';
+            state.cursorPosition = 0;
+            updateDisplay(state);
+          }
+          break;
+        case 'left':
+          if (state.cursorPosition > 0) {
+            state.cursorPosition--;
+            updateDisplay(state);
+          }
+          break;
+        case 'right':
+          if (state.cursorPosition < state.currentInput.length) {
+            state.cursorPosition++;
+            updateDisplay(state);
+          }
+          break;
+        case 'home':
+          state.cursorPosition = 0;
+          updateDisplay(state);
+          break;
+        case 'end':
+          state.cursorPosition = state.currentInput.length;
+          updateDisplay(state);
+          break;
+        case 'backspace':
+          if (state.cursorPosition > 0) {
+            state.currentInput =
+              state.currentInput.substring(0, state.cursorPosition - 1) +
+              state.currentInput.substring(state.cursorPosition);
+            state.cursorPosition--;
+            updateDisplay(state);
+            await evaluateExpression(state);
+          }
+          break;
+        case 'delete':
+          if (state.cursorPosition < state.currentInput.length) {
+            state.currentInput =
+              state.currentInput.substring(0, state.cursorPosition) +
+              state.currentInput.substring(state.cursorPosition + 1);
+            updateDisplay(state);
+            await evaluateExpression(state);
+          }
+          break;
+        default:
+          if (str && str.length === 1 && !key.ctrl && !key.meta) {
+            state.currentInput =
+              state.currentInput.substring(0, state.cursorPosition) +
+              str +
+              state.currentInput.substring(state.cursorPosition);
+            state.cursorPosition++;
+            updateDisplay(state);
+            await evaluateExpression(state);
+          }
+      }
+    }
+  });
+
+  process.on('exit', async () => {
+    if (state.piscina) {
+      await state.piscina.destroy();
+    }
+    if (state.fileCommunicator) {
+      await state.fileCommunicator.dispose();
+    }
+  });
+
+  // Handle SIGINT (Ctrl+C) when raw mode is not available
+  process.on('SIGINT', async () => {
+    console.error('[DEBUG] SIGINT received, cleaning up...');
+    process.stdout.write('\n');
+    if (state.piscina) {
+      await state.piscina.destroy();
+    }
+    if (state.fileCommunicator) {
+      await state.fileCommunicator.dispose();
+    }
+    process.exit(0);
+  });
+
+  // Keep the process running
+  process.stdin.resume();
+}
+
+async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {
+  const { writeFileSync, unlinkSync } = await import('node:fs');
+  
+  // 標準入力データを一時ファイルに保存
+  const tmpDataFile = `/tmp/jsq-stdin-data-${process.pid}.json`;
+  
+  try {
+    // データを一時ファイルに書き込み
+    writeFileSync(tmpDataFile, options.stdinData || '');
+    
+    // サブプロセスでREPLを起動
+    const args = ['dist/index.js', '--file', tmpDataFile];
+    if (options.replFileMode) {
+      args.push('--repl-file-mode');
+    }
+    
+    const replProcess = spawn('node', args, {
       stdio: 'inherit',
-      cwd: process.cwd(),
-      env: process.env,
+      env: { ...process.env, JSQ_SUBPROCESS_REPL: 'true' }
     });
-
-    replProcess.on('exit', code => {
-      process.exit(code || 0);
+    
+    // サブプロセスの終了を待つ
+    await new Promise<void>((resolve, reject) => {
+      replProcess.on('exit', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`REPL process exited with code ${code}`));
+        }
+      });
+      
+      replProcess.on('error', reject);
     });
-
-    replProcess.on('error', error => {
-      console.error('Failed to start REPL:', error);
-      process.exit(1);
-    });
+    
+  } finally {
+    // 一時ファイルをクリーンアップ
+    try {
+      unlinkSync(tmpDataFile);
+    } catch {}
   }
 }
 
@@ -505,7 +854,7 @@ async function handleNonStreamingMode(
   detectedFormat: string,
   processor: JsqProcessor
 ): Promise<void> {
-  const input = await getInputData(inputSource, options.file, detectedFormat);
+  const input = await getInputData(inputSource, options.file, detectedFormat, options);
 
   if (isStructuredFormat(detectedFormat)) {
     await processStructuredData(expression, input, processor, options, detectedFormat);
@@ -517,13 +866,19 @@ async function handleNonStreamingMode(
 async function getInputData(
   inputSource: 'stdin' | 'file' | 'none',
   filePath: string | undefined,
-  detectedFormat: string
+  detectedFormat: string,
+  options?: JsqOptions
 ): Promise<string | unknown> {
   if (inputSource === 'file' && filePath) {
     return await readFileByFormat(filePath, detectedFormat as SupportedFormat);
   }
   if (inputSource === 'none') {
     return 'null';
+  }
+
+  // If stdin data was already read, use it
+  if (options?.stdinData) {
+    return options.stdinData;
   }
 
   return await readStdin();
