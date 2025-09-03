@@ -206,7 +206,7 @@ function truncateToWidth(text: string, maxWidth: number): string {
   return `${text.substring(0, availableWidth)}...`;
 }
 
-async function evaluateExpression(state: ReplState): Promise<void> {
+async function evaluateExpression(state: ReplState, isFinalEval: boolean = false): Promise<void> {
   if (!state.currentInput.trim()) {
     // 入力が空の時は評価結果をクリア
     const savedCursorPosition = state.cursorPosition;
@@ -216,12 +216,15 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     process.stdout.write('\n');
     readline.clearLine(process.stdout, 0);
 
-    // 元の行に戻ってプロンプトと入力を再表示
-    process.stdout.write('\x1b[1A');
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    // エンター押した時は元の行に戻らない
+    if (!isFinalEval) {
+      // 元の行に戻ってプロンプトと入力を再表示
+      process.stdout.write('\x1b[1A');
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(PROMPT + state.currentInput);
+      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    }
     return;
   }
 
@@ -272,12 +275,15 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     // 結果を表示
     process.stdout.write(`${GREEN}${truncated}${RESET}`);
 
-    // 元の行に戻ってプロンプトと入力を再表示
-    process.stdout.write('\x1b[1A');
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    // エンター押した時は元の行に戻らない
+    if (!isFinalEval) {
+      // 元の行に戻ってプロンプトと入力を再表示
+      process.stdout.write('\x1b[1A');
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(PROMPT + state.currentInput);
+      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     const shortError = errorMsg.split('\n')[0].substring(0, 80);
@@ -293,12 +299,15 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     // エラーを表示
     process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
 
-    // 元の行に戻ってプロンプトと入力を再表示
-    process.stdout.write('\x1b[1A');
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    // エンター押した時は元の行に戻らない
+    if (!isFinalEval) {
+      // 元の行に戻ってプロンプトと入力を再表示
+      process.stdout.write('\x1b[1A');
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(PROMPT + state.currentInput);
+      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+    }
   }
 }
 
@@ -368,11 +377,17 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
         case 'c':
           process.stdout.write('\n');
           if (state.currentInput.length > 0) {
+            // リアルタイム評価結果をクリア
+            readline.clearLine(process.stdout, 0);
+            readline.cursorTo(process.stdout, 0);
+            
             state.currentInput = '';
             state.cursorPosition = 0;
             process.stdout.write(PROMPT);
           } else {
-            console.error('[DEBUG] Ctrl+C detected, cleaning up...');
+            if (options.debug) {
+              console.error('[DEBUG] Ctrl+C detected, cleaning up...');
+            }
             if (state.piscina) {
               await state.piscina.destroy();
             }
@@ -448,9 +463,20 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
           if (state.currentInput.trim()) {
             state.history.push(state.currentInput);
             state.historyIndex = state.history.length;
+            
+            // 前のリアルタイム評価結果をクリア
+            readline.cursorTo(process.stdout, 0);
+            process.stdout.write('\n');
+            readline.clearLine(process.stdout, 0);
+            process.stdout.write('\x1b[1A');
+            readline.clearLine(process.stdout, 0);
+            readline.cursorTo(process.stdout, 0);
+            process.stdout.write(PROMPT + state.currentInput);
+            
+            await evaluateExpression(state, true);  // isFinalEval = true
+          } else {
+            process.stdout.write('\n');
           }
-          process.stdout.write('\n');
-          await evaluateExpression(state);
           process.stdout.write(`\n${PROMPT}`);
           state.currentInput = '';
           state.cursorPosition = 0;
@@ -598,7 +624,7 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
   // サブプロセスの終了を待つ
   await new Promise<void>((resolve, reject) => {
     replProcess.on('exit', code => {
-      if (code === 0) {
+      if (code === 0 || !options.debug) {
         resolve();
       } else {
         reject(new Error(`REPL process exited with code ${code}`));

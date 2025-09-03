@@ -1,6 +1,6 @@
-import { performance } from 'perf_hooks';
-import { execSync } from 'child_process';
-import { cpus } from 'os';
+import { performance } from 'perf_hooks.js';
+import { execSync } from 'child_process.js';
+import { cpus } from 'os.js';
 
 const cpuCount = cpus().length;
 console.log(`=== Optimized jsq Benchmark (${cpuCount} vCPUs) ===\n`);
