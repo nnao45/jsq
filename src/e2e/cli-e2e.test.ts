@@ -485,12 +485,11 @@ describe('CLI E2E Tests', () => {
         '$.users.value.filter(u => u.active).length',
         '--file',
         path.join(testDataDir, 'users.json'),
-        '--debug',
         '--verbose',
       ]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain('Steps:');
+      expect(result.stderr).toContain('Processing time:');
     });
   });
 

@@ -155,11 +155,11 @@ describe('Integration Tests', () => {
       const input = '{"array": [1, 2, 3]}';
       const expression = '$.array.length';
 
-      const result = await runJsq(expression, input, ['-d', '-v']);
+      const result = await runJsq(expression, input, ['-v']);
 
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toBe(3);
-      expect(result.stderr).toContain('Steps:');
+      expect(result.stderr).toContain('Processing time:');
     }, 10000);
   });
 

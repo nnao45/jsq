@@ -81,7 +81,6 @@ const mainCommand = program.argument('[expression]', 'JavaScript expression to e
 addCommonOptions(mainCommand).action(
   async (expression: string | undefined, options: JsqOptions) => {
     try {
-
       if (!expression) {
         // Check if it's an interactive terminal for REPL
         if (process.stdin.isTTY && !process.env.JSQ_NO_STDIN) {
@@ -137,7 +136,6 @@ interface ReplState {
 }
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
-
   if (options.file) {
     const format = await detectFileFormat(options.file, options.fileFormat);
     return await readFileByFormat(options.file, format);
@@ -219,10 +217,10 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
 
     const formatted = OutputFormatter.format(result.results[0], state.options);
     state.lastFullOutput = formatted;
-    
+
     // 現在のカーソル位置を保存
     const savedCursorPosition = state.cursorPosition;
-    
+
     let displayText: string;
     if (isFinalEval) {
       // エンター押した時は整形された結果を表示
@@ -330,17 +328,18 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   process.stdout.write(`\n${PROMPT}`);
 
   // パイプ経由でデータを受け取った場合、/dev/ttyから入力を取得
-  let inputStream = process.stdin;
+  let inputStream: NodeJS.ReadStream = process.stdin;
   if (!process.stdin.isTTY && options.stdinData) {
     try {
       const tty = await import('node:tty');
       const fs = await import('node:fs');
       const ttyFd = fs.openSync('/dev/tty', 'r+');
-      inputStream = new tty.ReadStream(ttyFd);
-      // @ts-ignore - ReadStreamの型定義にisTTYがないが実際は存在する
+      inputStream = new tty.ReadStream(ttyFd) as NodeJS.ReadStream & { isTTY: boolean };
       inputStream.isTTY = true;
-    } catch (e) {
-      console.error('Error: Cannot open TTY for input. REPL mode requires an interactive terminal.');
+    } catch (_e) {
+      console.error(
+        'Error: Cannot open TTY for input. REPL mode requires an interactive terminal.'
+      );
       process.exit(1);
     }
   }
