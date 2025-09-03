@@ -71,9 +71,9 @@ describe('jsq CLI basic tests', () => {
     expect(JSON.parse(stdout)).toEqual([2, 4, 6]);
   });
 
-  it('should handle JSONL input with -l flag', async () => {
+  it('should handle JSONL input with --stream flag', async () => {
     const input = '{"value": 1}\n{"value": 2}\n{"value": 3}';
-    const { stdout, stderr, code } = await runCLI(['-l', '$.value * 10'], input);
+    const { stdout, stderr, code } = await runCLI(['--stream', '$.value * 10'], input);
 
     expect(code).toBe(0);
     expect(stderr).toBe('');
@@ -89,12 +89,12 @@ describe('jsq CLI basic tests', () => {
     const { stderr, code } = await runCLI(['$'], input);
 
     expect(code).not.toBe(0);
-    expect(stderr).toContain('error');
+    expect(stderr.toLowerCase()).toContain('error');
   });
 
-  it('should support compact output with -c flag', async () => {
+  it('should support compact output with --compact flag', async () => {
     const input = '{"name": "test", "values": [1, 2, 3]}';
-    const { stdout, stderr, code } = await runCLI(['-c', '$'], input);
+    const { stdout, stderr, code } = await runCLI(['--compact', '$'], input);
 
     expect(code).toBe(0);
     expect(stderr).toBe('');

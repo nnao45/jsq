@@ -10,7 +10,6 @@ describe.skip('StreamProcessor', () => {
 
   beforeEach(() => {
     options = {
-      debug: false,
       verbose: false,
       safe: true,
     };
@@ -208,7 +207,6 @@ describe.skip('StreamProcessor', () => {
       const inputStream = Readable.from(input.join('\n'));
       const streamOptions: StreamProcessingOptions = {
         batchSize: 3,
-        jsonLines: true,
       };
       const transformStream = processor.createBatchTransformStream('$.value', streamOptions);
 
@@ -236,7 +234,6 @@ describe.skip('StreamProcessor', () => {
       const inputStream = Readable.from(input.join('\n'));
       const streamOptions: StreamProcessingOptions = {
         batchSize: 3,
-        jsonLines: true,
       };
       const transformStream = processor.createBatchTransformStream('$.name', streamOptions);
 
@@ -270,7 +267,6 @@ describe.skip('StreamProcessor', () => {
       const inputStream = Readable.from(input.join('\n'));
       const streamOptions: StreamProcessingOptions = {
         batchSize: 2,
-        jsonLines: true,
       };
       const transformStream = verboseProcessor.createBatchTransformStream('$.value', streamOptions);
 
@@ -380,7 +376,6 @@ describe.skip('StreamProcessor', () => {
       const inputStream = Readable.from(input.join('|||'));
       const streamOptions: StreamProcessingOptions = {
         delimiter: '|||',
-        jsonLines: true,
       };
       const transformStream = processor.createTransformStream('$.name', streamOptions);
 

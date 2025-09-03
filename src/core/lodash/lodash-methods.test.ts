@@ -12,7 +12,6 @@ describe('Lodash-like Methods', () => {
     mockOptions = {
       debug: true, // Enable debug output
       verbose: true, // Enable verbose output
-      unsafe: false,
       use: undefined,
     };
     appContext = createApplicationContext();
@@ -796,7 +795,6 @@ describe('Lodash-like Methods', () => {
   describe('Lodash Dollar Notation (VM environment)', () => {
     beforeEach(() => {
       mockOptions = {
-        debug: false,
         verbose: false,
         unsafe: true, // VM環境を有効にする
         use: undefined,
@@ -1021,9 +1019,7 @@ describe('Lodash-like Methods', () => {
   describe('Lodash Dollar Notation (VM environment - default)', () => {
     beforeEach(() => {
       mockOptions = {
-        debug: false,
         verbose: false,
-        unsafe: false, // デフォルトではVM環境が有効
         use: undefined,
       };
       appContext = createApplicationContext();
@@ -1051,7 +1047,6 @@ describe('Lodash-like Methods', () => {
   describe('Lodash Dollar Notation with Proxy features', () => {
     beforeEach(() => {
       mockOptions = {
-        debug: false,
         verbose: false,
         unsafe: true, // VM環境を有効にする
         use: undefined,

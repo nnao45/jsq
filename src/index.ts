@@ -43,12 +43,10 @@ function logRuntimeInfo(options: JsqOptions): void {
 
 // Define common options once
 const commonOptions = [
-  ['-d, --debug', 'Enable debug mode'],
   ['-v, --verbose', 'Verbose output'],
   ['-s, --stream', 'Enable streaming mode for large datasets'],
   ['-b, --batch <size>', 'Process in batches of specified size (implies --stream)'],
   ['-p, --parallel [workers]', 'Enable parallel processing (optionally specify number of workers)'],
-  ['--json-lines', 'Input/output in JSON Lines format (one JSON object per line)'],
   ['-f, --file <path>', 'Read input from file instead of stdin'],
   [
     '--file-format <format>',
@@ -56,19 +54,14 @@ const commonOptions = [
     'auto',
   ],
   ['--unsafe', 'Run in unsafe mode without VM isolation (dangerous!)'],
-  ['--safe', 'Legacy option (deprecated, shows warning)'],
-  ['--sandbox', 'Legacy option (deprecated, VM isolation is now default)'],
   ['--memory-limit <mb>', 'Memory limit in MB (default: 128)'],
   ['--cpu-limit <ms>', 'CPU time limit in milliseconds (default: 30000)'],
   ['-w, --watch', 'Watch input file for changes and re-execute expression'],
   ['--oneline', 'Output JSON in a single line (no pretty-printing)'],
-  ['--color', 'Enable colored output'],
   ['--no-color', 'Disable colored output'],
   ['--indent <spaces>', 'Number of spaces for indentation (default: 2)'],
   ['--compact', 'Compact output (no spaces after separators)'],
-  ['--sort-keys', 'Sort object keys alphabetically'],
   ['--repl-file-mode', 'Use file-based communication for REPL (experimental)'],
-  ['-r, --repl', 'Start REPL after processing input'],
 ] as const;
 
 // Helper function to add options to a command
@@ -104,37 +97,15 @@ addCommonOptions(mainCommand).action(
           // Non-interactive environment, try to read stdin and process data
           const stdinData = await readStdin();
           if (stdinData !== 'null') {
-            // Have stdin data
-            if (options.repl) {
-              // Save stdin data and start REPL mode
-              options.stdinData = stdinData;
-              await handleReplModeWithSubprocess(options);
-              return;
-            } else {
-              // When we have stdin data but no expression, start REPL mode
-              options.stdinData = stdinData;
-              await handleReplModeWithSubprocess(options);
-              return;
-            }
+            // When we have stdin data but no expression, start REPL mode
+            options.stdinData = stdinData;
+            await handleReplModeWithSubprocess(options);
+            return;
           } else {
             // No stdin data and no expression
             throw new Error('No expression provided');
           }
         }
-      }
-
-      if (options.repl) {
-        // If stdin has data, read it first
-        if (!process.stdin.isTTY) {
-          const stdinData = await readStdin();
-          if (stdinData !== 'null') {
-            options.stdinData = stdinData;
-            await handleReplModeWithSubprocess(options);
-            return;
-          }
-        }
-        await handleReplMode(options);
-        return;
       }
 
       prepareOptions(options);
@@ -385,9 +356,6 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             state.cursorPosition = 0;
             process.stdout.write(PROMPT);
           } else {
-            if (options.debug) {
-              console.error('[DEBUG] Ctrl+C detected, cleaning up...');
-            }
             if (state.piscina) {
               await state.piscina.destroy();
             }
@@ -589,13 +557,10 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
 
   // オプションをサブプロセスに渡す
   if (options.verbose) args.push('-v');
-  if (options.debug) args.push('-d');
   if (options.replFileMode) args.push('--repl-file-mode');
   if (options.oneline) args.push('--oneline');
-  if (options.color) args.push('--color');
   if (options.noColor) args.push('--no-color');
   if (options.compact) args.push('--compact');
-  if (options.sortKeys) args.push('--sort-keys');
   if (options.indent) args.push('--indent', String(options.indent));
 
   // TTYを直接開いてREPLの入力にする
@@ -624,7 +589,7 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
   // サブプロセスの終了を待つ
   await new Promise<void>((resolve, reject) => {
     replProcess.on('exit', code => {
-      if (code === 0 || !options.debug) {
+      if (code === 0) {
         resolve();
       } else {
         reject(new Error(`REPL process exited with code ${code}`));
@@ -645,13 +610,6 @@ function prepareOptions(options: JsqOptions): void {
     }
     options.batch = batchSize;
     options.stream = true;
-  }
-
-  // Show warning for deprecated sandbox flag
-  if (options.sandbox) {
-    console.error(
-      '⚠️  Warning: --sandbox flag is deprecated. VM isolation is now the default mode.'
-    );
   }
 
   // Process memory limit
@@ -738,9 +696,6 @@ async function watchAndProcess(expression: string, options: JsqOptions): Promise
       console.error('\n❌ Error occurred:');
       if (error instanceof Error) {
         console.error(error.message);
-        if (options.debug && error.stack) {
-          console.error('\nStack trace:', error.stack);
-        }
       }
     }
 
@@ -803,12 +758,7 @@ async function determineInputSource(options: JsqOptions): Promise<{
 
 function shouldUseStreaming(options: JsqOptions, detectedFormat: string): boolean {
   const streamingFormats = ['jsonl', 'csv', 'tsv', 'parquet'];
-  return (
-    !!options.stream ||
-    !!options.batch ||
-    !!options.jsonLines ||
-    streamingFormats.includes(detectedFormat)
-  );
+  return !!options.stream || !!options.batch || streamingFormats.includes(detectedFormat);
 }
 
 async function handleStreamingMode(
@@ -876,7 +826,6 @@ function createStreamOptions(options: JsqOptions, detectedFormat: string) {
     parallel?: boolean | number;
   } = {
     jsonLines:
-      options.jsonLines ||
       options.stream ||
       !!options.batch ||
       !!options.parallel ||
@@ -1013,7 +962,7 @@ async function processRegularData(
   }
 }
 
-function handleError(error: unknown, options: JsqOptions): void {
+function handleError(error: unknown, _options: JsqOptions): void {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
   // Check if it's already a formatted error (contains ANSI color codes)
@@ -1023,10 +972,6 @@ function handleError(error: unknown, options: JsqOptions): void {
   } else {
     // Old style error, keep backward compatibility
     console.error('Error:', errorMessage);
-  }
-
-  if (options.debug && error instanceof Error && error.stack) {
-    console.error('Stack trace:', error.stack);
   }
 
   process.exit(1);

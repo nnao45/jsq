@@ -6,7 +6,7 @@ describe('VM Sandbox Mode (Default) - Key Features', () => {
   describe('Security Configuration', () => {
     it('should always use VM isolation', () => {
       const defaultManager = new SecurityManager({} as JsqOptions);
-      const explicitSandboxManager = new SecurityManager({ sandbox: true } as JsqOptions);
+      const explicitSandboxManager = new SecurityManager({} as JsqOptions);
 
       // Both should use VM since it's the default
       expect(defaultManager.shouldUseVM()).toBe(true);

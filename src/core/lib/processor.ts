@@ -9,11 +9,9 @@ export class JsqProcessor {
   private parser: JsonParser;
   private evaluator: ExpressionEvaluator;
   private streamProcessor: StreamProcessor;
-  private options: JsqOptions;
   private appContext: ApplicationContext;
 
   constructor(options: JsqOptions) {
-    this.options = options;
     this.appContext = createApplicationContext();
     this.parser = new JsonParser(options);
     this.evaluator = new ExpressionEvaluator(options, this.appContext);
@@ -52,11 +50,6 @@ export class JsqProcessor {
         inputSize: input ? input.length : 0,
         outputSize: result !== undefined ? JSON.stringify(result).length : 0,
       };
-
-      // Add debug steps if in debug mode
-      if (this.options.debug) {
-        metadata.steps = ['Parse JSON', 'Evaluate expression', 'Format output'];
-      }
 
       return {
         data: result,

@@ -63,7 +63,6 @@ export class ExpressionEvaluator {
   private appContext: ApplicationContext;
   private securityManager: SecurityManager;
   private vmSandbox: typeof VMSandboxSimple | null = null;
-  private static warningShown = false;
 
   constructor(options: JsqOptions, appContext: ApplicationContext) {
     this.options = options;
@@ -71,14 +70,6 @@ export class ExpressionEvaluator {
     this.securityManager = new SecurityManager(options);
 
     // Note: VM sandbox initialization moved to async methods since module loading is now async
-
-    // Show warning if --safe flag is used (no longer supported) - only once
-    if (options.safe && !ExpressionEvaluator.warningShown) {
-      console.warn(
-        '⚠️  Warning: --safe mode has been deprecated. All evaluations now run in optimized mode.'
-      );
-      ExpressionEvaluator.warningShown = true;
-    }
   }
 
   async dispose(): Promise<void> {

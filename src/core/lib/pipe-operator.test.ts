@@ -10,11 +10,8 @@ describe('Pipe Operator Support', () => {
 
   beforeEach(() => {
     const options: JsqOptions = {
-      safe: false,
       verbose: false,
-      debug: false,
       stream: false,
-      jsonLines: false,
     };
     appContext = createApplicationContext();
     evaluator = new ExpressionEvaluator(options, appContext);

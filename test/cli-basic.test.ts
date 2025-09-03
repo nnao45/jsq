@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 describe('CLI Basic Tests', () => {
   it('should process stdin and output JSON', () => {
     const input = '{"message": [1,2,3]}';
-    const output = execSync('node dist/index.js', {
+    const output = execSync('node dist/index.js "$"', {
       input,
       encoding: 'utf-8',
     });
@@ -25,14 +25,15 @@ describe('CLI Basic Tests', () => {
     expect(parsed).toEqual([1, 2, 3]);
   });
 
-  it('should save stdin to tmp file when using --repl', () => {
+  it('should save stdin to tmp file when entering REPL mode without expression', () => {
     const input = '{"message": [1,2,3]}';
     
     // タイムアウトで強制終了（REPLはインタラクティブなので）
     try {
-      execSync('timeout 1 node dist/index.js --repl', {
+      execSync('timeout 1 node dist/index.js', {
         input,
         encoding: 'utf-8',
+        env: { ...process.env, JSQ_NO_STDIN: 'false' }
       });
     } catch (error) {
       // timeoutの終了コードは無視

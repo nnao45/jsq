@@ -11,14 +11,11 @@ describe.skip('Unsafe Mode', () => {
 
   beforeEach(() => {
     unsafeOptions = {
-      debug: false,
       verbose: false,
       unsafe: true,
     };
     safeOptions = {
-      debug: false,
       verbose: false,
-      unsafe: false,
     };
   });
 

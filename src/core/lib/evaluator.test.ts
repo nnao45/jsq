@@ -10,9 +10,7 @@ describe('ExpressionEvaluator', () => {
 
   beforeEach(() => {
     mockOptions = {
-      debug: false,
       verbose: false,
-      unsafe: false,
       use: undefined,
     };
     appContext = createApplicationContext();

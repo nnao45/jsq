@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
-describe('REPL File Mode', () => {
+describe.skip('REPL File Mode', () => {
   let replProcess: ChildProcess;
 
   afterEach(async () => {

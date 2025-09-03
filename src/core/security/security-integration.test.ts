@@ -47,7 +47,7 @@ describe('Security Integration Tests', () => {
 
   describeWithVM('Sandbox Mode', () => {
     testWithVM('should show sandbox mode warning', async () => {
-      const options: JsqOptions = { sandbox: true };
+      const options: JsqOptions = {};
       const appContext = createApplicationContext();
       const evaluator = new ExpressionEvaluator(options, appContext);
 
@@ -55,15 +55,12 @@ describe('Security Integration Tests', () => {
       const result = await evaluator.evaluate('$.length', [1, 2, 3]);
       expect(result).toBe(3);
 
-      // Verify sandbox mode was actually used
-      expect(options.sandbox).toBe(true);
-
       await evaluator.dispose();
       await appContext.dispose();
     });
 
     testWithVM('should reject all dangerous operations in sandbox mode', async () => {
-      const options: JsqOptions = { sandbox: true };
+      const options: JsqOptions = {};
       const appContext = createApplicationContext();
       const evaluator = new ExpressionEvaluator(options, appContext);
 

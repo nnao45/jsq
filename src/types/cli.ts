@@ -1,5 +1,4 @@
 export interface JsqOptions {
-  debug?: boolean;
   watch?: boolean;
   stream?: boolean;
   batch?: string | number;
@@ -10,20 +9,14 @@ export interface JsqOptions {
   format?: 'json' | 'pretty' | 'csv' | 'yaml';
   verbose?: boolean;
   unsafe?: boolean;
-  safe?: boolean;
-  jsonLines?: boolean;
   file?: string;
   fileFormat?: 'json' | 'jsonl' | 'csv' | 'tsv' | 'parquet' | 'auto';
-  repl?: boolean;
-  sandbox?: boolean;
   memoryLimit?: string | number;
   cpuLimit?: string | number;
   oneline?: boolean;
-  color?: boolean;
   noColor?: boolean;
   indent?: string | number;
   compact?: boolean;
-  sortKeys?: boolean;
   stdinData?: string;
   replFileMode?: boolean;
 }

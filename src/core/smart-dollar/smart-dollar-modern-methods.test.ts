@@ -10,7 +10,6 @@ describe('Smart Dollar Modern Methods', () => {
 
   beforeEach(() => {
     mockOptions = {
-      debug: false,
       verbose: false,
       unsafe: true, // Use unsafe mode to bypass VM issues for now
       use: undefined,
