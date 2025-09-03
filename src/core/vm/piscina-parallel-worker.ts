@@ -88,8 +88,11 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
   // Handle single evaluation for REPL mode
   if (task.type === 'eval' && typeof data === 'string') {
     try {
-      const parsed = parser!.parse(data);
-      const result = await evaluator!.evaluate(expression, parsed);
+      if (!parser || !evaluator) {
+        throw new Error('Worker not properly initialized');
+      }
+      const parsed = parser.parse(data);
+      const result = await evaluator.evaluate(expression, parsed);
       return { results: [result] };
     } catch (error) {
       return {

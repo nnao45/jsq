@@ -1,3 +1,0 @@
-Starting interactive test...
-echo '{"message": [1,2,3]}' | node dist/index.js --repl --repl-file-mode
-
