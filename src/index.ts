@@ -212,89 +212,6 @@ function truncateToWidth(text: string, maxWidth: number): string {
 async function evaluateExpression(state: ReplState): Promise<void> {
   if (!state.currentInput.trim()) return;
 
-  // 特別なコマンドの処理
-  if (state.currentInput.startsWith('.')) {
-    const command = state.currentInput.trim();
-    
-    if (command === '.help') {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      process.stdout.write(`${YELLOW}Available commands:${RESET}\n`);
-      process.stdout.write('  .help     Show this help message\n');
-      process.stdout.write('  .data     Show current data\n');
-      process.stdout.write('  .load     Load new data from stdin (pipe more data)\n');
-      process.stdout.write('  .clear    Clear current data\n');
-      process.stdout.write('  .exit     Exit REPL\n');
-      return;
-    } else if (command === '.data') {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      const formatted = OutputFormatter.format(state.data, state.options);
-      state.lastFullOutput = formatted;
-      const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
-      process.stdout.write(`${GREEN}${truncated}${RESET}`);
-      return;
-    } else if (command === '.clear') {
-      state.data = {};
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      process.stdout.write(`${YELLOW}Data cleared${RESET}`);
-      return;
-    } else if (command === '.exit') {
-      process.stdout.write('\n');
-      if (state.piscina) {
-        await state.piscina.destroy();
-      }
-      if (state.fileCommunicator) {
-        await state.fileCommunicator.dispose();
-      }
-      process.exit(0);
-    } else if (command === '.load') {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      process.stdout.write(`${YELLOW}Reading from stdin... (press Ctrl+D when done)${RESET}\n`);
-      
-      // 一時的にrawModeを無効化
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
-      }
-      
-      const chunks: Buffer[] = [];
-      const readData = new Promise<string>((resolve) => {
-        const onData = (chunk: Buffer) => {
-          chunks.push(chunk);
-        };
-        const onEnd = () => {
-          process.stdin.removeListener('data', onData);
-          process.stdin.removeListener('end', onEnd);
-          resolve(Buffer.concat(chunks).toString());
-        };
-        process.stdin.on('data', onData);
-        process.stdin.on('end', onEnd);
-      });
-      
-      try {
-        const newData = await readData;
-        const parsed = JSON.parse(newData);
-        state.data = parsed;
-        process.stdout.write(`${GREEN}Data loaded successfully${RESET}`);
-      } catch (e) {
-        process.stdout.write(`${GRAY}Error loading data: ${e instanceof Error ? e.message : String(e)}${RESET}`);
-      } finally {
-        // rawModeを再度有効化
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(true);
-        }
-      }
-      return;
-    } else {
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      process.stdout.write(`${GRAY}Unknown command: ${command}. Type .help for available commands${RESET}`);
-      return;
-    }
-  }
-
   try {
     let result: any;
     
@@ -328,30 +245,47 @@ async function evaluateExpression(state: ReplState): Promise<void> {
     }
 
     const formatted = OutputFormatter.format(result.results[0], state.options);
-
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write('\n');
-    readline.clearLine(process.stdout, 0);
     state.lastFullOutput = formatted;
     const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
-    process.stdout.write(`${GREEN}${truncated}${RESET}`);
-    process.stdout.write('\x1b[1A');
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
-  } catch (error) {
+    
+    // 現在のカーソル位置を保存
+    const savedCursorPosition = state.cursorPosition;
+    
+    // 次の行に移動
     readline.cursorTo(process.stdout, 0);
     process.stdout.write('\n');
     readline.clearLine(process.stdout, 0);
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const shortError = errorMsg.split('\n')[0].substring(0, 80);
-    process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
+    
+    // 結果を表示
+    process.stdout.write(`${GREEN}${truncated}${RESET}`);
+    
+    // 元の行に戻ってプロンプトと入力を再表示
     process.stdout.write('\x1b[1A');
     readline.clearLine(process.stdout, 0);
     readline.cursorTo(process.stdout, 0);
     process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const shortError = errorMsg.split('\n')[0].substring(0, 80);
+    
+    // 現在のカーソル位置を保存
+    const savedCursorPosition = state.cursorPosition;
+    
+    // 次の行に移動
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write('\n');
+    readline.clearLine(process.stdout, 0);
+    
+    // エラーを表示
+    process.stdout.write(`${GRAY}Error: ${shortError}${RESET}`);
+    
+    // 元の行に戻ってプロンプトと入力を再表示
+    process.stdout.write('\x1b[1A');
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(PROMPT + state.currentInput);
+    readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
   }
 }
 
