@@ -175,6 +175,15 @@ interface ReplState {
 }
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
+  // サブプロセスREPLモードの場合、環境変数から初期データを読み込む
+  if (process.env.JSQ_SUBPROCESS_REPL === 'true' && process.env.JSQ_INITIAL_DATA) {
+    try {
+      return JSON.parse(process.env.JSQ_INITIAL_DATA);
+    } catch {
+      return process.env.JSQ_INITIAL_DATA;
+    }
+  }
+  
   if (options.file) {
     const format = await detectFileFormat(options.file, options.fileFormat);
     return await readFileByFormat(options.file, format);
@@ -202,6 +211,89 @@ function truncateToWidth(text: string, maxWidth: number): string {
 
 async function evaluateExpression(state: ReplState): Promise<void> {
   if (!state.currentInput.trim()) return;
+
+  // 特別なコマンドの処理
+  if (state.currentInput.startsWith('.')) {
+    const command = state.currentInput.trim();
+    
+    if (command === '.help') {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      process.stdout.write(`${YELLOW}Available commands:${RESET}\n`);
+      process.stdout.write('  .help     Show this help message\n');
+      process.stdout.write('  .data     Show current data\n');
+      process.stdout.write('  .load     Load new data from stdin (pipe more data)\n');
+      process.stdout.write('  .clear    Clear current data\n');
+      process.stdout.write('  .exit     Exit REPL\n');
+      return;
+    } else if (command === '.data') {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      const formatted = OutputFormatter.format(state.data, state.options);
+      state.lastFullOutput = formatted;
+      const truncated = truncateToWidth(formatted, process.stdout.columns || 80);
+      process.stdout.write(`${GREEN}${truncated}${RESET}`);
+      return;
+    } else if (command === '.clear') {
+      state.data = {};
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      process.stdout.write(`${YELLOW}Data cleared${RESET}`);
+      return;
+    } else if (command === '.exit') {
+      process.stdout.write('\n');
+      if (state.piscina) {
+        await state.piscina.destroy();
+      }
+      if (state.fileCommunicator) {
+        await state.fileCommunicator.dispose();
+      }
+      process.exit(0);
+    } else if (command === '.load') {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      process.stdout.write(`${YELLOW}Reading from stdin... (press Ctrl+D when done)${RESET}\n`);
+      
+      // 一時的にrawModeを無効化
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      
+      const chunks: Buffer[] = [];
+      const readData = new Promise<string>((resolve) => {
+        const onData = (chunk: Buffer) => {
+          chunks.push(chunk);
+        };
+        const onEnd = () => {
+          process.stdin.removeListener('data', onData);
+          process.stdin.removeListener('end', onEnd);
+          resolve(Buffer.concat(chunks).toString());
+        };
+        process.stdin.on('data', onData);
+        process.stdin.on('end', onEnd);
+      });
+      
+      try {
+        const newData = await readData;
+        const parsed = JSON.parse(newData);
+        state.data = parsed;
+        process.stdout.write(`${GREEN}Data loaded successfully${RESET}`);
+      } catch (e) {
+        process.stdout.write(`${GRAY}Error loading data: ${e instanceof Error ? e.message : String(e)}${RESET}`);
+      } finally {
+        // rawModeを再度有効化
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(true);
+        }
+      }
+      return;
+    } else {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write('\n');
+      process.stdout.write(`${GRAY}Unknown command: ${command}. Type .help for available commands${RESET}`);
+      return;
+    }
+  }
 
   try {
     let result: any;
@@ -276,6 +368,11 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   
   const data = await loadInitialData(options);
   
+  // デバッグ: 読み込まれたデータを表示
+  if (options.verbose) {
+    console.error(`[DEBUG] Loaded initial data:`, JSON.stringify(data).substring(0, 100));
+  }
+  
   let piscina: Piscina | undefined;
   let fileCommunicator: ReplFileCommunicator | undefined;
   
@@ -306,16 +403,13 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 
   process.stdout.write(`${YELLOW}jsq REPL - Interactive JSON Query Tool${RESET}\n`);
   process.stdout.write(`Type expressions to query the data. Press Ctrl+C to exit.\n`);
+  process.stdout.write(`Type ${YELLOW}.help${RESET} for available commands.\n`);
   if (options.file) {
     process.stdout.write(`Loaded data from: ${options.file}\n`);
-  } else if (options.stdinData) {
+  } else if (options.stdinData || process.env.JSQ_INITIAL_DATA) {
     process.stdout.write(`Loaded data from stdin\n`);
   }
   process.stdout.write('\n' + PROMPT);
-  
-  console.error(`[DEBUG] process.stdin.isTTY: ${process.stdin.isTTY}`);
-  console.error(`[DEBUG] process.stdin.readable: ${process.stdin.readable}`);
-  console.error(`[DEBUG] process.env.JSQ_SUBPROCESS_REPL: ${process.env.JSQ_SUBPROCESS_REPL}`);
 
   readline.emitKeypressEvents(process.stdin);
   if (process.stdin.isTTY) {
@@ -510,45 +604,55 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 }
 
 async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {
-  const { writeFileSync, unlinkSync } = await import('node:fs');
+  // サブプロセスでREPLを起動
+  const args = ['dist/index.js'];
   
-  // 標準入力データを一時ファイルに保存
-  const tmpDataFile = `/tmp/jsq-stdin-data-${process.pid}.json`;
+  // オプションをサブプロセスに渡す
+  if (options.verbose) args.push('-v');
+  if (options.debug) args.push('-d');
+  if (options.replFileMode) args.push('--repl-file-mode');
+  if (options.oneline) args.push('--oneline');
+  if (options.color) args.push('--color');
+  if (options.noColor) args.push('--no-color');
+  if (options.compact) args.push('--compact');
+  if (options.sortKeys) args.push('--sort-keys');
+  if (options.indent) args.push('--indent', String(options.indent));
   
+  // TTYを直接開いてREPLの入力にする
+  const tty = await import('node:tty');
+  const fs = await import('node:fs');
+  
+  let stdinStream;
   try {
-    // データを一時ファイルに書き込み
-    writeFileSync(tmpDataFile, options.stdinData || '');
-    
-    // サブプロセスでREPLを起動
-    const args = ['dist/index.js', '--file', tmpDataFile];
-    if (options.replFileMode) {
-      args.push('--repl-file-mode');
-    }
-    
-    const replProcess = spawn('node', args, {
-      stdio: 'inherit',
-      env: { ...process.env, JSQ_SUBPROCESS_REPL: 'true' }
-    });
-    
-    // サブプロセスの終了を待つ
-    await new Promise<void>((resolve, reject) => {
-      replProcess.on('exit', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`REPL process exited with code ${code}`));
-        }
-      });
-      
-      replProcess.on('error', reject);
-    });
-    
-  } finally {
-    // 一時ファイルをクリーンアップ
-    try {
-      unlinkSync(tmpDataFile);
-    } catch {}
+    // /dev/ttyを開いて新しい入力ストリームを作成
+    const ttyFd = fs.openSync('/dev/tty', 'r');
+    stdinStream = new tty.ReadStream(ttyFd);
+  } catch (e) {
+    // /dev/ttyが使えない場合は通常のstdinを使う
+    stdinStream = process.stdin.isTTY ? 'inherit' : 'ignore';
   }
+  
+  const replProcess = spawn('node', args, {
+    stdio: [stdinStream, 'inherit', 'inherit'],
+    env: { 
+      ...process.env, 
+      JSQ_SUBPROCESS_REPL: 'true',
+      JSQ_INITIAL_DATA: options.stdinData || ''
+    }
+  });
+  
+  // サブプロセスの終了を待つ
+  await new Promise<void>((resolve, reject) => {
+    replProcess.on('exit', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`REPL process exited with code ${code}`));
+      }
+    });
+    
+    replProcess.on('error', reject);
+  });
 }
 
 function prepareOptions(options: JsqOptions): void {
