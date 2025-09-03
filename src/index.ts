@@ -380,7 +380,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             // リアルタイム評価結果をクリア
             readline.clearLine(process.stdout, 0);
             readline.cursorTo(process.stdout, 0);
-            
+
             state.currentInput = '';
             state.cursorPosition = 0;
             process.stdout.write(PROMPT);
@@ -463,7 +463,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
           if (state.currentInput.trim()) {
             state.history.push(state.currentInput);
             state.historyIndex = state.history.length;
-            
+
             // 前のリアルタイム評価結果をクリア
             readline.cursorTo(process.stdout, 0);
             process.stdout.write('\n');
@@ -472,8 +472,8 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             readline.clearLine(process.stdout, 0);
             readline.cursorTo(process.stdout, 0);
             process.stdout.write(PROMPT + state.currentInput);
-            
-            await evaluateExpression(state, true);  // isFinalEval = true
+
+            await evaluateExpression(state, true); // isFinalEval = true
           } else {
             process.stdout.write('\n');
           }
