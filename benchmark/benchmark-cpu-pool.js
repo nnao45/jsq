@@ -1,6 +1,6 @@
-import { performance } from 'perf_hooks';
-import { execSync } from 'child_process';
-import { cpus } from 'os';
+import { performance } from 'perf_hooks.js';
+import { execSync } from 'child_process.js';
+import { cpus } from 'os.js';
 
 const cpuCount = cpus().length;
 console.log(`=== VM Pooling with ${cpuCount} vCPUs Benchmark ===\n`);
@@ -82,7 +82,7 @@ for (let i = 0; i < 20; i++) {
   promises.push(promise);
 }
 
-import { exec } from 'child_process';
+import { exec } from 'child_process.js';
 await Promise.all(promises);
 const concurrentDuration = performance.now() - concurrentStart;
 console.log(`  20 concurrent tasks completed in: ${concurrentDuration.toFixed(2)}ms`);

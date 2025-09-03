@@ -1,5 +1,5 @@
-import { execSync } from 'child_process';
-import fs from 'fs';
+import { execSync } from 'child_process.js';
+import fs from 'fs.js';
 
 // Create test data
 const testData = [];
