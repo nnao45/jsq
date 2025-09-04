@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { JsqOptions } from '@/types/cli';
 
@@ -26,8 +27,8 @@ export class ReplFileCommunicator {
 
   constructor() {
     this.workerId = `${process.pid}-${Date.now()}`;
-    this.inputFile = `/tmp/jsq-repl-input-${this.workerId}.json`;
-    this.outputFile = `/tmp/jsq-repl-output-${this.workerId}.json`;
+    this.inputFile = join(tmpdir(), `jsq-repl-input-${this.workerId}.json`);
+    this.outputFile = join(tmpdir(), `jsq-repl-output-${this.workerId}.json`);
   }
 
   async start(): Promise<void> {

@@ -2,6 +2,8 @@
 
 import { unwatchFile, watchFile } from 'node:fs';
 import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { JsqProcessor } from '@/core/lib/processor';
 import type { JsqOptions } from '@/types/cli';
 
@@ -24,8 +26,8 @@ if (!workerId) {
   process.exit(1);
 }
 
-const inputFile = `/tmp/jsq-repl-input-${workerId}.json`;
-const outputFile = `/tmp/jsq-repl-output-${workerId}.json`;
+const inputFile = join(tmpdir(), `jsq-repl-input-${workerId}.json`);
+const outputFile = join(tmpdir(), `jsq-repl-output-${workerId}.json`);
 
 console.error(`[WORKER DEBUG] Started with ID: ${workerId}`);
 console.error(`[WORKER DEBUG] Input file: ${inputFile}`);

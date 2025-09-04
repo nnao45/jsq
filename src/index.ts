@@ -327,20 +327,53 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   }
   process.stdout.write(`\n${PROMPT}`);
 
-  // パイプ経由でデータを受け取った場合、/dev/ttyから入力を取得
+  // パイプ経由でデータを受け取った場合、TTYから入力を取得
   let inputStream: NodeJS.ReadStream = process.stdin;
   if (!process.stdin.isTTY && options.stdinData) {
     try {
       const tty = await import('node:tty');
       const fs = await import('node:fs');
-      const ttyFd = fs.openSync('/dev/tty', 'r+');
+
+      // プラットフォームごとのTTYパスを取得
+      const getTTYPath = () => {
+        if (process.platform === 'win32') {
+          // WindowsではCONやCONIN$を使用
+          return 'CON';
+        }
+        // Unix系（Linux, macOS）では/dev/ttyを使用
+        return '/dev/tty';
+      };
+
+      const ttyPath = getTTYPath();
+      const ttyFd = fs.openSync(ttyPath, 'r+');
       inputStream = new tty.ReadStream(ttyFd) as NodeJS.ReadStream & { isTTY: boolean };
       inputStream.isTTY = true;
     } catch (_e) {
-      console.error(
-        'Error: Cannot open TTY for input. REPL mode requires an interactive terminal.'
-      );
-      process.exit(1);
+      // TTYアクセスに失敗した場合、readlineインターフェースにフォールバック
+      try {
+        const readlineModule = await import('node:readline');
+        const rl = readlineModule.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+          terminal: true,
+        });
+
+        console.error(
+          'Warning: Direct TTY access failed. Using readline interface (some features may be limited).'
+        );
+
+        // readlineインターフェースはそのまま使えないので、通常のREPLモードに切り替え
+        rl.close();
+        console.error(
+          'Error: REPL mode requires an interactive terminal. Please run jsq without piping data for REPL mode.'
+        );
+        process.exit(1);
+      } catch (_e2) {
+        console.error(
+          'Error: Cannot open TTY for input. REPL mode requires an interactive terminal.'
+        );
+        process.exit(1);
+      }
     }
   }
 
