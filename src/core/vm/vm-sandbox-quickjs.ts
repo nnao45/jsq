@@ -1,4 +1,13 @@
-import { cpus } from 'node:os';
+// Browser-compatible CPU count detection
+const getCpuCount = (): number => {
+  // In browser, use navigator.hardwareConcurrency or default to 4
+  if (typeof globalThis !== 'undefined' && globalThis.navigator?.hardwareConcurrency) {
+    return globalThis.navigator.hardwareConcurrency;
+  }
+  // Default fallback for all environments
+  return 4;
+};
+
 import type {
   SandboxError,
   VMContext,
@@ -43,7 +52,7 @@ export class VMSandboxQuickJS {
     // Initialize the shared VM pool if enabled and not already created
     if (this.useVMPool && !VMSandboxQuickJS.vmPool) {
       // Use CPU count for pool size, with a reasonable max limit
-      const cpuCount = cpus().length;
+      const cpuCount = getCpuCount();
       const poolSize = Math.min(Math.floor(cpuCount / 2), 8); // CPU数の半分、最大8
       // Remove console.error in non-production environments to avoid interfering with output
       VMSandboxQuickJS.vmPool = new QuickJSVMPool(appContext, this.config, poolSize, 100); // Optimized pool size
