@@ -237,7 +237,7 @@ export class ReplManager {
     if (result.error) {
       this.io.output.write(`Error: ${result.error}\n`);
     } else {
-      const output = JSON.stringify(result.result, null, 2);
+      const output = JSON.stringify(result.result, null);
       this.io.output.write(`${output}\n`);
     }
 

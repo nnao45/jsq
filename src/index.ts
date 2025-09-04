@@ -221,15 +221,9 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     // 現在のカーソル位置を保存
     const savedCursorPosition = state.cursorPosition;
 
-    let displayText: string;
-    if (isFinalEval) {
-      // エンター押した時は整形された結果を表示
-      displayText = truncateToWidth(formatted, process.stdout.columns || 80);
-    } else {
-      // 即時評価時は1行にまとめる
-      const oneLine = formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-      displayText = truncateToWidth(oneLine, process.stdout.columns || 80);
-    }
+    // 即時評価時は1行にまとめる
+    const oneLine = formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    const displayText = truncateToWidth(oneLine, process.stdout.columns || 80);
 
     // 次の行に移動
     readline.cursorTo(process.stdout, 0);
