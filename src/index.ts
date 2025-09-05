@@ -217,6 +217,11 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     }
 
     const formatOptions = state.isReplMode ? { ...state.options, isReplMode: true } : state.options;
+    if (state.options.verbose) {
+      console.error('[DEBUG] Result from worker:', result);
+      console.error('[DEBUG] Result.results[0]:', result.results[0]);
+      console.error('[DEBUG] Result type:', typeof result.results[0]);
+    }
     const formatted = OutputFormatter.format(result.results[0], formatOptions);
     state.lastFullOutput = formatted;
 
@@ -224,8 +229,14 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     const savedCursorPosition = state.cursorPosition;
 
     // 即時評価時は1行にまとめる
-    const oneLine = formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    const oneLine = formatted ? formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const displayText = truncateToWidth(oneLine, process.stdout.columns || 80);
+
+    if (state.options.verbose) {
+      console.error('[DEBUG] Formatted output:', formatted);
+      console.error('[DEBUG] Display text:', displayText);
+      console.error('[DEBUG] Is final eval:', isFinalEval);
+    }
 
     // 次の行に移動
     readline.cursorTo(process.stdout, 0);
@@ -233,6 +244,9 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
     readline.clearLine(process.stdout, 0);
 
     // 結果を表示
+    if (state.options.verbose) {
+      console.error(`[DEBUG] Displaying result: "${displayText}" (final=${isFinalEval})`);
+    }
     process.stdout.write(`${GREEN}${displayText}${RESET}`);
 
     // エンター押した時は元の行に戻らない
@@ -470,12 +484,20 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             state.historyIndex = state.history.length;
 
             // 前のリアルタイム評価結果をクリア
+            if (state.options.verbose) {
+              console.error('[DEBUG] Clearing real-time evaluation result...');
+            }
+            // 現在の行に移動
             readline.cursorTo(process.stdout, 0);
+            // 現在の行をクリア
+            readline.clearLine(process.stdout, 0);
+            // 次の行に移動
             process.stdout.write('\n');
+            // その行もクリア（リアルタイム評価結果がある可能性）
             readline.clearLine(process.stdout, 0);
+            // 元の行に戻る
             process.stdout.write('\x1b[1A');
-            readline.clearLine(process.stdout, 0);
-            readline.cursorTo(process.stdout, 0);
+            // プロンプトと入力を再表示
             process.stdout.write(PROMPT + state.currentInput);
 
             await evaluateExpression(state, true); // isFinalEval = true

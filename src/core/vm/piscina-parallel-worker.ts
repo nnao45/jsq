@@ -12,6 +12,7 @@ interface WorkerTask {
   data?: string[] | string;
   expression?: string;
   options?: JsqOptions;
+  lastResult?: unknown;
 }
 
 interface WorkerResult {
@@ -92,7 +93,13 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
         throw new Error('Worker not properly initialized');
       }
       const parsed = parser.parse(data);
-      const result = await evaluator.evaluate(expression, parsed);
+      const result = await evaluator.evaluate(expression, parsed, task.lastResult);
+      if (options.verbose) {
+        console.error('Worker: Expression:', expression);
+        console.error('Worker: Parsed data:', parsed);
+        console.error('Worker: Evaluation result:', result);
+        console.error('Worker: Result type:', typeof result);
+      }
       return { results: [result] };
     } catch (error) {
       return {

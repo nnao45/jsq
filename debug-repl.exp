@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+# expectスクリプトでREPLモードをデバッグ
+
+spawn node dist/index.js --verbose
+expect "> "
+send "[1,2,3,4] | \$.aaaa\r"
+expect -timeout 2 "> "
+send "\x03"
+expect eof
