@@ -88,7 +88,8 @@ addCommonOptions(mainCommand).action(
           return;
         } else {
           // Non-interactive environment, try to read stdin and process data
-          const stdinData = await readStdin();
+          // 環境変数からデータを取得（Node.js子プロセス用）
+          const stdinData = process.env.JSQ_STDIN_DATA || await readStdin();
           if (stdinData !== 'null') {
             // When we have stdin data but no expression, start REPL mode
             options.stdinData = stdinData;
@@ -339,54 +340,8 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   process.stdout.write(`\n${PROMPT}`);
 
   // パイプ経由でデータを受け取った場合、TTYから入力を取得
-  let inputStream: NodeJS.ReadStream = process.stdin;
-  if (!process.stdin.isTTY && options.stdinData) {
-    try {
-      const tty = await import('node:tty');
-      const fs = await import('node:fs');
-
-      // プラットフォームごとのTTYパスを取得
-      const getTTYPath = () => {
-        if (process.platform === 'win32') {
-          // WindowsではCONやCONIN$を使用
-          return 'CON';
-        }
-        // Unix系（Linux, macOS）では/dev/ttyを使用
-        return '/dev/tty';
-      };
-
-      const ttyPath = getTTYPath();
-      const ttyFd = fs.openSync(ttyPath, 'r+');
-      inputStream = new tty.ReadStream(ttyFd) as NodeJS.ReadStream & { isTTY: boolean };
-      inputStream.isTTY = true;
-    } catch (_e) {
-      // TTYアクセスに失敗した場合、readlineインターフェースにフォールバック
-      try {
-        const readlineModule = await import('node:readline');
-        const rl = readlineModule.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-          terminal: true,
-        });
-
-        console.error(
-          'Warning: Direct TTY access failed. Using readline interface (some features may be limited).'
-        );
-
-        // readlineインターフェースはそのまま使えないので、通常のREPLモードに切り替え
-        rl.close();
-        console.error(
-          'Error: REPL mode requires an interactive terminal. Please run jsq without piping data for REPL mode.'
-        );
-        process.exit(1);
-      } catch (_e2) {
-        console.error(
-          'Error: Cannot open TTY for input. REPL mode requires an interactive terminal.'
-        );
-        process.exit(1);
-      }
-    }
-  }
+  const { getInteractiveInputStream } = await import('@/utils/tty-helper');
+  const inputStream = await getInteractiveInputStream(options.stdinData, options.verbose);
 
   readline.emitKeypressEvents(inputStream);
   if (inputStream.isTTY) {
@@ -611,8 +566,41 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 }
 
 async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {
-  // 子プロセスを作らず、直接REPLモードを起動
-  await handleReplMode(options);
+  const runtime = detectRuntime();
+  
+  if (runtime === 'bun' && !process.stdin.isTTY && options.stdinData) {
+    // bunでパイプからの入力の場合、nodeでREPLを起動
+    const { spawn } = await import('node:child_process');
+    
+    if (options.verbose) {
+      console.error('[Bun] Starting REPL mode with Node.js for better compatibility');
+    }
+    
+    // 現在のスクリプトをnodeで実行
+    const child = spawn('node', ['dist/index.js'], {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        JSQ_STDIN_DATA: options.stdinData,
+        JSQ_REPL_MODE: '1'
+      }
+    });
+    
+    // 子プロセスの終了を待つ
+    await new Promise<void>((resolve, reject) => {
+      child.on('exit', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`REPL exited with code ${code}`));
+        }
+      });
+      child.on('error', reject);
+    });
+  } else {
+    // それ以外の場合は直接REPLモードを起動
+    await handleReplMode(options);
+  }
 }
 
 function prepareOptions(options: JsqOptions): void {
