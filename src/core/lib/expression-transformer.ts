@@ -66,6 +66,9 @@ export function transformExpression(
   } else {
     result = expression;
   }
+  
+  // Transform properties with hyphens to bracket notation
+  result = transformHyphenatedProperties(result);
 
   // Cache the result if cache is provided
   if (expressionCache) {
@@ -644,6 +647,20 @@ function splitBySemicolon(expression: string): string[] {
   }
 
   return parts;
+}
+
+/**
+ * Transform property access with hyphens from dot notation to bracket notation
+ * e.g., $.foo.bar-baz -> $.foo["bar-baz"]
+ */
+function transformHyphenatedProperties(expression: string): string {
+  // Regular expression to match property access with hyphens
+  // Matches patterns like .property-name where property-name contains hyphens
+  const hyphenatedPropertyRegex = /\.([a-zA-Z_$][\w$]*(?:-[\w$]+)+)(?=\.|[^\w$-]|$)/g;
+  
+  return expression.replace(hyphenatedPropertyRegex, (match, propertyName) => {
+    return `["${propertyName}"]`;
+  });
 }
 
 // Keep backwards compatibility

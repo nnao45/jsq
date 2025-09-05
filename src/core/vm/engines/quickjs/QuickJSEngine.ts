@@ -1,5 +1,4 @@
 import type {
-  // VmCallResult,
   QuickJSContext,
   QuickJSHandle,
   QuickJSRuntime,
@@ -73,18 +72,38 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       }
       return;
     }
+    // For complex objects, convert to JSON and parse it in the VM
+    // This approach avoids string escaping issues with large/complex JSON
     const jsonString = JSON.stringify(value);
-
-    // Create the property directly on global
     const globalHandle = this.vm.global;
 
-    // Parse JSON directly into the global property
-    const parseCode = `JSON.parse('${jsonString.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')`;
-    const result = this.vm.evalCode(parseCode);
-
+    // Create a new string handle for the JSON
+    const jsonHandle = this.vm.newString(jsonString);
+    
+    // Get JSON.parse function
+    const jsonObj = this.vm.getProp(globalHandle, 'JSON');
+    const parseFunc = this.vm.getProp(jsonObj, 'parse');
+    
+    // Call JSON.parse with the JSON string
+    const result = this.vm.callFunction(parseFunc, jsonObj, jsonHandle);
+    
+    // Clean up temporary handles
+    jsonHandle.dispose();
+    parseFunc.dispose();
+    jsonObj.dispose();
+    
     if ('error' in result && result.error) {
-      const errorMsg = this.vm.dump(result.error);
+      const errorInfo = this.vm.dump(result.error);
       result.error.dispose();
+      
+      // Properly format error message
+      let errorMsg: string;
+      if (typeof errorInfo === 'object' && errorInfo !== null) {
+        errorMsg = `${errorInfo.name || 'Error'}: ${errorInfo.message || 'Unknown error'}`;
+      } else {
+        errorMsg = String(errorInfo);
+      }
+      
       throw new Error(`Failed to parse JSON for global ${name}: ${errorMsg}`);
     }
 
