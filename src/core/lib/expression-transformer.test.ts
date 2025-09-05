@@ -83,4 +83,57 @@ describe('Expression Transformer Tests', () => {
       expect(parts).toEqual(['$.a', '$.b']);
     });
   });
+
+  describe('Hyphenated property transformation', () => {
+    it('should transform simple hyphenated properties to bracket notation', () => {
+      const result = transformExpression('$.theme-command');
+      expect(result).toBe('$["theme-command"]');
+    });
+
+    it('should transform nested hyphenated properties', () => {
+      const result = transformExpression('$.tipsHistory.theme-command');
+      expect(result).toBe('$.tipsHistory["theme-command"]');
+    });
+
+    it('should transform multiple hyphenated properties', () => {
+      const result = transformExpression('$.some-property.another-one');
+      expect(result).toBe('$["some-property"]["another-one"]');
+    });
+
+    it('should handle properties with multiple hyphens', () => {
+      const result = transformExpression('$.very-long-property-name');
+      expect(result).toBe('$["very-long-property-name"]');
+    });
+
+    it('should not transform properties without hyphens', () => {
+      const result = transformExpression('$.normal.property');
+      expect(result).toBe('$.normal.property');
+    });
+
+    it('should not transform hyphens inside strings', () => {
+      const result = transformExpression('$.filter(x => x.name === "theme-command")');
+      expect(result).toBe('$.filter(x => x.name === "theme-command")');
+    });
+
+    it('should not transform bracket notation with hyphens', () => {
+      const result = transformExpression('$["theme-command"]');
+      expect(result).toBe('$["theme-command"]');
+    });
+
+    it('should handle mixed dot and bracket notation', () => {
+      const result = transformExpression('$.users["id-1"].theme-settings');
+      expect(result).toBe('$.users["id-1"]["theme-settings"]');
+    });
+
+    it('should work with method chains after hyphenated properties', () => {
+      const result = transformExpression('$.theme-command.toString()');
+      expect(result).toBe('$["theme-command"].toString()');
+    });
+
+    it('should work within pipe expressions', () => {
+      const result = transformExpression('$.users | $.theme-command');
+      // First the pipe transformation happens, then hyphenated properties
+      expect(result).toContain('["theme-command"]');
+    });
+  });
 });
