@@ -79,23 +79,23 @@ export class QuickJSExecutionContext implements VMExecutionContext {
 
     // Create a new string handle for the JSON
     const jsonHandle = this.vm.newString(jsonString);
-    
+
     // Get JSON.parse function
     const jsonObj = this.vm.getProp(globalHandle, 'JSON');
     const parseFunc = this.vm.getProp(jsonObj, 'parse');
-    
+
     // Call JSON.parse with the JSON string
     const result = this.vm.callFunction(parseFunc, jsonObj, jsonHandle);
-    
+
     // Clean up temporary handles
     jsonHandle.dispose();
     parseFunc.dispose();
     jsonObj.dispose();
-    
+
     if ('error' in result && result.error) {
       const errorInfo = this.vm.dump(result.error);
       result.error.dispose();
-      
+
       // Properly format error message
       let errorMsg: string;
       if (typeof errorInfo === 'object' && errorInfo !== null) {
@@ -103,7 +103,7 @@ export class QuickJSExecutionContext implements VMExecutionContext {
       } else {
         errorMsg = String(errorInfo);
       }
-      
+
       throw new Error(`Failed to parse JSON for global ${name}: ${errorMsg}`);
     }
 

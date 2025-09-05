@@ -9,6 +9,7 @@ interface ReplRequest {
   data: unknown;
   options: JsqOptions;
   requestId: string;
+  lastResult?: unknown;
 }
 
 interface ReplResponse {
@@ -98,7 +99,12 @@ export class ReplFileCommunicator {
     }
   }
 
-  async evaluate(expression: string, data: unknown, options: JsqOptions): Promise<ReplResponse> {
+  async evaluate(
+    expression: string,
+    data: unknown,
+    options: JsqOptions,
+    lastResult?: unknown
+  ): Promise<ReplResponse> {
     console.error(`[DEBUG] evaluate() called with expression: ${expression}`);
     const requestId = `req-${this.requestCounter++}`;
     const request: ReplRequest = {
@@ -106,6 +112,7 @@ export class ReplFileCommunicator {
       data,
       options,
       requestId,
+      lastResult,
     };
 
     // リクエストをファイルに書き込み

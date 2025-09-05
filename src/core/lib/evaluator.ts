@@ -91,7 +91,7 @@ export class ExpressionEvaluator {
     }
   }
 
-  async evaluate(expression: string, data: unknown): Promise<unknown> {
+  async evaluate(expression: string, data: unknown, lastResult?: unknown): Promise<unknown> {
     // Ensure VM modules are loaded
     await loadVMModules();
 
@@ -124,7 +124,7 @@ export class ExpressionEvaluator {
       // For VM mode, don't create the smart dollar - just use data
       const shouldUseVM = this.securityManager.shouldUseVM();
       const $ = shouldUseVM ? data : createSmartDollar(data);
-      const baseContext = await this.createEvaluationContext($, data);
+      const baseContext = await this.createEvaluationContext($, data, lastResult);
       const secureContext = this.securityManager.createEvaluationContext(baseContext);
       const result = await this.executeExpression(transformedExpression, secureContext);
       return this.unwrapResult(result);
@@ -151,7 +151,8 @@ export class ExpressionEvaluator {
 
   private async createEvaluationContext(
     $: unknown,
-    data: unknown
+    data: unknown,
+    lastResult?: unknown
   ): Promise<Record<string, unknown>> {
     // For VM mode, only pass minimal context - VM will set up the rest
     if (this.securityManager.shouldUseVM()) {
@@ -165,6 +166,7 @@ export class ExpressionEvaluator {
         $: $,
         // Pass a marker for _ to trigger setupLodashUtilities in VM
         _: null, // Marker for VM to set up lodash utilities
+        $_: lastResult,
       };
       return vmContext;
     }
@@ -186,6 +188,7 @@ export class ExpressionEvaluator {
       Reflect,
       Symbol,
       _: await this.loadUtilities(),
+      $_: lastResult,
       data,
     };
 

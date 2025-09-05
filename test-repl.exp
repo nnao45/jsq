@@ -1,0 +1,66 @@
+#!/usr/bin/expect -f
+
+# REPLのテストスクリプト
+# manual-test.mdに記載されているバグをテストする
+
+set timeout 5
+log_user 1
+
+# npm run buildを実行
+spawn npm run build
+expect {
+    "built successfully" { puts "\nBuild successful!" }
+    eof { puts "\nBuild completed!" }
+}
+
+# テストデータをjsqに渡してREPLを起動
+spawn sh -c {echo '{"test": "data"}' | npx jsq}
+
+# プロンプトを待つ
+expect {
+    "> " { puts "\nREPL started successfully" }
+    timeout { 
+        puts "\nError: REPL prompt not found"
+        exit 1
+    }
+}
+
+# 存在しないプロパティにアクセス
+puts "\nSending: $.aaaaaaaaaaa"
+send "$.aaaaaaaaaaa\r"
+
+# 結果を確認
+expect {
+    "undefined" { 
+        puts "\n✅ Test PASSED: Non-existent property returns undefined"
+    }
+    -re "\\{.*\"test\".*:.*\"data\".*\\}" {
+        puts "\n❌ Test FAILED: Non-existent property returned entire object!"
+        exit 1
+    }
+    timeout { 
+        puts "\n❌ Test FAILED: Timeout waiting for response"
+        exit 1
+    }
+}
+
+# 正常なプロパティアクセスもテスト
+send "$.test\r"
+
+expect {
+    "data" {
+        puts "\n✅ Test PASSED: Existing property returns correct value"
+    }
+    timeout {
+        puts "\n❌ Test FAILED: Timeout waiting for $.test response"
+        exit 1
+    }
+}
+
+# REPLを終了
+send "\x04"  ;# Ctrl+D
+
+expect eof
+
+puts "\n🎉 All tests passed!"
+exit 0

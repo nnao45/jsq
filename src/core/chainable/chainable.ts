@@ -41,8 +41,16 @@ export class ChainableWrapper {
         }
 
         // For data property access, return a new wrapped instance
-        if (typeof prop === 'string' && target.isObject(target.data) && prop in target.data) {
-          return new ChainableWrapper((target.data as Record<string, unknown>)[prop]);
+        if (typeof prop === 'string') {
+          // For objects, check if property exists
+          if (target.isObject(target.data) && prop in target.data) {
+            return new ChainableWrapper((target.data as Record<string, unknown>)[prop]);
+          }
+          // For arrays, always return undefined for non-existent properties
+          // (arrays don't have custom properties like 'aaaa')
+          if (Array.isArray(target.data)) {
+            return new ChainableWrapper(undefined);
+          }
         }
 
         return new ChainableWrapper(undefined);

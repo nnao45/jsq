@@ -238,6 +238,22 @@ export function createSmartDollar(data: unknown) {
     configurable: true,
   });
 
+  // Add marker to identify SmartDollar objects
+  Object.defineProperty($, '__isSmartDollar', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
+  // Store the original data value
+  Object.defineProperty($, '_value', {
+    value: data,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
   return $;
 }
 

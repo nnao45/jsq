@@ -66,7 +66,7 @@ export function transformExpression(
   } else {
     result = expression;
   }
-  
+
   // Transform properties with hyphens to bracket notation
   result = transformHyphenatedProperties(result);
 
@@ -657,8 +657,8 @@ function transformHyphenatedProperties(expression: string): string {
   // Regular expression to match property access with hyphens
   // Matches patterns like .property-name where property-name contains hyphens
   const hyphenatedPropertyRegex = /\.([a-zA-Z_$][\w$]*(?:-[\w$]+)+)(?=\.|[^\w$-]|$)/g;
-  
-  return expression.replace(hyphenatedPropertyRegex, (match, propertyName) => {
+
+  return expression.replace(hyphenatedPropertyRegex, (_match, propertyName) => {
     return `["${propertyName}"]`;
   });
 }

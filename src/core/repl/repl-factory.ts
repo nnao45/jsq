@@ -22,9 +22,9 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
     fileCommunicator = new ReplFileCommunicator();
     await fileCommunicator.start();
 
-    const evaluator: EvaluationHandler = async (expression, data, opts) => {
+    const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
-        const response = await fileCommunicator?.evaluate(expression, data, opts);
+        const response = await fileCommunicator?.evaluate(expression, data, opts, lastResult);
         if (response.error) {
           return { error: response.error };
         }
@@ -50,15 +50,17 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
       idleTimeout: 60000,
     });
 
-    const evaluator: EvaluationHandler = async (expression, data, opts) => {
+    const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
         const result = await piscina?.run({
+          type: 'eval',
           expression,
           data: typeof data === 'string' ? data : JSON.stringify(data),
           options: opts,
+          lastResult,
         });
 
-        return { result: result.data };
+        return { result: result.results[0] };
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }
