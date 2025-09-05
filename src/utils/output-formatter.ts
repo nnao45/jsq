@@ -6,6 +6,7 @@ interface FormatterOptions {
   noColor?: boolean | undefined;
   indent?: string | number | undefined;
   compact?: boolean | undefined;
+  isReplMode?: boolean | undefined;
 }
 
 export class OutputFormatter {
@@ -14,12 +15,13 @@ export class OutputFormatter {
   private useColor: boolean;
   private verbose: boolean;
 
-  constructor(options: JsqOptions) {
+  constructor(options: JsqOptions & { isReplMode?: boolean }) {
     this.options = {
       oneline: options.oneline,
       noColor: options.noColor,
       indent: options.indent,
       compact: options.compact,
+      isReplMode: options.isReplMode,
     };
 
     // Determine indent size
@@ -53,9 +55,14 @@ export class OutputFormatter {
       return this.formatCompact(data);
     }
 
-    // Determine default format based on TTY status
-    // REPL mode (TTY): use simple format (compact)
-    // Pipe mode (non-TTY): use pretty format (formatted)
+    // Determine default format based on isReplMode flag
+    // When isReplMode is explicitly set to true, always use pretty format
+    // Otherwise, decide based on TTY status
+    if (this.options.isReplMode) {
+      return this.formatPretty(data);
+    }
+
+    // Backward compatibility: decide based on TTY status
     const isRepl = process.stdin.isTTY;
 
     if (this.verbose) {
@@ -72,7 +79,7 @@ export class OutputFormatter {
   }
 
   // Static method for quick formatting
-  static format(data: unknown, options: JsqOptions = {}): string {
+  static format(data: unknown, options: JsqOptions & { isReplMode?: boolean } = {}): string {
     const formatter = new OutputFormatter(options);
     return formatter.format(data);
   }

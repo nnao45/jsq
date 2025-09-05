@@ -133,6 +133,7 @@ interface ReplState {
   fileCommunicator?: ReplFileCommunicator;
   options: JsqOptions;
   lastFullOutput?: string;
+  isReplMode: boolean;
 }
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
@@ -215,7 +216,8 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
       throw new Error('No evaluation engine available');
     }
 
-    const formatted = OutputFormatter.format(result.results[0], state.options);
+    const formatOptions = state.isReplMode ? { ...state.options, isReplMode: true } : state.options;
+    const formatted = OutputFormatter.format(result.results[0], formatOptions);
     state.lastFullOutput = formatted;
 
     // 現在のカーソル位置を保存
@@ -310,6 +312,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     piscina,
     fileCommunicator,
     options,
+    isReplMode: true,
   };
 
   process.stdout.write(`${YELLOW}jsq REPL - Interactive JSON Query Tool${RESET}\n`);

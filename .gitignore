@@ -1,6 +1,6 @@
 dist
 node_modules
-.claude
+.claude*
 .idea
 bin/jsq
 bin/jsq-bun
