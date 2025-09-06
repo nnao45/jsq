@@ -1,0 +1,59 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+proc test_deno {} {
+    puts "\n=== Testing Deno with detailed output ==="
+    
+    # Start jsq with test data
+    spawn sh -c "echo '{\"test\": \"data\"}' | deno run --allow-env --allow-read dist/index.js"
+    
+    # Wait for REPL prompt
+    expect {
+        "> " {
+            puts "✓ REPL started"
+        }
+        timeout {
+            puts "✗ REPL failed to start"
+            exit 1
+        }
+    }
+    
+    # Send a single character and wait
+    send "1"
+    sleep 0.5
+    
+    # Check what we see
+    expect {
+        -re ".*" {
+            puts "Buffer after '1': $expect_out(buffer)"
+        }
+    }
+    
+    # Send more characters
+    send "23"
+    sleep 0.5
+    
+    # Check again
+    expect {
+        -re ".*" {
+            puts "Buffer after '123': $expect_out(buffer)"
+        }
+    }
+    
+    # Send newline
+    send "\r"
+    sleep 0.5
+    
+    expect {
+        -re ".*" {
+            puts "Buffer after Enter: $expect_out(buffer)"
+        }
+    }
+    
+    # Exit
+    send "\003"
+    expect eof
+}
+
+test_deno

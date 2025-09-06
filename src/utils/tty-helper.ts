@@ -1,5 +1,5 @@
-import { ReadStream } from 'node:tty';
 import { openSync } from 'node:fs';
+import { ReadStream } from 'node:tty';
 import { detectRuntime } from './runtime';
 
 /**
@@ -32,7 +32,7 @@ export async function createTTYInputStream(): Promise<NodeJS.ReadStream | null> 
       // Node.jsとDenoの場合
       const ttyPath = getTTYPath();
       const ttyFd = openSync(ttyPath, 'r+');
-      
+
       // ファイルディスクリプタが妥当な範囲にあることを確認
       if (ttyFd < 0 || ttyFd > 1024) {
         console.warn(`Warning: Unexpected file descriptor value: ${ttyFd}`);

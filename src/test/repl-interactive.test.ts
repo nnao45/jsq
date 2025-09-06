@@ -1,7 +1,8 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { exec as execCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildJsq } from './helpers/repl-test-utils';
-import { exec as execCallback, spawn } from 'child_process';
-import { promisify } from 'util';
+
 const exec = promisify(execCallback);
 
 describe('REPL Interactive Tests (from expect scripts)', () => {

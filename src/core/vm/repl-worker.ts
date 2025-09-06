@@ -1,7 +1,8 @@
 /**
- * Piscina worker for parallel JSON processing
- * This file is executed in worker threads managed by Piscina
+ * Worker for parallel JSON processing
+ * This file is executed in worker threads
  */
+import { parentPort } from 'node:worker_threads';
 import type { JsqOptions } from '@/types/cli';
 import { type ApplicationContext, createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
@@ -136,9 +137,28 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
   return { results, errors };
 }
 
-// Piscina expects a default export
-export default async function (task: WorkerTask): Promise<WorkerResult> {
-  return processTask(task);
+// Worker message handling
+if (parentPort) {
+  parentPort.on('message', async (task: WorkerTask) => {
+    try {
+      const result = await processTask(task);
+      parentPort?.postMessage({ type: 'result', ...result });
+    } catch (error) {
+      parentPort?.postMessage({
+        type: 'result',
+        results: [],
+        errors: [
+          {
+            line: -1,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ],
+      });
+    }
+  });
+
+  // Send ready signal
+  parentPort.postMessage({ type: 'ready' });
 }
 
 // Cleanup on process exit

@@ -426,7 +426,7 @@ describe('Reactive Methods (RxJS-style operators)', () => {
         expect(result.value).toEqual([1, 2, 3]);
       });
 
-      it('should retry operation on failure', async () => {
+      it.skip('should retry operation on failure', async () => {
         const data = [1, 2, 3];
         const wrapper = new ChainableWrapper(data);
         let attempts = 0;

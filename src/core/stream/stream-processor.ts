@@ -6,7 +6,6 @@ import type { ApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from '../lib/evaluator';
 import { ExpressionTransformer } from '../lib/expression-transformer';
 import { JsonParser } from '../lib/parser';
-import { PiscinaWorkerPool } from '../vm/piscina-worker-pool';
 import { WorkerPool } from '../vm/worker-pool';
 
 export interface StreamProcessingOptions {
@@ -23,7 +22,6 @@ export class StreamProcessor {
   private evaluator: ExpressionEvaluator;
   private parser: JsonParser;
   private workerPool?: WorkerPool;
-  private piscinaPool?: PiscinaWorkerPool;
 
   constructor(options: JsqOptions, appContext: ApplicationContext) {
     this.options = options;
@@ -36,9 +34,6 @@ export class StreamProcessor {
     await this.evaluator.dispose();
     if (this.workerPool) {
       await this.workerPool.shutdown();
-    }
-    if (this.piscinaPool) {
-      await this.piscinaPool.terminate();
     }
   }
 
@@ -460,6 +455,12 @@ export class StreamProcessor {
             jsonLines,
             callback
           );
+
+          // Shutdown worker pool after all processing is complete
+          if (this.workerPool) {
+            await this.workerPool.shutdown();
+            this.workerPool = undefined;
+          }
         } catch (error) {
           callback(error instanceof Error ? error : new Error('Parallel flush error'));
         }
@@ -468,9 +469,10 @@ export class StreamProcessor {
   }
 
   /**
-   * Creates a Piscina-based parallel transform stream for better performance
+   * Creates a Worker-based parallel transform stream for better performance
+   * @deprecated Use createParallelTransformStream instead
    */
-  createPiscinaParallelTransformStream(
+  createWorkerParallelTransformStream(
     expression: string,
     streamOptions: StreamProcessingOptions = {}
   ): Transform {
@@ -495,10 +497,10 @@ export class StreamProcessor {
       objectMode: true,
       transform: async (chunk: Buffer, _encoding, callback) => {
         try {
-          // Initialize Piscina pool on first chunk
+          // Initialize worker pool on first chunk
           if (!isPoolInitialized) {
-            this.piscinaPool = new PiscinaWorkerPool(workerCount);
-            await this.piscinaPool.initialize();
+            this.workerPool = new WorkerPool(workerCount);
+            await this.workerPool.initialize();
             isPoolInitialized = true;
           }
 
@@ -517,7 +519,7 @@ export class StreamProcessor {
           // Process batch when ready
           if (lineBatch.length >= batchSize) {
             const batch = lineBatch.splice(0, batchSize);
-            const result = await this.piscinaPool?.processBatch({
+            const result = await this.workerPool?.processBatch({
               data: batch,
               expression: transformedExpression,
               options: this.options,
@@ -534,7 +536,7 @@ export class StreamProcessor {
             callback();
           }
         } catch (error) {
-          callback(error instanceof Error ? error : new Error('Piscina processing error'));
+          callback(error instanceof Error ? error : new Error('Worker pool processing error'));
         }
       },
 
@@ -545,8 +547,8 @@ export class StreamProcessor {
             lineBatch.push(buffer);
           }
 
-          if (lineBatch.length > 0 && this.piscinaPool) {
-            const result = await this.piscinaPool.processBatch({
+          if (lineBatch.length > 0 && this.workerPool) {
+            const result = await this.workerPool.processBatch({
               data: lineBatch,
               expression: transformedExpression,
               options: this.options,
@@ -561,8 +563,14 @@ export class StreamProcessor {
           } else {
             callback();
           }
+
+          // Shutdown worker pool after all processing is complete
+          if (this.workerPool) {
+            await this.workerPool.shutdown();
+            this.workerPool = undefined;
+          }
         } catch (error) {
-          callback(error instanceof Error ? error : new Error('Piscina flush error'));
+          callback(error instanceof Error ? error : new Error('Worker pool flush error'));
         }
       },
     });

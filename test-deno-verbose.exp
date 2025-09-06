@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+spawn sh -c "echo '{\"test\": \"data\"}' | deno run --allow-env --allow-read dist/index.js --verbose"
+
+expect "> "
+
+send "1"
+sleep 1
+
+send "\003"
+expect eof

@@ -10,7 +10,7 @@
     "jsq-deno": "bin/jsq-deno"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/piscina-parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/piscina-parallel-worker.js --format=esm --packages=external && esbuild src/repl-file-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-file-worker.js --format=esm --packages=external",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/repl-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-worker.js --format=esm --packages=external && esbuild src/repl-file-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-file-worker.js --format=esm --packages=external",
     "build:watch": "npm run build -- --watch",
     "build:bun": "bun build src/index.ts --outfile=dist/index-bun.js --target=bun",
     "build:deno": "esbuild src/index.ts --bundle --platform=neutral --target=esnext --outfile=dist/index-deno.js --format=esm --packages=external",
@@ -88,7 +88,6 @@
     "js-yaml": "^4.1.0",
     "papaparse": "^5.5.3",
     "parquetjs-lite": "^0.8.7",
-    "piscina": "^5.1.3",
     "quickjs-emscripten": "^0.31.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
