@@ -1,7 +1,7 @@
 import type { QuickJSContext, QuickJSRuntime } from 'quickjs-emscripten';
 import type { VMSandboxConfig } from '@/types/sandbox.js';
 import type { ApplicationContext } from '../application-context.js';
-import { QuickJSEngine } from './engines/quickjs/QuickJSEngine.js';
+import { QuickJSEngine } from './engines/quickjs/QuickJSEngine';
 import type { VMEngine, VMExecutionContext } from './interfaces/VMEngine.js';
 
 interface PooledVM {
