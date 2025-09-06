@@ -1,6 +1,7 @@
+import { exec as execCallback } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as pty from 'node-pty';
-import { promisify } from 'util';
-import { exec as execCallback } from 'child_process';
+
 const exec = promisify(execCallback);
 
 export interface ReplTestOptions {
@@ -112,7 +113,7 @@ export class ReplTester {
 
 export async function buildJsq(): Promise<void> {
   try {
-    const { stdout, stderr } = await exec('npm run build');
+    await exec('npm run build');
     console.log('Build completed successfully');
   } catch (error) {
     throw new Error(`Build failed: ${error}`);

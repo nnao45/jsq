@@ -34,6 +34,17 @@ interface WorkerInfo {
   currentTask: QueuedTask | undefined;
 }
 
+export interface WorkerBatchTask {
+  data: string[];
+  expression: string;
+  options: JsqOptions;
+}
+
+export interface WorkerBatchResult {
+  results: unknown[];
+  errors?: Array<{ line: number; message: string }>;
+}
+
 export class WorkerPool {
   private workers: WorkerInfo[] = [];
   private taskQueue: QueuedTask[] = [];
@@ -48,7 +59,15 @@ export class WorkerPool {
     // Determine worker script path - use import.meta.url in ESM environment
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    this.workerScript = join(__dirname, 'parallel-worker.js');
+
+    // In development, use the TypeScript file; in production, use the compiled JS
+    if (__dirname.includes('/src/')) {
+      // Development mode - point to the TypeScript source
+      this.workerScript = join(__dirname, 'parallel-worker.ts');
+    } else {
+      // Production mode - point to the compiled JS in same directory
+      this.workerScript = join(__dirname, 'parallel-worker.js');
+    }
   }
 
   async initialize(): Promise<void> {
@@ -230,5 +249,25 @@ export class WorkerPool {
       busyWorkers: this.workers.filter(w => w.busy).length,
       queueLength: this.taskQueue.length,
     };
+  }
+
+  /**
+   * Process a batch of data
+   */
+  async processBatch(task: WorkerBatchTask): Promise<WorkerBatchResult> {
+    try {
+      const results = await this.processTask(task.data, task.expression, task.options);
+      return { results };
+    } catch (error) {
+      return {
+        results: [],
+        errors: [
+          {
+            line: -1,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ],
+      };
+    }
   }
 }

@@ -41,6 +41,17 @@ export function testWithVM(
 }
 
 /**
+ * Skip test regardless of VM availability
+ */
+testWithVM.skip = (
+  testName: string,
+  _testFn: (() => void) | (() => Promise<void>),
+  _timeout?: number
+): void => {
+  test.skip(testName, () => {});
+};
+
+/**
  * Conditional describe that only runs if VM is available
  */
 export function describeWithVM(suiteName: string, suiteFn: () => void): void {

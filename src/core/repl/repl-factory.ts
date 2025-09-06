@@ -1,12 +1,18 @@
 import { dirname, join } from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { Piscina } from 'piscina';
+import { Worker } from 'node:worker_threads';
 import type { ApplicationContext } from '@/core/application-context';
 import type { JsqOptions } from '@/types/cli';
 import type { InputProvider, ReplIO, ReplOptions } from '@/types/repl';
 import { ReplFileCommunicator } from '@/utils/repl-file-communication';
 import { type EvaluationHandler, ReplManager } from './repl-manager';
+
+interface WorkerMessage {
+  type: 'ready' | 'result';
+  results?: unknown[];
+  errors?: Array<{ line: number; message: string }>;
+}
 
 export async function createReplEvaluationHandler(options: JsqOptions): Promise<{
   evaluator: EvaluationHandler;
@@ -15,7 +21,7 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
 
-  let piscina: Piscina | undefined;
+  let worker: Worker | undefined;
   let fileCommunicator: ReplFileCommunicator | undefined;
 
   if (options.replFileMode) {
@@ -43,24 +49,54 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
       },
     };
   } else {
-    piscina = new Piscina({
-      filename: join(__dirname, '../../../dist/piscina-parallel-worker.js'),
-      minThreads: 1,
-      maxThreads: 1,
-      idleTimeout: 60000,
+    // Create worker
+    worker = new Worker(join(__dirname, '../../../dist/repl-worker.js'));
+
+    // Wait for worker initialization
+    await new Promise<void>((resolve, reject) => {
+      const onMessage = (message: WorkerMessage) => {
+        if (message.type === 'ready') {
+          worker?.removeListener('message', onMessage);
+          resolve();
+        }
+      };
+      const onError = (error: Error) => {
+        worker?.removeListener('error', onError);
+        reject(error);
+      };
+      worker?.on('message', onMessage);
+      worker?.on('error', onError);
     });
 
     const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
-        const result = await piscina?.run({
-          type: 'eval',
-          expression,
-          data: typeof data === 'string' ? data : JSON.stringify(data),
-          options: opts,
-          lastResult,
-        });
+        return await new Promise((resolve, reject) => {
+          const onMessage = (message: WorkerMessage) => {
+            if (message.type === 'result') {
+              worker?.removeListener('message', onMessage);
+              if (message.errors?.length > 0) {
+                resolve({ error: message.errors[0].message });
+              } else {
+                resolve({ result: message.results[0] });
+              }
+            }
+          };
+          const onError = (error: Error) => {
+            worker?.removeListener('error', onError);
+            reject(error);
+          };
 
-        return { result: result.results[0] };
+          worker?.on('message', onMessage);
+          worker?.on('error', onError);
+
+          worker?.postMessage({
+            type: 'eval',
+            expression,
+            data: typeof data === 'string' ? data : JSON.stringify(data),
+            options: opts,
+            lastResult,
+          });
+        });
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }
@@ -69,8 +105,8 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
     return {
       evaluator,
       dispose: async () => {
-        if (piscina) {
-          await piscina.destroy();
+        if (worker) {
+          await worker.terminate();
         }
       },
     };
@@ -121,29 +157,69 @@ export async function createRepl(
 
     return new ReplManager(data, options, evaluator, defaultReplOptions);
   } else {
-    const piscina = new Piscina({
-      filename: join(__dirname, '../../repl-worker.js'),
-      maxThreads: 1,
+    // Create worker for REPL
+    const worker = new Worker(join(__dirname, '../../../dist/repl-worker.js'), {
       env: {
         JSQ_UNSAFE: options.unsafe ? 'true' : 'false',
       },
     });
 
+    // Wait for worker initialization
+    await new Promise<void>((resolve, reject) => {
+      const onMessage = (message: WorkerMessage) => {
+        if (message.type === 'ready') {
+          worker.removeListener('message', onMessage);
+          resolve();
+        }
+      };
+      const onError = (error: Error) => {
+        worker.removeListener('error', onError);
+        reject(error);
+      };
+      worker.on('message', onMessage);
+      worker.on('error', onError);
+    });
+
     const evaluator: EvaluationHandler = async (expression, data, opts) => {
       try {
-        const result = await piscina.run({
-          expression,
-          data: typeof data === 'string' ? data : JSON.stringify(data),
-          options: opts,
-          context,
+        return await new Promise((resolve, reject) => {
+          const onMessage = (message: WorkerMessage) => {
+            if (message.type === 'result') {
+              worker.removeListener('message', onMessage);
+              if (message.errors?.length > 0) {
+                resolve({ error: message.errors[0].message });
+              } else {
+                resolve({ result: message.results[0] });
+              }
+            }
+          };
+          const onError = (error: Error) => {
+            worker.removeListener('error', onError);
+            reject(error);
+          };
+
+          worker.on('message', onMessage);
+          worker.on('error', onError);
+
+          worker.postMessage({
+            expression,
+            data: typeof data === 'string' ? data : JSON.stringify(data),
+            options: opts,
+            context,
+          });
         });
-        return result;
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }
     };
 
-    return new ReplManager(data, options, evaluator, defaultReplOptions);
+    // Create repl manager
+    const repl = new ReplManager(data, options, evaluator, defaultReplOptions);
+
+    // Store worker reference for cleanup - using type assertion for internal property
+    (repl as ReplManager & { _worker?: Worker })._worker = worker;
+
+    return repl;
   }
 }
 

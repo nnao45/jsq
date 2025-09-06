@@ -9,9 +9,9 @@ import type { StreamProcessingOptions } from '../stream/stream-processor';
 const originalConsoleError = console.error;
 
 // Mock WorkerPool to avoid import.meta.url issues in Jest
-vi.mock('./worker-pool', () => {
+vi.mock('../vm/worker-pool', () => {
   return {
-    WorkerPool: vi.fn().mockImplementation(() => {
+    WorkerPool: vi.fn().mockImplementation((workerCount: number) => {
       return {
         initialize: vi.fn().mockResolvedValue(undefined),
         processTask: vi.fn().mockImplementation(async (batch: string[], expression: string) => {
@@ -36,7 +36,7 @@ vi.mock('./worker-pool', () => {
           return results;
         }),
         getStats: vi.fn().mockReturnValue({
-          totalWorkers: 4,
+          totalWorkers: workerCount || 4,
           busyWorkers: 2,
           queueLength: 0,
         }),
@@ -56,7 +56,7 @@ describe('Parallel Processing', () => {
       verbose: false,
     };
     appContext = new ApplicationContext();
-    processor = new JsqProcessor(options, appContext);
+    processor = new JsqProcessor(options);
 
     // Mock console.error to reduce test noise
     console.error = vi.fn();

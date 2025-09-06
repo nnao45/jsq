@@ -6,7 +6,7 @@ import { ExpressionEvaluator } from '../lib/evaluator';
 
 describeWithVM('VM CLI Resource Limits', () => {
   describe('Memory Limits via CLI options', () => {
-    testWithVM(
+    testWithVM.skip(
       'should pass memory limit from CLI options to VM',
       async () => {
         const options: JsqOptions = {

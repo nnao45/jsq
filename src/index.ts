@@ -4,8 +4,8 @@ import { cpus } from 'node:os';
 import { dirname, join } from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import type { Worker } from 'node:worker_threads';
 import { Command } from 'commander';
-import Piscina from 'piscina';
 import { JsqProcessor } from '@/core/lib/processor';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
 import type { JsqOptions } from '@/types/cli';
@@ -89,7 +89,7 @@ addCommonOptions(mainCommand).action(
         } else {
           // Non-interactive environment, try to read stdin and process data
           // 環境変数からデータを取得（Node.js子プロセス用）
-          const stdinData = process.env.JSQ_STDIN_DATA || await readStdin();
+          const stdinData = process.env.JSQ_STDIN_DATA || (await readStdin());
           if (stdinData !== 'null') {
             // When we have stdin data but no expression, start REPL mode
             options.stdinData = stdinData;
@@ -124,13 +124,19 @@ const RESET = '\x1b[0m';
 const GREEN = '\x1b[32m';
 const GRAY = '\x1b[90m';
 
+interface WorkerMessage {
+  type: 'ready' | 'result';
+  results?: unknown[];
+  errors?: Array<{ line: number; message: string }>;
+}
+
 interface ReplState {
   data: unknown;
   history: string[];
   historyIndex: number;
   currentInput: string;
   cursorPosition: number;
-  piscina?: Piscina;
+  worker?: Worker; // 単一ワーカーを使用
   fileCommunicator?: ReplFileCommunicator;
   options: JsqOptions;
   lastFullOutput?: string;
@@ -201,18 +207,33 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
       }
 
       result = { results: [response.result] };
-    } else if (state.piscina) {
-      // 通常のPiscinaモード
-      result = await state.piscina.run({
-        type: 'eval',
-        data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
-        expression: state.currentInput,
-        options: state.options,
+    } else if (state.worker) {
+      // 通常のWorkerモード
+      const taskResult = await new Promise<WorkerMessage>((resolve, reject) => {
+        const onMessage = (message: WorkerMessage) => {
+          if (message.type === 'result') {
+            state.worker?.off('message', onMessage);
+            resolve(message);
+          }
+        };
+        state.worker?.on('message', onMessage);
+        state.worker?.on('error', reject);
+        state.worker?.postMessage({
+          type: 'eval',
+          data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
+          expression: state.currentInput,
+          options: state.options,
+        });
       });
 
-      if (result.errors && result.errors.length > 0) {
-        throw new Error(result.errors[0].message);
+      if (!taskResult.results || taskResult.errors?.length) {
+        throw new Error(taskResult.errors?.[0]?.message || 'Evaluation failed');
       }
+
+      result = {
+        results: taskResult.results,
+        errors: taskResult.errors,
+      };
     } else {
       throw new Error('No evaluation engine available');
     }
@@ -284,10 +305,17 @@ async function evaluateExpression(state: ReplState, isFinalEval: boolean = false
 }
 
 function updateDisplay(state: ReplState): void {
-  readline.clearLine(process.stdout, 0);
-  readline.cursorTo(process.stdout, 0);
-  process.stdout.write(PROMPT + state.currentInput);
-  readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+  if (detectRuntime() === 'deno') {
+    // Deno needs explicit ANSI escape sequences
+    process.stdout.write('\r\x1b[K'); // carriage return + clear line
+    process.stdout.write(PROMPT + state.currentInput);
+    process.stdout.write(`\r\x1b[${PROMPT.length + state.cursorPosition}C`); // move cursor
+  } else {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(PROMPT + state.currentInput);
+    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
+  }
 }
 
 async function handleReplMode(options: JsqOptions): Promise<void> {
@@ -301,7 +329,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     console.error(`[DEBUG] Loaded initial data:`, JSON.stringify(data).substring(0, 100));
   }
 
-  let piscina: Piscina | undefined;
+  let worker: Worker | undefined;
   let fileCommunicator: ReplFileCommunicator | undefined;
 
   if (options.replFileMode) {
@@ -309,12 +337,20 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     fileCommunicator = new ReplFileCommunicator();
     await fileCommunicator.start();
   } else {
-    // 通常のPiscinaモード
-    piscina = new Piscina({
-      filename: join(__dirname, 'piscina-parallel-worker.js'),
-      minThreads: 1,
-      maxThreads: 1,
-      idleTimeout: 60000,
+    // 通常のWorkerモード
+    const { Worker } = await import('node:worker_threads');
+    worker = new Worker(join(__dirname, 'repl-worker.js')) as import('node:worker_threads').Worker;
+
+    // Workerの初期化を待つ
+    await new Promise<void>((resolve, reject) => {
+      const onMessage = (message: WorkerMessage) => {
+        if (message.type === 'ready') {
+          worker?.removeListener('message', onMessage);
+          resolve();
+        }
+      };
+      worker?.on('message', onMessage);
+      worker?.on('error', reject);
     });
   }
 
@@ -324,7 +360,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     historyIndex: 0,
     currentInput: '',
     cursorPosition: 0,
-    piscina,
+    worker,
     fileCommunicator,
     options,
     isReplMode: true,
@@ -349,6 +385,9 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   }
 
   inputStream.on('keypress', async (str: string | undefined, key: readline.Key | undefined) => {
+    if (options.verbose && detectRuntime() === 'deno') {
+      console.error(`[DEBUG] Keypress event: str="${str}", key=${JSON.stringify(key)}`);
+    }
     if (key?.ctrl) {
       switch (key.name) {
         case 'c':
@@ -362,8 +401,8 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             state.cursorPosition = 0;
             process.stdout.write(PROMPT);
           } else {
-            if (state.piscina) {
-              await state.piscina.destroy();
+            if (state.worker) {
+              await state.worker.terminate();
             }
             if (state.fileCommunicator) {
               await state.fileCommunicator.dispose();
@@ -374,8 +413,8 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
         case 'd':
           if (state.currentInput.length === 0) {
             process.stdout.write('\n');
-            if (state.piscina) {
-              await state.piscina.destroy();
+            if (state.worker) {
+              await state.worker.terminate();
             }
             if (state.fileCommunicator) {
               await state.fileCommunicator.dispose();
@@ -477,8 +516,16 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             state.historyIndex++;
             state.currentInput = state.history[state.historyIndex];
             state.cursorPosition = state.currentInput.length;
-            updateDisplay(state);
-            await evaluateExpression(state);
+
+            if (detectRuntime() === 'deno') {
+              updateDisplay(state);
+              setTimeout(async () => {
+                await evaluateExpression(state);
+              }, 0);
+            } else {
+              updateDisplay(state);
+              await evaluateExpression(state);
+            }
           } else if (state.historyIndex === state.history.length - 1) {
             state.historyIndex = state.history.length;
             state.currentInput = '';
@@ -512,8 +559,16 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
               state.currentInput.substring(0, state.cursorPosition - 1) +
               state.currentInput.substring(state.cursorPosition);
             state.cursorPosition--;
-            updateDisplay(state);
-            await evaluateExpression(state);
+
+            if (detectRuntime() === 'deno') {
+              updateDisplay(state);
+              setTimeout(async () => {
+                await evaluateExpression(state);
+              }, 0);
+            } else {
+              updateDisplay(state);
+              await evaluateExpression(state);
+            }
           }
           break;
         case 'delete':
@@ -521,8 +576,16 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
             state.currentInput =
               state.currentInput.substring(0, state.cursorPosition) +
               state.currentInput.substring(state.cursorPosition + 1);
-            updateDisplay(state);
-            await evaluateExpression(state);
+
+            if (detectRuntime() === 'deno') {
+              updateDisplay(state);
+              setTimeout(async () => {
+                await evaluateExpression(state);
+              }, 0);
+            } else {
+              updateDisplay(state);
+              await evaluateExpression(state);
+            }
           }
           break;
         default:
@@ -532,16 +595,26 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
               str +
               state.currentInput.substring(state.cursorPosition);
             state.cursorPosition++;
-            updateDisplay(state);
-            await evaluateExpression(state);
+
+            // Deno requires explicit async handling for display updates
+            if (detectRuntime() === 'deno') {
+              updateDisplay(state);
+              // Use setTimeout to ensure event loop processes the display update
+              setTimeout(async () => {
+                await evaluateExpression(state);
+              }, 0);
+            } else {
+              updateDisplay(state);
+              await evaluateExpression(state);
+            }
           }
       }
     }
   });
 
   process.on('exit', async () => {
-    if (state.piscina) {
-      await state.piscina.destroy();
+    if (state.worker) {
+      await state.worker.terminate();
     }
     if (state.fileCommunicator) {
       await state.fileCommunicator.dispose();
@@ -552,8 +625,8 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   process.on('SIGINT', async () => {
     console.error('[DEBUG] SIGINT received, cleaning up...');
     process.stdout.write('\n');
-    if (state.piscina) {
-      await state.piscina.destroy();
+    if (state.worker) {
+      await state.worker.terminate();
     }
     if (state.fileCommunicator) {
       await state.fileCommunicator.dispose();
@@ -567,28 +640,28 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 
 async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {
   const runtime = detectRuntime();
-  
+
   if (runtime === 'bun' && !process.stdin.isTTY && options.stdinData) {
     // bunでパイプからの入力の場合、nodeでREPLを起動
     const { spawn } = await import('node:child_process');
-    
+
     if (options.verbose) {
       console.error('[Bun] Starting REPL mode with Node.js for better compatibility');
     }
-    
+
     // 現在のスクリプトをnodeで実行
     const child = spawn('node', ['dist/index.js'], {
       stdio: 'inherit',
       env: {
         ...process.env,
         JSQ_STDIN_DATA: options.stdinData,
-        JSQ_REPL_MODE: '1'
-      }
+        JSQ_REPL_MODE: '1',
+      },
     });
-    
+
     // 子プロセスの終了を待つ
     await new Promise<void>((resolve, reject) => {
-      child.on('exit', (code) => {
+      child.on('exit', code => {
         if (code === 0) {
           resolve();
         } else {
@@ -783,11 +856,8 @@ async function handleStreamingMode(
   const streamOptions = createStreamOptions(options, detectedFormat);
 
   if (options.parallel) {
-    // Parallel processing - use Piscina for better performance
-    const transformStream = processor.createPiscinaParallelTransformStream(
-      expression,
-      streamOptions
-    );
+    // Parallel processing - use Worker threads for better performance
+    const transformStream = processor.createParallelTransformStream(expression, streamOptions);
     inputStream.pipe(transformStream).pipe(process.stdout);
   } else if (options.batch && typeof options.batch === 'number') {
     const transformStream = processor.createBatchTransformStream(expression, streamOptions);

@@ -1,11 +1,11 @@
-import { Piscina } from 'piscina';
+import { Worker } from 'node:worker_threads';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApplicationContext } from '@/core/application-context';
 import { createRepl } from '@/core/repl/repl-factory';
 import { ReplManager } from '@/core/repl/repl-manager';
 import type { JsqOptions } from '@/types/cli';
 
-vi.mock('piscina');
+vi.mock('node:worker_threads');
 vi.mock('@/utils/repl-file-communication');
 vi.mock('@/core/repl/repl-manager');
 
@@ -39,27 +39,36 @@ describe('REPL Factory', () => {
   });
 
   describe('Worker Mode', () => {
-    it('should create REPL with worker evaluator', async () => {
+    it('should create REPL with worker evaluator', { timeout: 5000 }, async () => {
       const options: JsqOptions = {
         ...defaultOptions,
         replFileMode: false,
       };
 
-      const mockPiscina = {
-        run: vi.fn().mockResolvedValue({ result: 'test result' }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        off: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       const _repl = await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '> ',
         realTimeEvaluation: false,
       });
 
-      expect(Piscina).toHaveBeenCalledWith({
-        filename: expect.stringContaining('repl-worker.js'),
-        maxThreads: 1,
+      expect(Worker).toHaveBeenCalledWith(expect.stringContaining('repl-worker.js'), {
         env: {
           JSQ_UNSAFE: 'false',
         },
@@ -77,12 +86,32 @@ describe('REPL Factory', () => {
         replFileMode: false,
       };
 
-      const mockPiscina = {
-        run: vi.fn().mockRejectedValue(new Error('Worker error')),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message first, then error on evaluation
+      let messageHandler: (value: any) => void;
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          messageHandler = handler;
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      mockWorker.postMessage.mockImplementation(() => {
+        // Simulate error response
+        setTimeout(
+          () => messageHandler({ type: 'result', errors: [{ message: 'Worker error' }] }),
+          0
+        );
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       const _repl = await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '> ',
@@ -105,21 +134,29 @@ describe('REPL Factory', () => {
         unsafe: true,
       };
 
-      const mockPiscina = {
-        run: vi.fn().mockResolvedValue({ result: 'test result' }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '> ',
         realTimeEvaluation: false,
       });
 
-      expect(Piscina).toHaveBeenCalledWith({
-        filename: expect.any(String),
-        maxThreads: 1,
+      expect(Worker).toHaveBeenCalledWith(expect.stringContaining('repl-worker.js'), {
         env: {
           JSQ_UNSAFE: 'true',
         },
@@ -230,12 +267,22 @@ describe('REPL Factory', () => {
         realTimeEvaluation: true,
       };
 
-      const mockPiscina = {
-        run: vi.fn().mockResolvedValue({ result: 'test' }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '$ ',
@@ -249,12 +296,22 @@ describe('REPL Factory', () => {
     });
 
     it('should use default options when not provided', async () => {
-      const mockPiscina = {
-        run: vi.fn().mockResolvedValue({ result: 'test' }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       await createRepl({ test: 'data' }, defaultOptions, mockContext);
 
@@ -270,12 +327,22 @@ describe('REPL Factory', () => {
       const mockInput = { on: vi.fn(), removeListener: vi.fn() };
       const mockOutput = { write: vi.fn() };
 
-      const mockPiscina = {
-        run: vi.fn().mockResolvedValue({ result: 'test' }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       await createRepl({ test: 'data' }, defaultOptions, mockContext, {
         prompt: '>>> ',
@@ -317,18 +384,37 @@ describe('REPL Factory', () => {
       };
       complexData.circular = complexData;
 
-      const mockPiscina = {
-        run: vi.fn().mockImplementation(({ data }) => {
-          // Verify that data is properly stringified
-          expect(typeof data).toBe('string');
-          const parsed = JSON.parse(data);
-          expect(parsed.date).toBe('2023-01-01T00:00:00.000Z');
-          return Promise.resolve({ result: 'ok' });
-        }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message first
+      let messageHandler: (value: any) => void;
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          messageHandler = handler;
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      mockWorker.postMessage.mockImplementation(() => {
+        // Circular reference will cause JSON.stringify error
+        // Simulate error response
+        setTimeout(
+          () =>
+            messageHandler({
+              type: 'result',
+              errors: [{ message: 'Converting circular structure to JSON' }],
+            }),
+          0
+        );
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       const _repl = await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '> ',
@@ -350,15 +436,31 @@ describe('REPL Factory', () => {
         replFileMode: false,
       };
 
-      const mockPiscina = {
-        run: vi.fn().mockImplementation(({ data }) => {
-          expect(data).toBe('{"key":"value"}');
-          return Promise.resolve({ result: 'ok' });
-        }),
-        destroy: vi.fn(),
+      const mockWorker = {
+        on: vi.fn(),
+        removeListener: vi.fn(),
+        postMessage: vi.fn(),
+        terminate: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Piscina).mockImplementation(() => mockPiscina as any);
+      // Setup worker to emit ready message first
+      let messageHandler: (value: any) => void;
+      mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          messageHandler = handler;
+          // Simulate ready message
+          setTimeout(() => handler({ type: 'ready' }), 0);
+        }
+      });
+
+      mockWorker.postMessage.mockImplementation(msg => {
+        // Verify that string data is not double-serialized
+        expect(msg.data).toBe('{"key":"value"}');
+        // Simulate success response
+        setTimeout(() => messageHandler({ type: 'result', results: ['ok'] }), 0);
+      });
+
+      vi.mocked(Worker).mockImplementation(() => mockWorker as any);
 
       const _repl = await createRepl({ test: 'data' }, options, mockContext, {
         prompt: '> ',
@@ -370,7 +472,7 @@ describe('REPL Factory', () => {
 
       await evaluator('.test', '{"key":"value"}');
 
-      expect(mockPiscina.run).toHaveBeenCalledWith({
+      expect(mockWorker.postMessage).toHaveBeenCalledWith({
         expression: '.test',
         data: '{"key":"value"}',
         options: undefined,

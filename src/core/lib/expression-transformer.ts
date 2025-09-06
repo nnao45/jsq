@@ -55,6 +55,10 @@ export function transformExpression(
   else if (hasAsyncGeneratorMethods(trimmed)) {
     result = transformAsyncGeneratorExpression(trimmed);
   }
+  // Handle standalone '.' - return data directly
+  else if (trimmed === '.') {
+    result = 'data';
+  }
   // Handle standalone '$' - for null/undefined data, return the data directly
   // For other data types, return $ as is and let the evaluator handle it
   else if (trimmed === '$') {
