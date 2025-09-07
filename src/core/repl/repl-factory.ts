@@ -275,7 +275,7 @@ export async function createAndStartRepl(
 
   const replManager = new ReplManager(data, options, evaluator, {
     prompt: colors?.prompt || '> ',
-    realTimeEvaluation: true,
+    realTimeEvaluation: process.env.JSQ_DISABLE_REALTIME_EVAL !== 'true',
     io: createTerminalIO(inputStream),
   });
 

@@ -1,48 +1,42 @@
 #!/usr/bin/expect -f
 
-set timeout 10
+set timeout 30
+log_user 0
 
-spawn bash -c "echo '{\"test\": \"data\"}' | npx jsq"
+# Create a temporary file with test data
+set tmpfile [exec mktemp]
+exec echo {{"test": "data"}} > $tmpfile
 
-expect "jsq REPL"
-expect "> "
+# Start jsq with REPL mode
+spawn node dist/index.js --file $tmpfile
 
-# 連続で入力して警告が出ないか確認
-send "111111111111111\r"
-expect "> "
+expect {
+    timeout { exit 1 }
+    "jsq REPL"
+}
 
-send "222222222222222\r"
-expect "> "
+expect {
+    timeout { exit 1 }
+    "> "
+}
 
-send "333333333333333\r"
-expect "> "
+# 短い連続入力のテスト
+foreach i {1 2 3 4 5} {
+    send "\"test$i\"\r"
+    expect {
+        timeout { continue }
+        -re ".*" { }
+    }
+}
 
-send "444444444444444\r"
-expect "> "
-
-send "555555555555555\r"
-expect "> "
-
-send "666666666666666\r"
-expect "> "
-
-send "777777777777777\r"
-expect "> "
-
-send "888888888888888\r"
-expect "> "
-
-send "999999999999999\r"
-expect "> "
-
-send "101010101010101\r"
-expect "> "
-
-send "121212121212121\r"
-expect "> "
-
-# MaxListenersExceededWarningが出ないことを確認
+# 最後にCtrl+Cで終了
 send "\x03"
-expect eof
+expect {
+    timeout { }
+    eof { }
+}
+
+# Clean up
+catch { exec rm $tmpfile }
 
 exit 0

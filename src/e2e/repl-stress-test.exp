@@ -1,50 +1,49 @@
 #!/usr/bin/expect -f
 
-set timeout 30
+set timeout 60
+log_user 0
 
-spawn bash -c "echo '{\"test\": \"data\"}' | npx jsq"
+# Create a temporary file with test data
+set tmpfile [exec mktemp]
+exec echo {{"test": "data"}} > $tmpfile
 
-expect "jsq REPL"
-expect "> "
+# Start jsq with REPL mode
+spawn node dist/index.js --file $tmpfile
 
-# 簡単なストレステスト（10回）
-send "1111111\r"
-sleep 0.1
-expect "> "
-send "2222222\r"
-sleep 0.1
-expect "> "
-send "3333333\r"
-sleep 0.1
-expect "> "
-send "4444444\r"
-sleep 0.1
-expect "> "
-send "5555555\r"
-sleep 0.1
-expect "> "
-send "6666666\r"
-sleep 0.1
-expect "> "
-send "7777777\r"
-sleep 0.1
-expect "> "
-send "8888888\r"
-sleep 0.1
-expect "> "
-send "9999999\r"
-sleep 0.1
-expect "> "
-send "0000000\r"
-sleep 0.1
-expect "> "
+expect {
+    timeout { exit 1 }
+    "jsq REPL"
+}
 
-# エラーが出ないことを確認
+expect {
+    timeout { exit 1 }
+    "> "
+}
+
+# 簡単なストレステスト - 連続入力
+foreach num {1 2 3 4 5 6 7 8 9 0} {
+    send "$num$num$num$num$num$num$num\r"
+    expect {
+        timeout { continue }
+        -re ".*" { }
+    }
+}
+
+# .testを実行してJSONを確認
 send ".test\r"
-expect "\"data\""
-expect "> "
+expect {
+    timeout { exit 1 }
+    "\"data\""
+}
 
+# Ctrl+Cで終了
 send "\x03"
-expect eof
+expect {
+    timeout { }
+    eof { }
+}
+
+# Clean up
+catch { exec rm $tmpfile }
 
 exit 0

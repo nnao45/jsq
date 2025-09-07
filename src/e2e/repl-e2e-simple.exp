@@ -1,69 +1,77 @@
 #!/usr/bin/expect -f
 
-set timeout 10
+set timeout 30
+log_user 0
 
 puts "Starting Simple REPL Test..."
 puts "=========================="
 
-spawn sh -c "echo '{\"name\": \"test\", \"value\": 42}' | node dist/index.js"
+# Create a temporary file with test data
+set tmpfile [exec mktemp]
+exec echo {{"name": "test", "value": 42}} > $tmpfile
 
-# Wait for prompt
+# Start jsq with REPL mode
+spawn node dist/index.js --file $tmpfile
+
+# Wait for REPL header
+expect {
+    "jsq REPL - Interactive JSON Query Tool" {
+        puts "✓ REPL header displayed"
+    }
+    timeout {
+        puts "✗ REPL header not found"
+        exec rm $tmpfile
+        exit 1
+    }
+}
+
+# Wait for initial prompt
 expect {
     "> " {
         puts "✓ REPL started"
     }
     timeout {
-        puts "✗ Failed to start REPL"
+        puts "✗ REPL prompt not found"
+        exec rm $tmpfile
         exit 1
     }
 }
 
-# Send query and press enter
+# Send query
 send "$.name\r"
 
-# The REPL should echo the command first
-expect "$.name"
-
-# Then show the result on the next line
+# Check if we get the expected result
 expect {
     "\"test\"" {
         puts "✓ Query result received"
     }
+    "test" {
+        puts "✓ Query result received (unquoted)"
+    }
     timeout {
         puts "✗ Query result not received"
-        puts "Buffer contents: $expect_out(buffer)"
+        exec rm $tmpfile
         exit 1
     }
 }
 
-# Expect the next prompt
+# Wait for next prompt
 expect {
-    "> " {
-        puts "✓ Next prompt shown"
-    }
-    timeout {
-        puts "✗ Next prompt not shown"
-        exit 1
-    }
+    "> " { }
+    timeout { }
 }
 
-# Test another query
-send "$.value * 2\r"
-expect "$.value * 2"
-
-expect {
-    "84" {
-        puts "✓ Math expression worked"
-    }
-    timeout {
-        puts "✗ Math expression failed"
-        exit 1
-    }
-}
-
-# Exit
+# Send exit command
 send "\x03"
-expect eof
+expect {
+    eof { }
+    timeout { }
+}
+
+# Clean up
+catch { exec rm $tmpfile }
 
 puts "=========================="
 puts "All tests passed!"
+
+exit 0

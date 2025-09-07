@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "type": "module",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "jsq-deno": "bin/jsq-deno"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/repl-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-worker.js --format=esm --packages=external && esbuild src/repl-file-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-file-worker.js --format=esm --packages=external",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node16 --outfile=dist/index.js --format=esm --packages=external && esbuild src/core/vm/parallel-worker.ts --bundle --platform=node --target=node16 --outfile=dist/parallel-worker.js --format=esm --packages=external && esbuild src/core/vm/repl-worker.ts --bundle --platform=node --target=node16 --outfile=dist/repl-worker.js --format=esm --packages=external",
     "build:watch": "npm run build -- --watch",
     "build:bun": "bun build src/index.ts --outfile=dist/index-bun.js --target=bun",
     "build:deno": "esbuild src/index.ts --bundle --platform=neutral --target=esnext --outfile=dist/index-deno.js --format=esm --packages=external",

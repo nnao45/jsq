@@ -1,3 +1,20 @@
-echo '#!/usr/bin/env node' > bin/jsq && echo "import '../dist/index.js';" >> bin/jsq && chmod +x bin/jsq
-echo '#!/usr/bin/env bun' > bin/jsq-bun && echo "import '../dist/index.js';" >> bin/jsq-bun && chmod +x bin/jsq-bun
-echo '#!/usr/bin/env -S deno run --allow-env --allow-read --allow-run --allow-sys --allow-net' > bin/jsq-deno && echo "import '../dist/index.js';" >> bin/jsq-deno && chmod +x bin/jsq-deno
+#!/bin/bash
+
+# Clean and recreate bin files to avoid any strange characters
+cat > bin/jsq << 'EOF'
+#!/usr/bin/env node
+import '../dist/index.js';
+EOF
+chmod +x bin/jsq
+
+cat > bin/jsq-bun << 'EOF'
+#!/usr/bin/env bun
+import '../dist/index.js';
+EOF
+chmod +x bin/jsq-bun
+
+cat > bin/jsq-deno << 'EOF'
+#!/usr/bin/env -S deno run --allow-env --allow-read --allow-run --allow-sys --allow-net
+import '../dist/index.js';
+EOF
+chmod +x bin/jsq-deno
