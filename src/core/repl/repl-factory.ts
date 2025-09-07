@@ -72,7 +72,7 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
       try {
         return await new Promise((resolve, reject) => {
           let timeoutId: NodeJS.Timeout | undefined;
-          
+
           const onMessage = (message: WorkerMessage) => {
             if (message.type === 'result') {
               cleanup();
@@ -83,18 +83,18 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
               }
             }
           };
-          
+
           const onError = (error: Error) => {
             cleanup();
             reject(error);
           };
-          
+
           const cleanup = () => {
             if (timeoutId) clearTimeout(timeoutId);
             worker?.removeListener('message', onMessage);
             worker?.removeListener('error', onError);
           };
-          
+
           // Set timeout for evaluation
           timeoutId = setTimeout(() => {
             cleanup();
@@ -134,7 +134,7 @@ export function createTerminalIO(inputStream: NodeJS.ReadStream): ReplIO {
   if (inputStream.isTTY && inputStream.setRawMode) {
     inputStream.setRawMode(true);
   }
-  
+
   return {
     input: inputStream as InputProvider,
     output: {
@@ -148,7 +148,7 @@ export function createTerminalIO(inputStream: NodeJS.ReadStream): ReplIO {
 export async function createRepl(
   data: unknown,
   options: JsqOptions,
-  context: ApplicationContext,
+  _context: ApplicationContext,
   replOptions?: ReplOptions
 ): Promise<ReplManager> {
   const __filename = fileURLToPath(import.meta.url);
@@ -205,7 +205,7 @@ export async function createRepl(
       try {
         return await new Promise((resolve, reject) => {
           let timeoutId: NodeJS.Timeout | undefined;
-          
+
           const onMessage = (message: WorkerMessage) => {
             if (message.type === 'result') {
               cleanup();
@@ -216,18 +216,18 @@ export async function createRepl(
               }
             }
           };
-          
+
           const onError = (error: Error) => {
             cleanup();
             reject(error);
           };
-          
+
           const cleanup = () => {
             if (timeoutId) clearTimeout(timeoutId);
             worker.removeListener('message', onMessage);
             worker.removeListener('error', onError);
           };
-          
+
           // Set timeout for evaluation
           timeoutId = setTimeout(() => {
             cleanup();

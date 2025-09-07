@@ -47,6 +47,7 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         off: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
@@ -88,27 +89,31 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
       };
 
       // Setup worker to emit ready message first, then error on evaluation
-      let messageHandler: (value: any) => void;
       mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
         if (event === 'message') {
-          messageHandler = handler;
           // Simulate ready message
           setTimeout(() => handler({ type: 'ready' }), 0);
+        } else if (event === 'error') {
+          // Error handler setup
         }
       });
 
-      mockWorker.postMessage.mockImplementation(() => {
-        // Simulate error response
-        setTimeout(
-          () => messageHandler({ type: 'result', errors: [{ message: 'Worker error' }] }),
-          0
-        );
+      mockWorker.once.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          mockWorker.postMessage.mockImplementationOnce(() => {
+            // Simulate error response
+            setTimeout(() => handler({ type: 'result', errors: [{ message: 'Worker error' }] }), 0);
+          });
+        } else if (event === 'error') {
+          // Store error handler but don't call it
+        }
       });
 
       vi.mocked(Worker).mockImplementation(() => mockWorker as any);
@@ -136,6 +141,7 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
@@ -269,6 +275,7 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
@@ -298,6 +305,7 @@ describe('REPL Factory', () => {
     it('should use default options when not provided', async () => {
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
@@ -329,6 +337,7 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
@@ -386,32 +395,35 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
       };
 
       // Setup worker to emit ready message first
-      let messageHandler: (value: any) => void;
       mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
         if (event === 'message') {
-          messageHandler = handler;
           // Simulate ready message
           setTimeout(() => handler({ type: 'ready' }), 0);
         }
       });
 
-      mockWorker.postMessage.mockImplementation(() => {
-        // Circular reference will cause JSON.stringify error
-        // Simulate error response
-        setTimeout(
-          () =>
-            messageHandler({
-              type: 'result',
-              errors: [{ message: 'Converting circular structure to JSON' }],
-            }),
-          0
-        );
+      mockWorker.once.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          mockWorker.postMessage.mockImplementationOnce(() => {
+            // Circular reference will cause JSON.stringify error
+            // Simulate error response
+            setTimeout(
+              () =>
+                handler({
+                  type: 'result',
+                  errors: [{ message: 'Converting circular structure to JSON' }],
+                }),
+              0
+            );
+          });
+        }
       });
 
       vi.mocked(Worker).mockImplementation(() => mockWorker as any);
@@ -425,7 +437,7 @@ describe('REPL Factory', () => {
       const evaluator = evaluatorCall[2];
 
       // This should handle circular reference gracefully
-      const result = await evaluator('.test', complexData);
+      const result = await evaluator('.test', complexData, options);
       expect(result.error).toBeDefined();
       expect(result.error).toContain('circular');
     });
@@ -438,26 +450,29 @@ describe('REPL Factory', () => {
 
       const mockWorker = {
         on: vi.fn(),
+        once: vi.fn(),
         removeListener: vi.fn(),
         postMessage: vi.fn(),
         terminate: vi.fn().mockResolvedValue(undefined),
       };
 
       // Setup worker to emit ready message first
-      let messageHandler: (value: any) => void;
       mockWorker.on.mockImplementation((event: string, handler: (value: any) => void) => {
         if (event === 'message') {
-          messageHandler = handler;
           // Simulate ready message
           setTimeout(() => handler({ type: 'ready' }), 0);
         }
       });
 
-      mockWorker.postMessage.mockImplementation(msg => {
-        // Verify that string data is not double-serialized
-        expect(msg.data).toBe('{"key":"value"}');
-        // Simulate success response
-        setTimeout(() => messageHandler({ type: 'result', results: ['ok'] }), 0);
+      mockWorker.once.mockImplementation((event: string, handler: (value: any) => void) => {
+        if (event === 'message') {
+          mockWorker.postMessage.mockImplementationOnce(msg => {
+            // Verify that string data is not double-serialized
+            expect(msg.data).toBe('{"key":"value"}');
+            // Simulate success response
+            setTimeout(() => handler({ type: 'result', results: ['ok'] }), 0);
+          });
+        }
       });
 
       vi.mocked(Worker).mockImplementation(() => mockWorker as any);
@@ -470,13 +485,14 @@ describe('REPL Factory', () => {
       const evaluatorCall = vi.mocked(ReplManager).mock.calls[0];
       const evaluator = evaluatorCall[2];
 
-      await evaluator('.test', '{"key":"value"}');
+      await evaluator('.test', '{"key":"value"}', options);
 
       expect(mockWorker.postMessage).toHaveBeenCalledWith({
+        type: 'eval',
         expression: '.test',
         data: '{"key":"value"}',
-        options: undefined,
-        context: mockContext,
+        options: options,
+        lastResult: undefined,
       });
     });
   });

@@ -140,7 +140,6 @@ async function loadInitialData(options: JsqOptions): Promise<unknown> {
   return {};
 }
 
-
 async function handleReplMode(options: JsqOptions): Promise<void> {
   const data = await loadInitialData(options);
 

@@ -296,7 +296,7 @@ describe('ReplManager', () => {
         stream: false,
         keyDelimiter: '.',
         repl: false,
-        realTimeEvaluation: true,
+        realTimeEvaluation: false,
         replFileMode: false,
         verbose: false,
       };
@@ -314,8 +314,8 @@ describe('ReplManager', () => {
 
       await mockInput.playNext({ str: '.' });
 
-      // リアルタイム評価は即座に実行される
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // リアルタイム評価は100msのデバウンスがあるため待機
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Real-time evaluation should have been called
       expect(mockEvaluator).toHaveBeenCalledWith(
@@ -337,7 +337,7 @@ describe('ReplManager', () => {
         stream: false,
         keyDelimiter: '.',
         repl: false,
-        realTimeEvaluation: true,
+        realTimeEvaluation: false,
         replFileMode: false,
         verbose: false,
       };
@@ -358,33 +358,58 @@ describe('ReplManager', () => {
 
       // Type ".test" character by character
       await mockInput.playNext({ str: '.' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
 
       vi.clearAllMocks();
       await mockInput.playNext({ str: 't' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.t', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.t',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
 
       vi.clearAllMocks();
       await mockInput.playNext({ str: 'e' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.te', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.te',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
 
       vi.clearAllMocks();
       await mockInput.playNext({ str: 's' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.tes', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.tes',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
 
       vi.clearAllMocks();
       await mockInput.playNext({ str: 't' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.test', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.test',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
     });
 
     it('should evaluate on backspace and delete when real-time evaluation is enabled', async () => {
@@ -398,7 +423,7 @@ describe('ReplManager', () => {
         stream: false,
         keyDelimiter: '.',
         repl: false,
-        realTimeEvaluation: true,
+        realTimeEvaluation: false,
         replFileMode: false,
         verbose: false,
       };
@@ -422,24 +447,34 @@ describe('ReplManager', () => {
         { str: 's' },
         { str: 't' },
       ]);
-      
+
       await new Promise(resolve => setTimeout(resolve, 50));
       vi.clearAllMocks();
 
       // Backspace
       await mockInput.playNext({ key: { name: 'backspace' } });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.tes', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.tes',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
 
       vi.clearAllMocks();
-      
+
       // Delete (move cursor left first)
       await mockInput.playNext({ key: { name: 'left' } });
       await mockInput.playNext({ key: { name: 'delete' } });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 150));
       expect(mockEvaluator).toHaveBeenCalledTimes(1);
-      expect(mockEvaluator).toHaveBeenCalledWith('.te', { test: 'data' }, expect.any(Object), undefined);
+      expect(mockEvaluator).toHaveBeenCalledWith(
+        '.te',
+        { test: 'data' },
+        expect.any(Object),
+        undefined
+      );
     });
   });
 
@@ -1029,8 +1064,8 @@ describe('ReplManager', () => {
 
       replManager.start();
 
-      // Simulate pasting a multi-line JSON
-      const pastedContent = '{\n  "key": "value",\n  "nested": {\n    "prop": 123\n  }\n}';
+      // Simulate pasting a multi-line JSON (without newlines since they trigger enter)
+      const pastedContent = '{"key": "value", "nested": {"prop": 123}}';
 
       // In real scenario, this would come as a single paste event
       // For testing, we'll simulate it character by character

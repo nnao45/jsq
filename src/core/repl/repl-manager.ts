@@ -111,12 +111,16 @@ export class ReplManager {
   private async handleKeypress(str: string | undefined, key: Key | undefined): Promise<void> {
     if (this.isProcessingInput) return;
 
-
     this.isProcessingInput = true;
     try {
       if (key?.ctrl) {
         await this.handleControlKey(key);
-      } else if (key?.name && ['return', 'backspace', 'delete', 'left', 'right', 'up', 'down', 'home', 'end'].includes(key.name)) {
+      } else if (
+        key?.name &&
+        ['return', 'backspace', 'delete', 'left', 'right', 'up', 'down', 'home', 'end'].includes(
+          key.name
+        )
+      ) {
         await this.handleSpecialKey(key);
       } else if (str) {
         // Check for newline characters
@@ -162,7 +166,6 @@ export class ReplManager {
   }
 
   private async handleSpecialKey(key: Key): Promise<void> {
-    
     switch (key.name) {
       case 'return':
         await this.handleEnter();
@@ -197,7 +200,7 @@ export class ReplManager {
   private async handleCharacterInput(char: string): Promise<void> {
     this.state.currentInput.insert(this.state.cursorPosition, char);
     this.state.cursorPosition += char.length;
-    
+
     this.updateDisplay();
 
     if (this.realTimeEvaluation && this.state.currentInput.toString().trim()) {
@@ -250,7 +253,6 @@ export class ReplManager {
       return;
     }
 
-
     this.addToHistory(this.state.currentInput.toString());
 
     const result = await this.evaluationHandler(
@@ -268,7 +270,11 @@ export class ReplManager {
       this.io.output.write(`Error: ${result.error}\n`);
       this.state.lastResult = undefined;
     } else {
-      const output = OutputFormatter.format(result.result, { ...this.state.options, isReplMode: true, oneline: true });
+      const output = OutputFormatter.format(result.result, {
+        ...this.state.options,
+        isReplMode: true,
+        oneline: true,
+      });
       this.io.output.write(`${output}\n`);
       this.state.lastResult = result.result;
     }
@@ -447,7 +453,6 @@ export class ReplManager {
     }
   }
 
-
   private scheduleRealTimeEvaluation(): void {
     // Cancel any pending evaluation
     if (this.realTimeEvalTimer) {
@@ -502,20 +507,24 @@ export class ReplManager {
 
       // 結果を表示（エラーは表示しない）
       if (!result.error && result.result !== undefined) {
-        const output = OutputFormatter.format(result.result, { ...this.state.options, isReplMode: true, oneline: true });
-        
+        const output = OutputFormatter.format(result.result, {
+          ...this.state.options,
+          isReplMode: true,
+          oneline: true,
+        });
+
         // 現在のカーソル位置を保存
         const savedPosition = this.state.cursorPosition;
-        
+
         // 次の行に結果を表示
         this.io.output.write('\n');
         this.io.output.clearLine(0);
         this.io.output.write(`→ ${output}`);
-        
+
         // 元の行に戻る
         this.io.output.write('\x1b[A');
         this.io.output.cursorTo(this.prompt.length + savedPosition);
-        
+
         this.state.hasPreviewLine = true;
       }
     } finally {
