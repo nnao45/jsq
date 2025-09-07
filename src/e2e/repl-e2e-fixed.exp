@@ -1,0 +1,236 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+proc print_test {name} {
+    puts "\n=== $name ==="
+}
+
+# Test 1: Basic REPL startup and simple expression
+proc test_basic_repl {} {
+    print_test "Test 1: Basic REPL startup"
+    
+    spawn sh -c "echo '{\"name\": \"test\", \"value\": 42}' | node dist/index.js"
+    
+    expect {
+        "jsq REPL - Interactive JSON Query Tool" {
+            puts "✓ REPL header displayed"
+        }
+        timeout {
+            puts "✗ Failed to show REPL header"
+            return 0
+        }
+    }
+    
+    expect {
+        "> " {
+            puts "✓ REPL prompt appeared"
+        }
+        timeout {
+            puts "✗ Failed to show prompt"
+            return 0
+        }
+    }
+    
+    # Test basic expression - wait for complete line
+    send "$.name\r"
+    
+    # Expect the echo of the command
+    expect "$.name"
+    
+    # Then expect the result
+    expect {
+        "\"test\"" {
+            puts "✓ Basic query worked"
+        }
+        timeout {
+            puts "✗ Basic query failed"
+            # Show what we got
+            puts "Expected: \"test\", but got: $expect_out(buffer)"
+            return 0
+        }
+    }
+    
+    # Exit REPL
+    send "\x03"
+    expect eof
+    return 1
+}
+
+# Test 2: Simple math
+proc test_simple_math {} {
+    print_test "Test 2: Simple math"
+    
+    spawn sh -c "echo '{}' | node dist/index.js"
+    
+    expect "> "
+    
+    send "1 + 1\r"
+    expect "1 + 1"
+    
+    expect {
+        "2" {
+            puts "✓ Simple math worked"
+        }
+        timeout {
+            puts "✗ Simple math failed"
+            return 0
+        }
+    }
+    
+    expect "> "
+    
+    send "5 * 5\r"
+    expect "5 * 5"
+    
+    expect {
+        "25" {
+            puts "✓ Multiplication worked"
+        }
+        timeout {
+            puts "✗ Multiplication failed"
+            return 0
+        }
+    }
+    
+    send "\x03"
+    expect eof
+    return 1
+}
+
+# Test 3: Array operations
+proc test_array_operations {} {
+    print_test "Test 3: Array operations"
+    
+    spawn sh -c "echo '{\"users\": [{\"name\": \"Alice\", \"age\": 30}, {\"name\": \"Bob\", \"age\": 25}]}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Test array mapping
+    send "$.users.map(u => u.name)\r"
+    expect "$.users.map(u => u.name)"
+    
+    expect {
+        {["Alice","Bob"]} {
+            puts "✓ Array mapping worked"
+        }
+        timeout {
+            puts "✗ Array mapping failed"
+            return 0
+        }
+    }
+    
+    send "\x03"
+    expect eof
+    return 1
+}
+
+# Test 4: History navigation (simplified)
+proc test_history {} {
+    print_test "Test 4: History navigation"
+    
+    spawn sh -c "echo '{}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Enter first command
+    send "100\r"
+    expect "100"
+    expect "100"
+    expect "> "
+    
+    # Enter second command
+    send "200\r"
+    expect "200"
+    expect "200"
+    expect "> "
+    
+    # Navigate up in history
+    send "\x1b\[A"
+    
+    # Should see previous command
+    expect {
+        "200" {
+            puts "✓ History up worked"
+        }
+        timeout {
+            puts "✗ History up failed"
+            return 0
+        }
+    }
+    
+    send "\x03"
+    expect eof
+    return 1
+}
+
+# Test 5: Ctrl commands (simplified)
+proc test_ctrl_commands {} {
+    print_test "Test 5: Ctrl commands"
+    
+    spawn sh -c "echo '{}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Test Ctrl+C to clear
+    send "test input"
+    sleep 0.1
+    send "\x03"
+    
+    expect {
+        "> " {
+            puts "✓ Ctrl+C clear worked"
+        }
+        timeout {
+            puts "✗ Ctrl+C clear failed"
+            return 0
+        }
+    }
+    
+    send "\x03"
+    expect eof
+    return 1
+}
+
+# Run tests individually with better error handling
+puts "Starting JSQ REPL E2E Tests (Fixed)..."
+puts "======================================"
+
+set total_tests 0
+set passed_tests 0
+
+incr total_tests
+if {[test_basic_repl]} {
+    incr passed_tests
+}
+
+incr total_tests
+if {[test_simple_math]} {
+    incr passed_tests
+}
+
+incr total_tests
+if {[test_array_operations]} {
+    incr passed_tests
+}
+
+incr total_tests
+if {[test_history]} {
+    incr passed_tests
+}
+
+incr total_tests
+if {[test_ctrl_commands]} {
+    incr passed_tests
+}
+
+puts "\n======================================"
+puts "Tests passed: $passed_tests / $total_tests"
+
+if {$passed_tests == $total_tests} {
+    puts "All tests passed!"
+    exit 0
+} else {
+    puts "Some tests failed!"
+    exit 1
+}

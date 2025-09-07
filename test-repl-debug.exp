@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+# Enable debug output
+exp_internal 1
+
+spawn sh -c "echo '{\"name\": \"test\", \"value\": 42}' | node dist/index.js"
+
+expect {
+    "jsq REPL" {
+        puts "Found REPL header"
+    }
+}
+
+expect {
+    "> " {
+        puts "Found prompt"
+    }
+}
+
+# Send query
+send "$.name\r"
+
+# Show buffer state
+expect {
+    -re ".*" {
+        puts "Buffer after query: $expect_out(buffer)"
+    }
+}
+
+send "\x03"
+expect eof

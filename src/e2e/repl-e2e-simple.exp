@@ -1,0 +1,69 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+puts "Starting Simple REPL Test..."
+puts "=========================="
+
+spawn sh -c "echo '{\"name\": \"test\", \"value\": 42}' | node dist/index.js"
+
+# Wait for prompt
+expect {
+    "> " {
+        puts "✓ REPL started"
+    }
+    timeout {
+        puts "✗ Failed to start REPL"
+        exit 1
+    }
+}
+
+# Send query and press enter
+send "$.name\r"
+
+# The REPL should echo the command first
+expect "$.name"
+
+# Then show the result on the next line
+expect {
+    "\"test\"" {
+        puts "✓ Query result received"
+    }
+    timeout {
+        puts "✗ Query result not received"
+        puts "Buffer contents: $expect_out(buffer)"
+        exit 1
+    }
+}
+
+# Expect the next prompt
+expect {
+    "> " {
+        puts "✓ Next prompt shown"
+    }
+    timeout {
+        puts "✗ Next prompt not shown"
+        exit 1
+    }
+}
+
+# Test another query
+send "$.value * 2\r"
+expect "$.value * 2"
+
+expect {
+    "84" {
+        puts "✓ Math expression worked"
+    }
+    timeout {
+        puts "✗ Math expression failed"
+        exit 1
+    }
+}
+
+# Exit
+send "\x03"
+expect eof
+
+puts "=========================="
+puts "All tests passed!"

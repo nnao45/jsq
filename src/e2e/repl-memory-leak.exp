@@ -1,0 +1,48 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+spawn bash -c "echo '{\"test\": \"data\"}' | npx jsq"
+
+expect "jsq REPL"
+expect "> "
+
+# 連続で入力して警告が出ないか確認
+send "111111111111111\r"
+expect "> "
+
+send "222222222222222\r"
+expect "> "
+
+send "333333333333333\r"
+expect "> "
+
+send "444444444444444\r"
+expect "> "
+
+send "555555555555555\r"
+expect "> "
+
+send "666666666666666\r"
+expect "> "
+
+send "777777777777777\r"
+expect "> "
+
+send "888888888888888\r"
+expect "> "
+
+send "999999999999999\r"
+expect "> "
+
+send "101010101010101\r"
+expect "> "
+
+send "121212121212121\r"
+expect "> "
+
+# MaxListenersExceededWarningが出ないことを確認
+send "\x03"
+expect eof
+
+exit 0

@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+spawn /bin/bash -c "echo '{\"test\": \"data\"}' | npx jsq --verbose"
+
+expect "> "
+
+send "123\r"
+
+expect -timeout 5 {
+    "123" { 
+        puts "\n✓ REPL evaluation working!"
+    }
+    timeout {
+        puts "\n✗ REPL evaluation failed - no output"
+    }
+}
+
+send "\003"
+
+expect eof

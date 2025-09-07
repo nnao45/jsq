@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+spawn /bin/bash -c "echo '{\"test\": \"data\"}' | npx jsq"
+
+expect "> "
+
+send "123\r"
+
+expect "123"
+
+send "\003"
+
+expect eof

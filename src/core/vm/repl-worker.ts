@@ -89,18 +89,15 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
   // Handle single evaluation for REPL mode
   if (task.type === 'eval' && typeof data === 'string') {
+    
     try {
       if (!parser || !evaluator) {
         throw new Error('Worker not properly initialized');
       }
       const parsed = parser.parse(data);
+      
       const result = await evaluator.evaluate(expression, parsed, task.lastResult);
-      if (options.verbose) {
-        console.error('Worker: Expression:', expression);
-        console.error('Worker: Parsed data:', parsed);
-        console.error('Worker: Evaluation result:', result);
-        console.error('Worker: Result type:', typeof result);
-      }
+      
       return { results: [result] };
     } catch (error) {
       return {
@@ -126,9 +123,6 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
     if (error) {
       errors.push(error);
-      if (options.verbose) {
-        console.error(`Worker: Error on line ${error.line}: ${error.message}`);
-      }
     } else if (result !== null) {
       results.push(result);
     }
@@ -139,6 +133,7 @@ async function processTask(task: WorkerTask): Promise<WorkerResult> {
 
 // Worker message handling
 if (parentPort) {
+  
   parentPort.on('message', async (task: WorkerTask) => {
     try {
       const result = await processTask(task);

@@ -1,0 +1,5 @@
+$.test
+123
+"hello"
+Math.sqrt(16)
+_.range(5)

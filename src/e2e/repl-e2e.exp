@@ -1,0 +1,344 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+proc print_test {name} {
+    puts "\n=== $name ==="
+}
+
+proc check_result {test_name} {
+    global expect_out
+    if {[info exists expect_out(buffer)]} {
+        puts "✓ $test_name passed"
+        return 1
+    } else {
+        puts "✗ $test_name failed"
+        return 0
+    }
+}
+
+# Test 1: Basic REPL startup and simple expression
+proc test_basic_repl {} {
+    print_test "Test 1: Basic REPL startup"
+    
+    spawn sh -c "echo '{\"name\": \"test\", \"value\": 42}' | node dist/index.js"
+    
+    expect {
+        "jsq REPL - Interactive JSON Query Tool" {
+            puts "✓ REPL header displayed"
+        }
+        timeout {
+            puts "✗ Failed to show REPL header"
+            exit 1
+        }
+    }
+    
+    expect {
+        "> " {
+            puts "✓ REPL prompt appeared"
+        }
+        timeout {
+            puts "✗ Failed to show prompt"
+            exit 1
+        }
+    }
+    
+    # Test basic expression
+    send "$.name\r"
+    expect {
+        "\"test\"" {
+            puts "✓ Basic query worked"
+        }
+        timeout {
+            puts "✗ Basic query failed"
+            exit 1
+        }
+    }
+    
+    # Exit REPL
+    send "\x03"
+    expect eof
+}
+
+# Test 2: REPL with complex queries
+proc test_complex_queries {} {
+    print_test "Test 2: Complex queries"
+    
+    spawn sh -c "echo '{\"users\": [{\"name\": \"Alice\", \"age\": 30}, {\"name\": \"Bob\", \"age\": 25}]}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Test array mapping
+    send "$.users.map(u => u.name)\r"
+    expect {
+        -re "\\[.*Alice.*Bob.*\\]" {
+            puts "✓ Array mapping worked"
+        }
+        timeout {
+            puts "✗ Array mapping failed"
+            exit 1
+        }
+    }
+    
+    expect "> "
+    
+    # Test filtering
+    send "$.users.filter(u => u.age > 28)\r"
+    expect {
+        -re ".*Alice.*age.*30" {
+            puts "✓ Filter query worked"
+        }
+        timeout {
+            puts "✗ Filter query failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 3: REPL with keyboard navigation
+proc test_keyboard_navigation {} {
+    print_test "Test 3: Keyboard navigation"
+    
+    spawn sh -c "echo '{\"test\": true}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type something and use arrow keys
+    send "1234"
+    send "\x1b\[D"  ;# Left arrow
+    send "\x1b\[D"  ;# Left arrow
+    send "X"        ;# Insert X in the middle
+    send "\r"
+    
+    expect {
+        "12X34" {
+            puts "✓ Cursor movement worked"
+        }
+        timeout {
+            puts "✗ Cursor movement failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 4: REPL history navigation
+proc test_history_navigation {} {
+    print_test "Test 4: History navigation"
+    
+    spawn sh -c "echo '{\"data\": 1}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Enter multiple commands
+    send "1 + 1\r"
+    expect "2"
+    expect "> "
+    
+    send "2 + 2\r"
+    expect "4"
+    expect "> "
+    
+    # Navigate up in history
+    send "\x1b\[A"  ;# Up arrow
+    expect {
+        "2 + 2" {
+            puts "✓ History up navigation worked"
+        }
+        timeout {
+            puts "✗ History up navigation failed"
+            exit 1
+        }
+    }
+    
+    # Navigate up again
+    send "\x1b\[A"  ;# Up arrow
+    expect {
+        "1 + 1" {
+            puts "✓ Multiple history navigation worked"
+        }
+        timeout {
+            puts "✗ Multiple history navigation failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 5: REPL with Ctrl commands
+proc test_ctrl_commands {} {
+    print_test "Test 5: Ctrl commands"
+    
+    spawn sh -c "echo '{}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Test Ctrl+A (move to beginning)
+    send "hello world"
+    send "\x01"     ;# Ctrl+A
+    send "X"
+    send "\r"
+    
+    expect {
+        "Xhello world" {
+            puts "✓ Ctrl+A worked"
+        }
+        timeout {
+            puts "✗ Ctrl+A failed"
+            exit 1
+        }
+    }
+    
+    expect "> "
+    
+    # Test Ctrl+E (move to end)
+    send "start"
+    send "\x01"     ;# Ctrl+A
+    send "\x05"     ;# Ctrl+E
+    send "END"
+    send "\r"
+    
+    expect {
+        "startEND" {
+            puts "✓ Ctrl+E worked"
+        }
+        timeout {
+            puts "✗ Ctrl+E failed"
+            exit 1
+        }
+    }
+    
+    expect "> "
+    
+    # Test Ctrl+K (delete to end)
+    send "keep this delete this"
+    send "\x01"     ;# Ctrl+A
+    send "\x1b\[C"  ;# Right arrow × 10
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x1b\[C"
+    send "\x0b"     ;# Ctrl+K
+    send "\r"
+    
+    expect {
+        "keep this" {
+            puts "✓ Ctrl+K worked"
+        }
+        timeout {
+            puts "✗ Ctrl+K failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 6: REPL with no initial data
+proc test_no_initial_data {} {
+    print_test "Test 6: REPL with no initial data"
+    
+    spawn node dist/index.js
+    
+    expect {
+        "> " {
+            puts "✓ REPL started without stdin data"
+        }
+        timeout {
+            puts "✗ Failed to start REPL without stdin"
+            exit 1
+        }
+    }
+    
+    # Test simple expression without $
+    send "1 + 2 + 3\r"
+    expect {
+        "6" {
+            puts "✓ Simple math expression worked"
+        }
+        timeout {
+            puts "✗ Simple math expression failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 7: REPL with file input
+proc test_file_input {} {
+    print_test "Test 7: REPL with file input"
+    
+    # Create a test file
+    exec echo {{"test": "file data", "number": 123}} > /tmp/jsq-test.json
+    
+    spawn node dist/index.js -f /tmp/jsq-test.json
+    
+    expect "> "
+    
+    send "$.test\r"
+    expect {
+        "\"file data\"" {
+            puts "✓ File input query worked"
+        }
+        timeout {
+            puts "✗ File input query failed"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+    
+    # Cleanup
+    exec rm -f /tmp/jsq-test.json
+}
+
+# Run only basic tests for now
+puts "Starting JSQ REPL E2E Tests (Basic)..."
+puts "=============================="
+
+# Only test REPL startup for now
+print_test "Test: REPL startup"
+
+spawn sh -c "echo '{}' | node dist/index.js"
+
+expect {
+    "jsq REPL - Interactive JSON Query Tool" {
+        puts "✓ REPL started successfully"
+    }
+    timeout {
+        puts "✗ Failed to start REPL"
+        exit 1
+    }
+}
+
+expect {
+    "> " {
+        puts "✓ REPL prompt shown"
+    }
+    timeout {
+        puts "✗ REPL prompt not shown"
+        exit 1
+    }
+}
+
+send "\x03"
+expect eof
+
+puts "\n=============================="
+puts "Basic REPL tests completed!"

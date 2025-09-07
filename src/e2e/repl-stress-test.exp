@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+
+spawn bash -c "echo '{\"test\": \"data\"}' | npx jsq"
+
+expect "jsq REPL"
+expect "> "
+
+# 簡単なストレステスト（10回）
+send "1111111\r"
+sleep 0.1
+expect "> "
+send "2222222\r"
+sleep 0.1
+expect "> "
+send "3333333\r"
+sleep 0.1
+expect "> "
+send "4444444\r"
+sleep 0.1
+expect "> "
+send "5555555\r"
+sleep 0.1
+expect "> "
+send "6666666\r"
+sleep 0.1
+expect "> "
+send "7777777\r"
+sleep 0.1
+expect "> "
+send "8888888\r"
+sleep 0.1
+expect "> "
+send "9999999\r"
+sleep 0.1
+expect "> "
+send "0000000\r"
+sleep 0.1
+expect "> "
+
+# エラーが出ないことを確認
+send ".test\r"
+expect "\"data\""
+expect "> "
+
+send "\x03"
+expect eof
+
+exit 0
