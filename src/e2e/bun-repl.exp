@@ -1,0 +1,134 @@
+#!/usr/bin/expect -f
+
+# Bunを使用したREPLモードのE2Eテスト
+
+# テストの説明を出力
+puts "\n=== Bun REPL Mode E2E Test ==="
+puts "BunでjsqのREPLモードを実行し、基本的な機能をテストします"
+puts "================================\n"
+
+# タイムアウト設定（新しいREPLは処理時間が長いため増加）
+set timeout 30
+
+# エスケープシーケンスを含む出力に対応
+set env(TERM) "xterm"
+
+# Bunでjsqを実行
+spawn -noecho bun dist/index-bun.js
+
+# 初期メッセージをスキップ
+expect {
+    "jsq REPL" { 
+        expect "Press Ctrl+C to exit."
+    }
+    timeout { }
+}
+
+# REPLプロンプトを待つ（エスケープシーケンス対応）
+expect {
+    -re "\r\n> |> " { puts "✓ REPLプロンプトが表示されました" }
+    timeout { 
+        puts "✗ REPLプロンプトが表示されませんでした"
+        exit 1 
+    }
+}
+
+# 1. 基本的な計算のテスト
+puts "\n\[TEST 1\] Basic calculation"
+send "2 + 3\r"
+# エスケープシーケンスを含む出力を許容
+expect {
+    -re "\\[.*5\\[|5" { puts "✓ 2 + 3 = 5 が正しく計算されました" }
+    timeout { 
+        puts "✗ 計算結果が正しくありません"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 2. 文字列のテスト
+puts "\n\[TEST 2\] String handling"
+send "\"Hello, \" + \"Bun!\"\r"
+expect {
+    -re "Hello, Bun!|'Hello, Bun!'" { puts "✓ 文字列の結合が正しく動作しました" }
+    timeout { 
+        puts "✗ 文字列の結合が正しくありません"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 3. 配列操作のテスト
+puts "\n\[TEST 3\] Array operations"
+send "\[1, 2, 3\].map(x => x * 2)\r"
+expect {
+    -re "\\[ 2, 4, 6 \\]|\[2,4,6\]" { puts "✓ 配列のmap操作が正しく動作しました" }
+    timeout { 
+        puts "✗ 配列のmap操作が正しくありません"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 4. オブジェクトのテスト
+puts "\n\[TEST 4\] Object handling"
+send "{name: \"Bun\", version: \"1.0\"}\r"
+expect {
+    "name" { 
+        expect {
+            "Bun" { 
+                expect {
+                    "version" {
+                        expect {
+                            "1.0" { puts "✓ オブジェクトが正しく表示されました" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    timeout { 
+        puts "✗ オブジェクトが正しく表示されませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 5. エラーハンドリングのテスト
+puts "\n\[TEST 5\] Error handling"
+send "undefinedVariable\r"
+expect {
+    "ReferenceError" { puts "✓ 未定義変数のエラーが正しく表示されました" }
+    timeout { 
+        puts "✗ エラーが正しく表示されませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 6. async/awaitのテスト
+puts "\n\[TEST 6\] async/await feature"
+send "await Promise.resolve(42)\r"
+expect {
+    "42" { puts "✓ async/awaitが正しく動作しました" }
+    timeout { 
+        puts "✗ async/awaitが正しく動作しませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# 7. 正常終了のテスト
+puts "\n\[TEST 7\] Normal exit"
+# 新しいREPLでは空行でCtrl+Cすると終了
+send "\003"  ;# Ctrl+C
+expect {
+    eof { puts "✓ Ctrl+Cで正常に終了しました" }
+    timeout { 
+        puts "✗ 正常に終了しませんでした"
+        exit 1 
+    }
+}
+
+puts "\n=== 全てのBun REPLテストが成功しました！ ===\n"
+exit 0

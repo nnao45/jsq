@@ -314,8 +314,8 @@ describe('ReplManager', () => {
 
       await mockInput.playNext({ str: '.' });
 
-      // Wait for debounce delay (300ms default) plus a small buffer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // リアルタイム評価は即座に実行される
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Real-time evaluation should have been called
       expect(mockEvaluator).toHaveBeenCalledWith(
@@ -324,6 +324,122 @@ describe('ReplManager', () => {
         expect.any(Object),
         undefined
       );
+    });
+
+    it('should evaluate on every character input when real-time evaluation is enabled', async () => {
+      const { mockInput, mockOutput, mockEvaluator } = createTestSetup();
+
+      const options: JsqOptions = {
+        expression: '',
+        color: false,
+        raw: false,
+        compact: false,
+        stream: false,
+        keyDelimiter: '.',
+        repl: false,
+        realTimeEvaluation: true,
+        replFileMode: false,
+        verbose: false,
+      };
+
+      const replManager = new ReplManager({ test: 'data' }, options, mockEvaluator, {
+        prompt: '> ',
+        realTimeEvaluation: true,
+        io: {
+          input: mockInput,
+          output: mockOutput,
+        },
+      });
+
+      replManager.start();
+
+      // Clear mock calls
+      vi.clearAllMocks();
+
+      // Type ".test" character by character
+      await mockInput.playNext({ str: '.' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.', { test: 'data' }, expect.any(Object), undefined);
+
+      vi.clearAllMocks();
+      await mockInput.playNext({ str: 't' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.t', { test: 'data' }, expect.any(Object), undefined);
+
+      vi.clearAllMocks();
+      await mockInput.playNext({ str: 'e' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.te', { test: 'data' }, expect.any(Object), undefined);
+
+      vi.clearAllMocks();
+      await mockInput.playNext({ str: 's' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.tes', { test: 'data' }, expect.any(Object), undefined);
+
+      vi.clearAllMocks();
+      await mockInput.playNext({ str: 't' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.test', { test: 'data' }, expect.any(Object), undefined);
+    });
+
+    it('should evaluate on backspace and delete when real-time evaluation is enabled', async () => {
+      const { mockInput, mockOutput, mockEvaluator } = createTestSetup();
+
+      const options: JsqOptions = {
+        expression: '',
+        color: false,
+        raw: false,
+        compact: false,
+        stream: false,
+        keyDelimiter: '.',
+        repl: false,
+        realTimeEvaluation: true,
+        replFileMode: false,
+        verbose: false,
+      };
+
+      const replManager = new ReplManager({ test: 'data' }, options, mockEvaluator, {
+        prompt: '> ',
+        realTimeEvaluation: true,
+        io: {
+          input: mockInput,
+          output: mockOutput,
+        },
+      });
+
+      replManager.start();
+
+      // Type ".test"
+      await mockInput.playAll(0, [
+        { str: '.' },
+        { str: 't' },
+        { str: 'e' },
+        { str: 's' },
+        { str: 't' },
+      ]);
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
+      vi.clearAllMocks();
+
+      // Backspace
+      await mockInput.playNext({ key: { name: 'backspace' } });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.tes', { test: 'data' }, expect.any(Object), undefined);
+
+      vi.clearAllMocks();
+      
+      // Delete (move cursor left first)
+      await mockInput.playNext({ key: { name: 'left' } });
+      await mockInput.playNext({ key: { name: 'delete' } });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockEvaluator).toHaveBeenCalledTimes(1);
+      expect(mockEvaluator).toHaveBeenCalledWith('.te', { test: 'data' }, expect.any(Object), undefined);
     });
   });
 

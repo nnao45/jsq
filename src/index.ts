@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
 import { cpus } from 'node:os';
-import { dirname, join } from 'node:path';
-import * as readline from 'node:readline';
-import { fileURLToPath } from 'node:url';
-import type { Worker } from 'node:worker_threads';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
+import { createAndStartRepl } from '@/core/repl/repl-factory';
 import { setupProcessExitHandlers } from '@/core/vm/quickjs-gc-workaround';
 import type { JsqOptions } from '@/types/cli';
 import type { SupportedFormat } from '@/utils/file-input';
@@ -18,8 +15,6 @@ import {
 } from '@/utils/file-input';
 import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
-import { Pager } from '@/utils/pager';
-import { ReplFileCommunicator } from '@/utils/repl-file-communication';
 import { detectRuntime } from '@/utils/runtime';
 
 // Set up process exit handlers to prevent QuickJS GC issues
@@ -117,36 +112,23 @@ addCommonOptions(mainCommand).action(
   }
 );
 
-// REPL関連の定数と型定義
-const PROMPT = '> ';
+// REPL関連の定数
 const YELLOW = '\x1b[33m';
 const RESET = '\x1b[0m';
-const GREEN = '\x1b[32m';
-const GRAY = '\x1b[90m';
-
-interface WorkerMessage {
-  type: 'ready' | 'result';
-  results?: unknown[];
-  errors?: Array<{ line: number; message: string }>;
-}
-
-interface ReplState {
-  data: unknown;
-  history: string[];
-  historyIndex: number;
-  currentInput: string;
-  cursorPosition: number;
-  worker?: Worker; // 単一ワーカーを使用
-  fileCommunicator?: ReplFileCommunicator;
-  options: JsqOptions;
-  lastFullOutput?: string;
-  isReplMode: boolean;
-}
 
 async function loadInitialData(options: JsqOptions): Promise<unknown> {
   if (options.file) {
     const format = await detectFileFormat(options.file, options.fileFormat);
-    return await readFileByFormat(options.file, format);
+    const data = await readFileByFormat(options.file, format);
+    // If data is a string and format is JSON, try to parse it
+    if (typeof data === 'string' && format === 'json') {
+      try {
+        return JSON.parse(data);
+      } catch {
+        return data;
+      }
+    }
+    return data;
   }
   if (options.stdinData) {
     try {
@@ -158,170 +140,8 @@ async function loadInitialData(options: JsqOptions): Promise<unknown> {
   return {};
 }
 
-function truncateToWidth(text: string, maxWidth: number): string {
-  const columns = process.stdout.columns || 80;
-  const availableWidth = Math.min(columns - PROMPT.length - 3, maxWidth);
-
-  if (text.length <= availableWidth) {
-    return text;
-  }
-
-  return `${text.substring(0, availableWidth)}...`;
-}
-
-async function evaluateExpression(state: ReplState, isFinalEval: boolean = false): Promise<void> {
-  if (!state.currentInput.trim()) {
-    // 入力が空の時は評価結果をクリア
-    const savedCursorPosition = state.cursorPosition;
-
-    // 次の行に移動してクリア
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write('\n');
-    readline.clearLine(process.stdout, 0);
-
-    // エンター押した時は元の行に戻らない
-    if (!isFinalEval) {
-      // 元の行に戻ってプロンプトと入力を再表示
-      process.stdout.write('\x1b[1A');
-      readline.clearLine(process.stdout, 0);
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(PROMPT + state.currentInput);
-      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
-    }
-    return;
-  }
-
-  try {
-    let result: { results: unknown[]; errors?: Array<{ line: number; message: string }> };
-
-    if (state.fileCommunicator) {
-      // ファイル通信モード
-      const response = await state.fileCommunicator.evaluate(
-        state.currentInput,
-        state.data,
-        state.options
-      );
-
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
-      result = { results: [response.result] };
-    } else if (state.worker) {
-      // 通常のWorkerモード
-      const taskResult = await new Promise<WorkerMessage>((resolve, reject) => {
-        const onMessage = (message: WorkerMessage) => {
-          if (message.type === 'result') {
-            state.worker?.off('message', onMessage);
-            resolve(message);
-          }
-        };
-        state.worker?.on('message', onMessage);
-        state.worker?.on('error', reject);
-        state.worker?.postMessage({
-          type: 'eval',
-          data: typeof state.data === 'string' ? state.data : JSON.stringify(state.data),
-          expression: state.currentInput,
-          options: state.options,
-        });
-      });
-
-      if (!taskResult.results || taskResult.errors?.length) {
-        throw new Error(taskResult.errors?.[0]?.message || 'Evaluation failed');
-      }
-
-      result = {
-        results: taskResult.results,
-        errors: taskResult.errors,
-      };
-    } else {
-      throw new Error('No evaluation engine available');
-    }
-
-    const formatOptions = state.isReplMode ? { ...state.options, isReplMode: true } : state.options;
-    if (state.options.verbose) {
-      console.error('[DEBUG] Result from worker:', result);
-      console.error('[DEBUG] Result.results[0]:', result.results[0]);
-      console.error('[DEBUG] Result type:', typeof result.results[0]);
-    }
-    const formatted = OutputFormatter.format(result.results[0], formatOptions);
-    state.lastFullOutput = formatted;
-
-    // 現在のカーソル位置を保存
-    const savedCursorPosition = state.cursorPosition;
-
-    // 即時評価時は1行にまとめる
-    const oneLine = formatted ? formatted.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : '';
-    const displayText = truncateToWidth(oneLine, process.stdout.columns || 80);
-
-    if (state.options.verbose) {
-      console.error('[DEBUG] Formatted output:', formatted);
-      console.error('[DEBUG] Display text:', displayText);
-      console.error('[DEBUG] Is final eval:', isFinalEval);
-    }
-
-    // 次の行に移動
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write('\n');
-    readline.clearLine(process.stdout, 0);
-
-    // 結果を表示
-    if (state.options.verbose) {
-      console.error(`[DEBUG] Displaying result: "${displayText}" (final=${isFinalEval})`);
-    }
-    process.stdout.write(`${GREEN}${displayText}${RESET}`);
-
-    // エンター押した時は元の行に戻らない
-    if (!isFinalEval) {
-      // 元の行に戻る（1行だけ下に移動したので、1行戻る）
-      process.stdout.write('\x1b[1A');
-      // 元の行をクリアして再表示
-      readline.clearLine(process.stdout, 0);
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(PROMPT + state.currentInput);
-      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
-    }
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const shortError = errorMsg.split('\n')[0];
-
-    // 現在のカーソル位置を保存
-    const savedCursorPosition = state.cursorPosition;
-
-    if (isFinalEval) {
-      // エンター押した時は次の行にエラーを表示
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write('\n');
-      readline.clearLine(process.stdout, 0);
-      process.stdout.write(`${GRAY}Error: ${shortError.substring(0, 80)}${RESET}`);
-    } else {
-      // リアルタイム評価時は同じ行をクリアして再描画（エラーは表示しない）
-      readline.clearLine(process.stdout, 0);
-      readline.cursorTo(process.stdout, 0);
-      process.stdout.write(PROMPT + state.currentInput);
-      readline.cursorTo(process.stdout, PROMPT.length + savedCursorPosition);
-    }
-  }
-}
-
-function updateDisplay(state: ReplState): void {
-  if (detectRuntime() === 'deno') {
-    // Deno needs explicit ANSI escape sequences
-    process.stdout.write('\r\x1b[K'); // carriage return + clear line
-    process.stdout.write(PROMPT + state.currentInput);
-    process.stdout.write(`\r\x1b[${PROMPT.length + state.cursorPosition}C`); // move cursor
-  } else {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(PROMPT + state.currentInput);
-    readline.cursorTo(process.stdout, PROMPT.length + state.cursorPosition);
-  }
-}
 
 async function handleReplMode(options: JsqOptions): Promise<void> {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-
   const data = await loadInitialData(options);
 
   // デバッグ: 読み込まれたデータを表示
@@ -329,308 +149,23 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     console.error(`[DEBUG] Loaded initial data:`, JSON.stringify(data).substring(0, 100));
   }
 
-  let worker: Worker | undefined;
-  let fileCommunicator: ReplFileCommunicator | undefined;
-
-  if (options.replFileMode) {
-    // ファイル通信モード
-    fileCommunicator = new ReplFileCommunicator();
-    await fileCommunicator.start();
-  } else {
-    // 通常のWorkerモード
-    const { Worker } = await import('node:worker_threads');
-    worker = new Worker(join(__dirname, 'repl-worker.js')) as import('node:worker_threads').Worker;
-
-    // Workerの初期化を待つ
-    await new Promise<void>((resolve, reject) => {
-      const onMessage = (message: WorkerMessage) => {
-        if (message.type === 'ready') {
-          worker?.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      worker?.on('message', onMessage);
-      worker?.on('error', reject);
-    });
-  }
-
-  const state: ReplState = {
-    data,
-    history: [],
-    historyIndex: 0,
-    currentInput: '',
-    cursorPosition: 0,
-    worker,
-    fileCommunicator,
-    options,
-    isReplMode: true,
-  };
-
-  process.stdout.write(`${YELLOW}jsq REPL - Interactive JSON Query Tool${RESET}\n`);
-  process.stdout.write(`Type expressions to query the data. Press Ctrl+C to exit.\n`);
-  if (options.file) {
-    process.stdout.write(`Loaded data from: ${options.file}\n`);
-  } else if (options.stdinData) {
-    process.stdout.write(`Loaded data from stdin\n`);
-  }
-  process.stdout.write(`\n${PROMPT}`);
-
   // パイプ経由でデータを受け取った場合、TTYから入力を取得
   const { getInteractiveInputStream } = await import('@/utils/tty-helper');
   const inputStream = await getInteractiveInputStream(options.stdinData, options.verbose);
 
-  readline.emitKeypressEvents(inputStream);
-  if (inputStream.isTTY) {
-    inputStream.setRawMode(true);
-  }
-
-  inputStream.on('keypress', async (str: string | undefined, key: readline.Key | undefined) => {
-    if (options.verbose && detectRuntime() === 'deno') {
-      console.error(`[DEBUG] Keypress event: str="${str}", key=${JSON.stringify(key)}`);
-    }
-    if (key?.ctrl) {
-      switch (key.name) {
-        case 'c':
-          process.stdout.write('\n');
-          if (state.currentInput.length > 0) {
-            // リアルタイム評価結果をクリア
-            readline.clearLine(process.stdout, 0);
-            readline.cursorTo(process.stdout, 0);
-
-            state.currentInput = '';
-            state.cursorPosition = 0;
-            process.stdout.write(PROMPT);
-          } else {
-            if (state.worker) {
-              await state.worker.terminate();
-            }
-            if (state.fileCommunicator) {
-              await state.fileCommunicator.dispose();
-            }
-            process.exit(130);
-          }
-          break;
-        case 'd':
-          if (state.currentInput.length === 0) {
-            process.stdout.write('\n');
-            if (state.worker) {
-              await state.worker.terminate();
-            }
-            if (state.fileCommunicator) {
-              await state.fileCommunicator.dispose();
-            }
-            process.exit(0);
-          }
-          break;
-        case 'l':
-          process.stdout.write('\x1bc');
-          updateDisplay(state);
-          break;
-        case 'a':
-          state.cursorPosition = 0;
-          updateDisplay(state);
-          break;
-        case 'e':
-          state.cursorPosition = state.currentInput.length;
-          updateDisplay(state);
-          break;
-        case 'k':
-          state.currentInput = state.currentInput.substring(0, state.cursorPosition);
-          updateDisplay(state);
-          break;
-        case 'u':
-          state.currentInput = state.currentInput.substring(state.cursorPosition);
-          state.cursorPosition = 0;
-          updateDisplay(state);
-          break;
-        case 'w': {
-          const beforeCursor = state.currentInput.substring(0, state.cursorPosition);
-          const afterCursor = state.currentInput.substring(state.cursorPosition);
-          const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
-          if (lastSpaceIndex >= 0) {
-            state.currentInput = beforeCursor.substring(0, lastSpaceIndex) + afterCursor;
-            state.cursorPosition = lastSpaceIndex;
-          } else {
-            state.currentInput = afterCursor;
-            state.cursorPosition = 0;
-          }
-          updateDisplay(state);
-          break;
-        }
-        case 'r':
-          if (state.lastFullOutput) {
-            process.stdout.write('\n');
-            const pager = new Pager(state.lastFullOutput);
-            await pager.show();
-            updateDisplay(state);
-            await evaluateExpression(state);
-          }
-          break;
-      }
-      return;
-    }
-
-    if (key && !key.ctrl && !key.meta) {
-      switch (key.name) {
-        case 'return':
-          if (state.currentInput.trim()) {
-            state.history.push(state.currentInput);
-            state.historyIndex = state.history.length;
-
-            // 前のリアルタイム評価結果をクリア
-            if (state.options.verbose) {
-              console.error('[DEBUG] Clearing real-time evaluation result...');
-            }
-            // 現在の行に移動
-            readline.cursorTo(process.stdout, 0);
-            // 現在の行をクリア
-            readline.clearLine(process.stdout, 0);
-            // 次の行に移動
-            process.stdout.write('\n');
-            // その行もクリア（リアルタイム評価結果がある可能性）
-            readline.clearLine(process.stdout, 0);
-            // 元の行に戻る
-            process.stdout.write('\x1b[1A');
-            // プロンプトと入力を再表示
-            process.stdout.write(PROMPT + state.currentInput);
-
-            await evaluateExpression(state, true); // isFinalEval = true
-            process.stdout.write(`\n${PROMPT}`);
-          } else {
-            process.stdout.write(`\n${PROMPT}`);
-          }
-          state.currentInput = '';
-          state.cursorPosition = 0;
-          break;
-        case 'up':
-          if (state.historyIndex > 0) {
-            state.historyIndex--;
-            state.currentInput = state.history[state.historyIndex];
-            state.cursorPosition = state.currentInput.length;
-            updateDisplay(state);
-            await evaluateExpression(state);
-          }
-          break;
-        case 'down':
-          if (state.historyIndex < state.history.length - 1) {
-            state.historyIndex++;
-            state.currentInput = state.history[state.historyIndex];
-            state.cursorPosition = state.currentInput.length;
-
-            if (detectRuntime() === 'deno') {
-              updateDisplay(state);
-              setTimeout(async () => {
-                await evaluateExpression(state);
-              }, 0);
-            } else {
-              updateDisplay(state);
-              await evaluateExpression(state);
-            }
-          } else if (state.historyIndex === state.history.length - 1) {
-            state.historyIndex = state.history.length;
-            state.currentInput = '';
-            state.cursorPosition = 0;
-            updateDisplay(state);
-          }
-          break;
-        case 'left':
-          if (state.cursorPosition > 0) {
-            state.cursorPosition--;
-            updateDisplay(state);
-          }
-          break;
-        case 'right':
-          if (state.cursorPosition < state.currentInput.length) {
-            state.cursorPosition++;
-            updateDisplay(state);
-          }
-          break;
-        case 'home':
-          state.cursorPosition = 0;
-          updateDisplay(state);
-          break;
-        case 'end':
-          state.cursorPosition = state.currentInput.length;
-          updateDisplay(state);
-          break;
-        case 'backspace':
-          if (state.cursorPosition > 0) {
-            state.currentInput =
-              state.currentInput.substring(0, state.cursorPosition - 1) +
-              state.currentInput.substring(state.cursorPosition);
-            state.cursorPosition--;
-
-            if (detectRuntime() === 'deno') {
-              updateDisplay(state);
-              setTimeout(async () => {
-                await evaluateExpression(state);
-              }, 0);
-            } else {
-              updateDisplay(state);
-              await evaluateExpression(state);
-            }
-          }
-          break;
-        case 'delete':
-          if (state.cursorPosition < state.currentInput.length) {
-            state.currentInput =
-              state.currentInput.substring(0, state.cursorPosition) +
-              state.currentInput.substring(state.cursorPosition + 1);
-
-            if (detectRuntime() === 'deno') {
-              updateDisplay(state);
-              setTimeout(async () => {
-                await evaluateExpression(state);
-              }, 0);
-            } else {
-              updateDisplay(state);
-              await evaluateExpression(state);
-            }
-          }
-          break;
-        default:
-          if (str && str.length === 1 && !key.ctrl && !key.meta) {
-            state.currentInput =
-              state.currentInput.substring(0, state.cursorPosition) +
-              str +
-              state.currentInput.substring(state.cursorPosition);
-            state.cursorPosition++;
-
-            // Deno requires explicit async handling for display updates
-            if (detectRuntime() === 'deno') {
-              updateDisplay(state);
-              // Use setTimeout to ensure event loop processes the display update
-              setTimeout(async () => {
-                await evaluateExpression(state);
-              }, 0);
-            } else {
-              updateDisplay(state);
-              await evaluateExpression(state);
-            }
-          }
-      }
-    }
+  // 新しいREPL実装を使用
+  const replManager = await createAndStartRepl(data, options, inputStream, {
+    yellow: YELLOW,
+    reset: RESET,
   });
 
-  process.on('exit', async () => {
-    if (state.worker) {
-      await state.worker.terminate();
-    }
-    if (state.fileCommunicator) {
-      await state.fileCommunicator.dispose();
-    }
-  });
-
-  // Handle SIGINT (Ctrl+C) when raw mode is not available
+  // SIGINTハンドラーを追加
   process.on('SIGINT', async () => {
-    console.error('[DEBUG] SIGINT received, cleaning up...');
+    if (options.verbose) {
+      console.error('[DEBUG] SIGINT received, cleaning up...');
+    }
     process.stdout.write('\n');
-    if (state.worker) {
-      await state.worker.terminate();
-    }
-    if (state.fileCommunicator) {
-      await state.fileCommunicator.dispose();
-    }
+    replManager.stop();
     process.exit(0);
   });
 
@@ -671,7 +206,7 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
       child.on('error', reject);
     });
   } else {
-    // それ以外の場合は直接REPLモードを起動
+    // それ以外の場合は直接REPLモードを起動（新しい実装を使用）
     await handleReplMode(options);
   }
 }

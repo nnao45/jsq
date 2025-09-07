@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+spawn /bin/bash -c "echo '{\"test\": \"data\"}' | npx jsq --verbose"
+
+expect "> "
+
+send "123"
+sleep 1
+send "\r"
+
+expect -timeout 5 -re ".*" {
+    puts "\nOutput after enter: $expect_out(buffer)"
+}
+
+send "\003"
+
+expect eof

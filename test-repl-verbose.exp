@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout 15
+
+spawn sh -c "echo '{\"test\": 123}' | node dist/index.js -v"
+
+expect "> "
+send "$.test\r"
+
+# Wait for any output
+sleep 2
+
+send "\x03"
+expect eof

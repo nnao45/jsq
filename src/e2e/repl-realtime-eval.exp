@@ -1,0 +1,312 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+proc print_test {name} {
+    puts "\n=== $name ==="
+}
+
+proc check_result {test_name expected} {
+    expect {
+        -re $expected {
+            puts "✓ $test_name passed"
+            return 1
+        }
+        timeout {
+            puts "✗ $test_name failed - expected: $expected"
+            return 0
+        }
+    }
+}
+
+# Test 1: Real-time evaluation on each character input
+proc test_realtime_char_by_char {} {
+    print_test "Test 1: Real-time evaluation character by character"
+    
+    spawn sh -c "echo '{\"test\": \"data\", \"value\": 42}' | node dist/index.js"
+    
+    expect "jsq REPL - Interactive JSON Query Tool"
+    expect "> "
+    
+    # Type $ - should not show result yet (invalid expression)
+    send "$"
+    sleep 0.1
+    
+    # Type . - now we have "$." which should evaluate to the root object
+    send "."
+    expect {
+        "→ {\"test\":\"data\",\"value\":42}" {
+            puts "✓ Real-time evaluation after '$.' showed root object"
+        }
+        timeout {
+            puts "✗ Failed to show root object after '$.'"
+            exit 1
+        }
+    }
+    
+    # Type t - now we have "$.t" which should show undefined
+    send "t"
+    expect {
+        "→ undefined" {
+            puts "✓ Real-time evaluation after '$.t' showed undefined"
+        }
+        timeout {
+            puts "✗ Failed to show undefined after '$.t'"
+            exit 1
+        }
+    }
+    
+    # Type e - now we have "$.te" which should still show undefined
+    send "e"
+    expect {
+        "→ undefined" {
+            puts "✓ Real-time evaluation after '$.te' showed undefined"
+        }
+        timeout {
+            puts "✗ Failed to show undefined after '$.te'"
+            exit 1
+        }
+    }
+    
+    # Type s - now we have "$.tes" which should still show undefined
+    send "s"
+    expect {
+        "→ undefined" {
+            puts "✓ Real-time evaluation after '$.tes' showed undefined"
+        }
+        timeout {
+            puts "✗ Failed to show undefined after '$.tes'"
+            exit 1
+        }
+    }
+    
+    # Type t - now we have "$.test" which should show "data"
+    send "t"
+    expect {
+        "→ \"data\"" {
+            puts "✓ Real-time evaluation after '$.test' showed correct value"
+        }
+        timeout {
+            puts "✗ Failed to show correct value after '$.test'"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 2: Real-time evaluation with backspace
+proc test_realtime_with_backspace {} {
+    print_test "Test 2: Real-time evaluation with backspace"
+    
+    spawn sh -c "echo '{\"name\": \"Alice\", \"age\": 30}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type $.name
+    send "$.name"
+    expect {
+        "→ \"Alice\"" {
+            puts "✓ Real-time evaluation showed 'Alice'"
+        }
+        timeout {
+            puts "✗ Failed to show 'Alice'"
+            exit 1
+        }
+    }
+    
+    # Backspace 4 times to remove "name"
+    send "\x7f\x7f\x7f\x7f"
+    expect {
+        "→ {\"name\":\"Alice\",\"age\":30}" {
+            puts "✓ Real-time evaluation after backspace showed root object"
+        }
+        timeout {
+            puts "✗ Failed to show root object after backspace"
+            exit 1
+        }
+    }
+    
+    # Type "age" to get $.age
+    send "age"
+    expect {
+        "→ 30" {
+            puts "✓ Real-time evaluation after typing 'age' showed 30"
+        }
+        timeout {
+            puts "✗ Failed to show 30 after typing 'age'"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 3: Real-time evaluation with array access
+proc test_realtime_array_access {} {
+    print_test "Test 3: Real-time evaluation with array access"
+    
+    spawn sh -c "echo '{\"items\": [\"a\", \"b\", \"c\"]}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type $.items
+    send "$.items"
+    expect {
+        "→ \\[\"a\",\"b\",\"c\"\\]" {
+            puts "✓ Real-time evaluation showed array"
+        }
+        timeout {
+            puts "✗ Failed to show array"
+            exit 1
+        }
+    }
+    
+    # Type [0] to access first element
+    send "\[0\]"
+    expect {
+        "→ \"a\"" {
+            puts "✓ Real-time evaluation showed first element"
+        }
+        timeout {
+            puts "✗ Failed to show first element"
+            exit 1
+        }
+    }
+    
+    # Backspace and type 1
+    send "\x7f"
+    send "1\]"
+    expect {
+        "→ \"b\"" {
+            puts "✓ Real-time evaluation showed second element"
+        }
+        timeout {
+            puts "✗ Failed to show second element"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 4: Real-time evaluation with complex expressions
+proc test_realtime_complex_expressions {} {
+    print_test "Test 4: Real-time evaluation with complex expressions"
+    
+    spawn sh -c "echo '{\"nums\": [1, 2, 3, 4, 5]}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type $.nums.filter
+    send "$.nums.filter"
+    # Should show function reference
+    expect {
+        "→ " {
+            puts "✓ Real-time evaluation continued after 'filter'"
+        }
+        timeout {
+            puts "✗ Failed after typing 'filter'"
+            exit 1
+        }
+    }
+    
+    # Complete the filter expression
+    send "(n => n > 2)"
+    expect {
+        "→ \\[3,4,5\\]" {
+            puts "✓ Real-time evaluation showed filtered array"
+        }
+        timeout {
+            puts "✗ Failed to show filtered array"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 5: Real-time evaluation with delete key
+proc test_realtime_with_delete {} {
+    print_test "Test 5: Real-time evaluation with delete key"
+    
+    spawn sh -c "echo '{\"x\": 10, \"y\": 20}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type $.xyz
+    send "$.xyz"
+    expect {
+        "→ undefined" {
+            puts "✓ Real-time evaluation showed undefined for non-existent property"
+        }
+        timeout {
+            puts "✗ Failed to show undefined"
+            exit 1
+        }
+    }
+    
+    # Move cursor left twice and delete 'y'
+    send "\x1b\[D\x1b\[D"  ;# Left arrow twice
+    send "\x1b\[3~"        ;# Delete key
+    
+    expect {
+        "→ 10" {
+            puts "✓ Real-time evaluation after delete showed correct value"
+        }
+        timeout {
+            puts "✗ Failed to show correct value after delete"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Test 6: Real-time evaluation speed test
+proc test_realtime_fast_typing {} {
+    print_test "Test 6: Real-time evaluation with fast typing"
+    
+    spawn sh -c "echo '{\"a\": 1, \"ab\": 2, \"abc\": 3, \"abcd\": 4}' | node dist/index.js"
+    
+    expect "> "
+    
+    # Type quickly without delays
+    send "$.a"
+    send "b"
+    send "c"
+    send "d"
+    
+    # Final result should be 4
+    expect {
+        "→ 4" {
+            puts "✓ Real-time evaluation kept up with fast typing"
+        }
+        timeout {
+            puts "✗ Failed to keep up with fast typing"
+            exit 1
+        }
+    }
+    
+    send "\x03"
+    expect eof
+}
+
+# Main test execution
+puts "Starting JSQ REPL Real-time Evaluation E2E Tests..."
+puts "=================================================="
+
+test_realtime_char_by_char
+test_realtime_with_backspace
+test_realtime_array_access
+test_realtime_complex_expressions
+test_realtime_with_delete
+test_realtime_fast_typing
+
+puts "\n=================================================="
+puts "Real-time evaluation E2E tests completed!"

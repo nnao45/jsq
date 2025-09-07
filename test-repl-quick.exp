@@ -1,0 +1,10 @@
+#!/usr/bin/env expect
+
+set timeout 10
+spawn sh -c "echo '{\"test\": \"data\"}' | npx jsq"
+
+expect "> "
+send "$.test\r"
+expect "> "
+send "\003"
+expect eof

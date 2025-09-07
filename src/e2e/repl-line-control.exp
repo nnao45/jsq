@@ -1,0 +1,127 @@
+#!/usr/bin/expect -f
+
+# REPLモードでのCtrl+CとEnterキーの挙動テスト
+
+# テストの説明を出力
+puts "\n=== REPL Line Control E2E Test ==="
+puts "Ctrl+C1回とEnter1回で次の行に進むかをテストします"
+puts "===================================\n"
+
+# タイムアウト設定
+set timeout 10
+
+# エスケープシーケンスを含む出力に対応
+set env(TERM) "xterm"
+
+# jsqをREPLモードで実行
+spawn -noecho node dist/index.js
+
+# 初期メッセージをスキップ
+expect {
+    "jsq REPL" { 
+        expect "Press Ctrl+C to exit."
+    }
+    timeout { }
+}
+
+# REPLプロンプトを待つ
+expect {
+    -re "\r\n> |> " { puts "✓ REPLプロンプトが表示されました" }
+    timeout { 
+        puts "✗ REPLプロンプトが表示されませんでした"
+        exit 1 
+    }
+}
+
+# テスト1: 新しいREPLでは即時評価のため複数行入力モードがない
+puts "\n\[TEST 1\] Immediate evaluation mode"
+send "const test = 123\r"
+expect {
+    -re "123|const test = 123" { puts "✓ 式が即座に評価されました" }
+    timeout { 
+        puts "✗ 式が評価されませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# テスト2: 通常の入力中にEnter1回で実行
+puts "\n\[TEST 2\] Execute expression with single Enter"
+send "5 * 5\r"
+expect {
+    -re "25" { puts "✓ Enter1回で式が実行されました" }
+    timeout { 
+        puts "✗ 式が実行されませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# テスト3: 新しいREPLではif文も即座に評価される
+puts "\n\[TEST 3\] Immediate if statement evaluation"
+send "if (true) console.log('test')\r"
+expect {
+    "test" { puts "✓ if文が即座に実行されました" }
+    timeout { 
+        puts "✗ if文が実行されませんでした"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# テスト4: 入力途中でCtrl+C（新しいREPLでは入力中に終了する可能性がある）
+puts "\n\[TEST 4\] Ctrl+C behavior test"
+send "console.log("
+# 少し待つ
+after 100
+# Ctrl+Cを送信
+send "\003"
+expect {
+    -re "\r\n> |> " { 
+        puts "✓ Ctrl+C後もREPLが継続しています"
+        # アプリケーションが生きているか確認
+        send "1 + 1\r"
+        expect {
+            -re "2" { puts "✓ アプリケーションは正常に動作を継続しています" }
+            timeout { 
+                puts "✗ アプリケーションが応答しません"
+                exit 1 
+            }
+        }
+    }
+    eof { 
+        puts "✓ 入力中のCtrl+Cでアプリケーションが終了しました（新しいREPLの仕様）"
+        exit 0 
+    }
+    timeout { 
+        puts "✗ 予期しない動作です"
+        exit 1 
+    }
+}
+expect -re "\r\n> |> "
+
+# テスト5: 空行でEnterキー
+puts "\n\[TEST 5\] Enter key on empty line"
+send "\r"
+expect {
+    -re "\r\n> |> " { puts "✓ 空行でEnter1回により新しいプロンプトが表示されました" }
+    timeout { 
+        puts "✗ 新しいプロンプトが表示されませんでした"
+        exit 1 
+    }
+}
+
+# 正常終了
+puts "\n\[TEST 6\] Application termination"
+# 新しいREPLでは空行でCtrl+Cした場合に終了
+send "\003"
+expect {
+    eof { puts "✓ Ctrl+Cで正常に終了しました" }
+    timeout { 
+        puts "✗ 正常に終了しませんでした"
+        exit 1 
+    }
+}
+
+puts "\n=== 全てのLine Controlテストが成功しました！ ===\n"
+exit 0

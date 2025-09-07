@@ -1,0 +1,158 @@
+#!/usr/bin/expect -f
+
+# 空行でCtrl+Cした場合の終了動作テスト
+
+# テストの説明を出力
+puts "\n=== REPL Empty Line Exit Test ==="
+puts "空行でCtrl+Cした場合にエラーを出さずに正常終了するかをテストします"
+puts "==================================\n"
+
+# タイムアウト設定
+set timeout 10
+
+# エスケープシーケンスを含む出力に対応
+set env(TERM) "xterm"
+
+# エラー出力を捕捉するための設定
+log_user 1
+
+# jsqをREPLモードで実行
+spawn -noecho node dist/index.js
+
+# 初期メッセージをスキップ
+expect {
+    "jsq REPL" { 
+        expect "Press Ctrl+C to exit."
+    }
+    timeout { }
+}
+
+# REPLプロンプトを待つ
+expect {
+    -re "\r\n> |> " { puts "✓ REPLプロンプトが表示されました" }
+    timeout { 
+        puts "✗ REPLプロンプトが表示されませんでした"
+        exit 1 
+    }
+}
+
+# テスト1: 空行（何も入力していない状態）でCtrl+C
+puts "\n\[TEST 1\] Ctrl+C on empty line"
+send "\003"
+
+# 終了時の動作を確認
+expect {
+    -re "Error|ERROR|error|Exception|EXCEPTION|exception" {
+        puts "✗ エラーが発生しました"
+        exit 1
+    }
+    eof {
+        puts "✓ エラーなしで正常に終了しました"
+    }
+    timeout {
+        puts "✗ タイムアウト：予期しない動作"
+        exit 1
+    }
+}
+
+# テスト2: 一度動作させてから空行でCtrl+C
+puts "\n\[TEST 2\] Ctrl+C on empty line after operation"
+spawn -noecho node dist/index.js
+expect -re "\r\n> |> "
+
+# 簡単な操作を実行
+send "2 + 2\r"
+expect -re "4"
+expect -re "\r\n> |> "
+
+# 空行でCtrl+C
+send "\003"
+expect {
+    -re "Error|ERROR|error|Exception|EXCEPTION|exception" {
+        puts "✗ エラーが発生しました"
+        exit 1
+    }
+    eof {
+        puts "✓ 操作後も空行でCtrl+Cによりエラーなしで終了しました"
+    }
+    timeout {
+        puts "✗ タイムアウト：予期しない動作"
+        exit 1
+    }
+}
+
+# テスト3: 複数回の空行Enterの後でCtrl+C
+puts "\n\[TEST 3\] Ctrl+C after multiple empty line Enters"
+spawn -noecho node dist/index.js
+expect -re "\r\n> |> "
+
+# 複数回空行でEnter
+send "\r"
+expect -re "\r\n> |> "
+send "\r"
+expect -re "\r\n> |> "
+send "\r"
+expect -re "\r\n> |> "
+
+# 空行でCtrl+C
+send "\003"
+expect {
+    -re "Error|ERROR|error|Exception|EXCEPTION|exception" {
+        puts "✗ エラーが発生しました"
+        exit 1
+    }
+    eof {
+        puts "✓ 複数の空行後もCtrl+Cによりエラーなしで終了しました"
+    }
+    timeout {
+        puts "✗ タイムアウト：予期しない動作"
+        exit 1
+    }
+}
+
+# テスト4: エラー発生後の空行でCtrl+C
+puts "\n\[TEST 4\] Ctrl+C on empty line after error"
+spawn -noecho node dist/index.js
+expect -re "\r\n> |> "
+
+# 意図的にエラーを発生させる
+send "undefinedVar\r"
+expect {
+    "ReferenceError" { puts "  エラーが発生しました（想定通り）" }
+    timeout {
+        puts "✗ エラーが検出できませんでした"
+        exit 1
+    }
+}
+expect -re "\r\n> |> "
+
+# エラー後の空行でCtrl+C
+send "\003"
+expect {
+    -re "Error.*Error|ERROR.*ERROR|error.*error" {
+        puts "✗ 追加のエラーが発生しました"
+        exit 1
+    }
+    -re "Error|ERROR|error" {
+        # 最初のReferenceErrorはOK、それ以外の新しいエラーがないことを確認
+        expect {
+            eof {
+                puts "✓ エラー後も空行でCtrl+Cにより正常に終了しました"
+            }
+            -re "Error|ERROR|error" {
+                puts "✗ 新たなエラーが発生しました"
+                exit 1
+            }
+        }
+    }
+    eof {
+        puts "✓ エラー後も空行でCtrl+Cにより正常に終了しました"
+    }
+    timeout {
+        puts "✗ タイムアウト：予期しない動作"
+        exit 1
+    }
+}
+
+puts "\n=== 全ての空行終了テストが成功しました！ ===\n"
+exit 0

@@ -49,8 +49,8 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
       },
     };
   } else {
-    // Create worker
-    worker = new Worker(join(__dirname, '../../../dist/repl-worker.js'));
+    // Create worker - repl-worker.js is in same dist directory
+    worker = new Worker(join(__dirname, 'repl-worker.js'));
 
     // Wait for worker initialization
     await new Promise<void>((resolve, reject) => {
@@ -71,9 +71,11 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
     const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
         return await new Promise((resolve, reject) => {
+          let timeoutId: NodeJS.Timeout | undefined;
+          
           const onMessage = (message: WorkerMessage) => {
             if (message.type === 'result') {
-              worker?.removeListener('message', onMessage);
+              cleanup();
               if (message.errors?.length > 0) {
                 resolve({ error: message.errors[0].message });
               } else {
@@ -81,13 +83,26 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
               }
             }
           };
+          
           const onError = (error: Error) => {
-            worker?.removeListener('error', onError);
+            cleanup();
             reject(error);
           };
+          
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            worker?.removeListener('message', onMessage);
+            worker?.removeListener('error', onError);
+          };
+          
+          // Set timeout for evaluation
+          timeoutId = setTimeout(() => {
+            cleanup();
+            resolve({ error: 'Evaluation timeout' });
+          }, 30000); // 30 seconds timeout
 
-          worker?.on('message', onMessage);
-          worker?.on('error', onError);
+          worker?.once('message', onMessage);
+          worker?.once('error', onError);
 
           worker?.postMessage({
             type: 'eval',
@@ -114,6 +129,12 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
 }
 
 export function createTerminalIO(inputStream: NodeJS.ReadStream): ReplIO {
+  // Enable keypress events on the input stream
+  readline.emitKeypressEvents(inputStream);
+  if (inputStream.isTTY && inputStream.setRawMode) {
+    inputStream.setRawMode(true);
+  }
+  
   return {
     input: inputStream as InputProvider,
     output: {
@@ -143,9 +164,9 @@ export async function createRepl(
     const fileCommunicator = new ReplFileCommunicator();
     await fileCommunicator.start();
 
-    const evaluator: EvaluationHandler = async (expression, data, opts) => {
+    const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
-        const response = await fileCommunicator.evaluate(expression, data, opts);
+        const response = await fileCommunicator.evaluate(expression, data, opts, lastResult);
         if (response.error) {
           return { error: response.error };
         }
@@ -157,8 +178,8 @@ export async function createRepl(
 
     return new ReplManager(data, options, evaluator, defaultReplOptions);
   } else {
-    // Create worker for REPL
-    const worker = new Worker(join(__dirname, '../../../dist/repl-worker.js'), {
+    // Create worker for REPL - repl-worker.js is in same dist directory
+    const worker = new Worker(join(__dirname, 'repl-worker.js'), {
       env: {
         JSQ_UNSAFE: options.unsafe ? 'true' : 'false',
       },
@@ -180,12 +201,14 @@ export async function createRepl(
       worker.on('error', onError);
     });
 
-    const evaluator: EvaluationHandler = async (expression, data, opts) => {
+    const evaluator: EvaluationHandler = async (expression, data, opts, lastResult) => {
       try {
         return await new Promise((resolve, reject) => {
+          let timeoutId: NodeJS.Timeout | undefined;
+          
           const onMessage = (message: WorkerMessage) => {
             if (message.type === 'result') {
-              worker.removeListener('message', onMessage);
+              cleanup();
               if (message.errors?.length > 0) {
                 resolve({ error: message.errors[0].message });
               } else {
@@ -193,19 +216,33 @@ export async function createRepl(
               }
             }
           };
+          
           const onError = (error: Error) => {
-            worker.removeListener('error', onError);
+            cleanup();
             reject(error);
           };
+          
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            worker.removeListener('message', onMessage);
+            worker.removeListener('error', onError);
+          };
+          
+          // Set timeout for evaluation
+          timeoutId = setTimeout(() => {
+            cleanup();
+            resolve({ error: 'Evaluation timeout' });
+          }, 30000); // 30 seconds timeout
 
-          worker.on('message', onMessage);
-          worker.on('error', onError);
+          worker.once('message', onMessage);
+          worker.once('error', onError);
 
           worker.postMessage({
+            type: 'eval',
             expression,
             data: typeof data === 'string' ? data : JSON.stringify(data),
             options: opts,
-            context,
+            lastResult,
           });
         });
       } catch (error) {
@@ -238,7 +275,7 @@ export async function createAndStartRepl(
 
   const replManager = new ReplManager(data, options, evaluator, {
     prompt: colors?.prompt || '> ',
-    realTimeEvaluation: false,
+    realTimeEvaluation: true,
     io: createTerminalIO(inputStream),
   });
 
