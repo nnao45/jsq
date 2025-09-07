@@ -217,7 +217,9 @@ export class ReplManager {
       this.state.lastDisplayedInput = '';
       this.state.lastDisplayedCursorPosition = 0;
     } else {
-      throw new Error('SIGINT');
+      // グレースフルに終了
+      this.stop();
+      process.exit(0);
     }
   }
 
