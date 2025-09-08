@@ -41,7 +41,10 @@ export class OutputFormatter {
   }
 
   private shouldUseColor(options: JsqOptions): boolean {
+    // Check --no-color option first
     if (options.noColor) return false;
+    // Check NO_COLOR environment variable (standard convention)
+    if (process.env.NO_COLOR) return false;
     // Default: use color if stdout is a TTY
     return process.stdout.isTTY || false;
   }
@@ -85,7 +88,29 @@ export class OutputFormatter {
   }
 
   private formatOneline(data: unknown): string {
-    return this.formatCompact(data);
+    const compactJson = this.formatCompact(data);
+    
+    // Handle edge case where formatCompact might return undefined
+    if (!compactJson) {
+      return 'undefined';
+    }
+    
+    // 改行文字を空白に置換して一行化
+    const singleLine = compactJson.replace(/\n\s*/g, ' ');
+    
+    // ターミナル幅を取得（デフォルト80文字）
+    const terminalWidth = process.stdout.columns || 80;
+    
+    // プロンプトと矢印を考慮して利用可能な幅を計算
+    // "→ " (2文字) + 余白を考慮
+    const availableWidth = terminalWidth - 5;
+    
+    // 利用可能な幅を超えた場合は省略
+    if (singleLine.length > availableWidth) {
+      return singleLine.substring(0, availableWidth - 3) + '...';
+    }
+    
+    return singleLine;
   }
 
   private formatCompact(data: unknown): string {

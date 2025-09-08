@@ -27,4 +27,5 @@ export interface ReplOptions {
   prompt?: string;
   realTimeEvaluation?: boolean;
   io?: ReplIO;
+  exitOnDoubleCtrlC?: boolean;
 }

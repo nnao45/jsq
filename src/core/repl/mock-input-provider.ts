@@ -79,6 +79,10 @@ export class MockInputProvider extends EventEmitter implements InputProvider {
     return true;
   }
 
+  async playKey(key: string): Promise<boolean> {
+    return this.playNext({ str: key });
+  }
+
   reset(): void {
     this.currentIndex = 0;
   }

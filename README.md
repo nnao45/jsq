@@ -179,13 +179,28 @@ jsq --repl --file data.json
 - 🔄 **Smart loading indicators** - Visual feedback for longer operations (500ms+)
 - 📊 **Live data exploration** - Toggle data view with Ctrl+R
 - 🚀 **Syntax highlighting** - Built-in expression validation
-- 💡 **Auto-suggestions** - Intelligent completion hints
+- 💡 **Tab Completion** - IDE-like autocomplete for properties and methods
 
 The REPL provides a Claude Code-style interface with:
 - Multi-colored `❯❯❯` prompt that changes colors dynamically
 - Fixed-position input at the bottom
 - Scrollable result area that auto-truncates for optimal viewing
 - Instant feedback for syntax errors and partial expressions
+- Tab completion for object properties, array methods, and lodash/SmartDollar functions
+
+**Tab Completion:**
+```bash
+# Complete object properties
+> $.us[Tab]    # → $.users
+
+# Complete methods
+> _.fi[Tab]    # → Shows: _.filter, _.find, _.findIndex, etc.
+> $.map[Tab]   # → $.map
+
+# Navigate completions
+> $.users.f[Tab][Tab]  # Cycles through: filter, find, forEach, etc.
+> [Esc]                # Cancel completion
+```
 
 
 ## 📚 Available Methods
