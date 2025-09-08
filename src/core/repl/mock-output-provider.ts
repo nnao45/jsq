@@ -64,6 +64,10 @@ export class MockOutputProvider implements OutputProvider {
     return this.methodCalls.get(methodName) || [];
   }
 
+  getHistory(): string[] {
+    return this.getAllOutput().split('\n').filter(line => line.trim() !== '');
+  }
+
   private recordMethodCall(methodName: string, args: unknown[]): void {
     if (!this.methodCalls.has(methodName)) {
       this.methodCalls.set(methodName, []);

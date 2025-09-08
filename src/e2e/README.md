@@ -1,49 +1,111 @@
-# JSQ REPL E2E Tests
+# E2E Tests for jsq
 
-このディレクトリには、JSQのREPLモードのE2Eテストが含まれています。
+このディレクトリには、jsqのREPLモードに対するEnd-to-End (E2E) テストが含まれています。
 
-## テストファイル
+## テストの種類
 
-### repl-realtime-eval.exp
-リアルタイム評価機能のE2Eテスト。以下を検証します：
+### Python E2E Tests
+Pythonの`pexpect`ライブラリを使用して、REPLとの対話的な操作をテストします。
 
-1. **1文字ごとの評価**: `$.test`と入力する際、各文字（`$`, `.`, `t`, `e`, `s`, `t`）を入力するたびに評価結果が更新される
-2. **バックスペース対応**: バックスペースで文字を削除した時も即座に再評価される
-3. **配列アクセス**: `$.items[0]`のような配列インデックスアクセス時の評価
-4. **複雑な式**: `filter`や`map`などの関数を使った式の評価
-5. **Deleteキー対応**: カーソル移動してDeleteキーで削除した場合の再評価
-6. **高速タイピング**: 素早く文字を入力しても追従できるか
+#### 基本テスト
+- `test_repl_basic.py` - REPLの基本動作
+- `test_simple_repl.py` - シンプルなREPL操作
+- `test_autocomplete.py` - オートコンプリート機能
+- `test_no_color_option.py` - カラー出力の制御
 
-## テスト実行方法
+#### 中級テスト  
+- `test_multiline_input.py` - 複数行入力
+- `test_autocomplete_advanced.py` - 高度なオートコンプリート
 
+#### 高度なテスト
+- `test_repl_advanced.py` - REPLの高度な機能（変数定義、セッション管理など）
+- `test_error_recovery.py` - エラーからの回復
+
+#### その他のテスト
+- `test_security.py` - セキュリティ関連
+- `test_debug_repl.py` - デバッグとトラブルシューティング
+- `test_timing_repl.py` - パフォーマンスとタイミング
+
+### Expect Scripts
+Expectツールを使用した対話的テスト（`expect`コマンドが必要）：
+- `repl-e2e-simple.exp`
+- `repl-memory-leak.exp`
+- `repl-stress-test.exp`
+- など
+
+## 必要な依存関係
+
+### Python E2Eテスト
 ```bash
-# ビルドとテスト実行
-./test-repl-realtime.sh
-
-# expectスクリプトを直接実行
-expect src/e2e/repl-realtime-eval.exp
+pip install pexpect
 ```
 
-## テストの仕組み
+### Expectスクリプト
+```bash
+# Ubuntu/Debian
+sudo apt-get install expect
 
-Expectスクリプトは以下のように動作します：
-
-1. JSQをREPLモードで起動
-2. キーボード入力をシミュレート
-3. 画面出力を監視して期待する結果が表示されるか確認
-4. リアルタイム評価の結果は `→ 結果` の形式で表示される
-
-## 期待される出力例
-
-```
-> $.test
-→ "data"
+# macOS
+brew install expect
 ```
 
-1文字ずつ入力すると：
-- `$` → （表示なし - 無効な式）
-- `$.` → `→ {"test":"data","value":42}`
-- `$.t` → `→ undefined`
-- `$.te` → `→ undefined` 
-- `$.tes` → `→ undefined`
-- `$.test` → `→ "data"`
+## テストの実行方法
+
+### すべてのPython E2Eテストを実行
+```bash
+npm run test:e2e:python
+```
+
+### 個別のテストを実行
+```bash
+# プロジェクトルートから
+python3 src/e2e/test_repl_basic.py
+```
+
+### Expectスクリプトを実行（expectがインストールされている場合）
+```bash
+npm run test:e2e:repl
+```
+
+### すべてのE2Eテストを実行
+```bash
+npm run test:e2e:all
+```
+
+## テストの追加方法
+
+新しいE2Eテストを追加する場合：
+
+1. `test_*.py`という名前でPythonファイルを作成
+2. `spawn_jsq_repl()`ヘルパー関数を使用してREPLを起動
+3. `pexpect`を使って対話的な操作をシミュレート
+4. `run_all_tests.py`のテストリストに追加
+
+例：
+```python
+def test_my_feature():
+    """新機能のテスト"""
+    child = spawn_jsq_repl()
+    try:
+        child.sendline('my command')
+        child.expect_exact('jsq>')
+        output = child.before
+        assert 'expected output' in output
+    finally:
+        child.sendline('.exit')
+        child.expect(pexpect.EOF)
+```
+
+## トラブルシューティング
+
+### タイムアウトエラー
+- `TIMEOUT`変数を増やす
+- `JSQ_DISABLE_REALTIME_EVAL`環境変数を設定
+
+### プロンプトが見つからない
+- REPLヘッダーの処理を確認
+- `jsq>`プロンプトの正確な文字列を確認
+
+### 文字エンコーディングの問題
+- `encoding='utf-8'`パラメータを使用
+- 特殊文字のテストでは適切なエスケープを使用
