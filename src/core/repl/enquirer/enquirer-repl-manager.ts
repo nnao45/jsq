@@ -1,46 +1,44 @@
-import type { JsqEvaluator } from '../../evaluator/jsq-evaluator.js';
-import type { Logger } from '../../utils/logger.js';
-import { AutocompleteEngine } from '../autocomplete-engine.js';
-import { EnquirerAutocompleteAdapter } from './enquirer-autocomplete-adapter.js';
-import { CustomAutocompletePrompt } from './custom-autocomplete-prompt.js';
-import chalk from 'chalk';
 import fs from 'node:fs/promises';
-import path from 'node:path';
+import chalk from 'chalk';
+import type { ExpressionEvaluator } from '../../lib/evaluator.js';
+import { AutocompleteEngine } from '../autocomplete-engine.js';
+import { CustomAutocompletePrompt } from './custom-autocomplete-prompt.js';
+import { EnquirerAutocompleteAdapter } from './enquirer-autocomplete-adapter.js';
 
 interface EnquirerReplOptions {
-  evaluator: JsqEvaluator;
-  logger: Logger;
+  evaluator: ExpressionEvaluator;
   historyFile?: string;
+  initialData?: any;
 }
 
 export class EnquirerReplManager {
-  private evaluator: JsqEvaluator;
-  private logger: Logger;
+  private evaluator: ExpressionEvaluator;
   private autocompleteEngine: AutocompleteEngine;
   private autocompleteAdapter: EnquirerAutocompleteAdapter;
   private history: string[] = [];
   private shouldExit = false;
   private currentData: any = null;
+  private lastResult: any;
   private historyFile?: string;
 
   constructor(options: EnquirerReplOptions) {
     this.evaluator = options.evaluator;
-    this.logger = options.logger;
     this.historyFile = options.historyFile;
+    this.currentData = options.initialData || null;
     this.autocompleteEngine = new AutocompleteEngine();
     this.autocompleteAdapter = new EnquirerAutocompleteAdapter(this.autocompleteEngine);
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Enquirer-based REPL...');
-    
+    console.log('Starting Enquirer-based REPL...');
+
     console.log(chalk.cyan('Welcome to jsq REPL (Enquirer Edition) 🚀'));
     console.log(chalk.gray('Type .help for commands, .exit to quit\n'));
 
     while (!this.shouldExit) {
       try {
         const input = await this.promptUser();
-        
+
         if (input === null || input === undefined) {
           continue;
         }
@@ -52,7 +50,7 @@ export class EnquirerReplManager {
           console.log('\nUse .exit to quit');
           continue;
         }
-        this.logger.error('REPL error:', error);
+        console.error('REPL error:', error);
         console.error(chalk.red('Error:'), error);
       }
     }
@@ -68,21 +66,15 @@ export class EnquirerReplManager {
       autocompleteEngine: this.autocompleteEngine,
       currentData: this.currentData,
       historyFile: this.historyFile || '.jsq_history',
-      maxHistory: 1000
+      maxHistory: 1000,
     });
-
-    try {
-      const result = await prompt.run();
-      return result;
-    } catch (error) {
-      // Ctrl+Cでキャンセルされた場合
-      throw error;
-    }
+    const result = await prompt.run();
+    return result;
   }
 
-  private async getSuggestions(input: string): Promise<string[]> {
+  async getSuggestions(input: string): Promise<string[]> {
     if (!input) return [];
-    
+
     // コマンド補完
     const commands = ['.exit', '.help', '.clear', '.history', '.save', '.load', '.config'];
     if (input.startsWith('.')) {
@@ -91,15 +83,12 @@ export class EnquirerReplManager {
 
     // AutocompleteEngineを使った補完
     try {
-      const suggestions = await this.autocompleteAdapter.getSuggestions(
-        input,
-        this.currentData
-      );
-      
+      const suggestions = await this.autocompleteAdapter.getSuggestions(input, this.currentData);
+
       // Enquirerのフォーマットに変換
       return suggestions.map(s => s.value);
     } catch (error) {
-      this.logger.error('Autocomplete error:', error);
+      console.error('Autocomplete error:', error);
       return [];
     }
   }
@@ -119,14 +108,12 @@ export class EnquirerReplManager {
 
     // JavaScript式の評価
     try {
-      const result = await this.evaluator.evaluate(input);
-      
-      if (result.error) {
-        this.displayError(result.error);
-      } else {
-        console.log(chalk.green('→'), result.value);
-        // 評価結果を保存して次の補完で使えるようにする
-        this.currentData = result.value;
+      const result = await this.evaluator.evaluate(input, this.currentData, this.lastResult);
+      console.log(chalk.green('→'), result);
+      // 評価結果を保存して次の補完で使えるようにする
+      this.lastResult = result;
+      if (result !== undefined && result !== null) {
+        this.currentData = result;
       }
     } catch (error) {
       this.displayError(error);
@@ -140,31 +127,31 @@ export class EnquirerReplManager {
       case '.exit':
         this.shouldExit = true;
         break;
-      
+
       case '.help':
         this.showHelp();
         break;
-      
+
       case '.clear':
         console.clear();
         break;
-      
+
       case '.history':
         this.showHistory();
         break;
-      
+
       case '.save':
         await this.saveSession(command);
         break;
-      
+
       case '.load':
         await this.loadSession(command);
         break;
-      
+
       case '.config':
         this.showConfig();
         break;
-      
+
       default:
         // .save <filename> や .load <filename> の処理
         if (cmd.startsWith('.save ')) {
@@ -197,7 +184,7 @@ export class EnquirerReplManager {
   private showHistory(): void {
     // .historyコマンド自体は履歴から除外して判定
     const realHistory = this.history.filter(cmd => cmd !== '.history');
-    
+
     if (realHistory.length === 0) {
       console.log(chalk.gray('No history yet'));
       return;
@@ -211,7 +198,7 @@ export class EnquirerReplManager {
 
   async stop(): Promise<void> {
     this.shouldExit = true;
-    this.logger.info('Stopping Enquirer REPL...');
+    console.log('Stopping Enquirer REPL...');
   }
 
   /**
@@ -219,7 +206,7 @@ export class EnquirerReplManager {
    */
   private displayError(error: any): void {
     const errorString = error?.toString?.() || 'Unknown error';
-    
+
     // エラーの種類を判定
     if (errorString.includes('SyntaxError')) {
       this.displaySyntaxError(errorString);
@@ -235,7 +222,7 @@ export class EnquirerReplManager {
     }
 
     // スタックトレースがある場合は詳細表示
-    if (error?.stack && this.logger.level === 'debug') {
+    if (error?.stack) {
       console.error(chalk.gray('\nStack trace:'));
       console.error(chalk.gray(error.stack));
     }
@@ -243,26 +230,30 @@ export class EnquirerReplManager {
 
   private displaySyntaxError(error: string): void {
     console.error(chalk.red('❌ Syntax Error:'));
-    
+
     // よくある構文エラーのヒント
     if (error.includes('Unexpected token')) {
       console.error(chalk.yellow('  → Check for missing brackets, quotes, or semicolons'));
     } else if (error.includes('Unexpected end of input')) {
-      console.error(chalk.yellow('  → Expression seems incomplete. Did you forget to close a bracket?'));
+      console.error(
+        chalk.yellow('  → Expression seems incomplete. Did you forget to close a bracket?')
+      );
     }
-    
+
     console.error(chalk.gray(`  ${error}`));
   }
 
   private displayReferenceError(error: string): void {
     console.error(chalk.red('❌ Reference Error:'));
-    
+
     // 変数名を抽出
     const match = error.match(/(\w+) is not defined/);
     if (match) {
       const varName = match[1];
       console.error(chalk.yellow(`  → "${varName}" is not defined`));
-      console.error(chalk.gray(`  Did you mean to reference a property? Try: $.${varName} or _.${varName}`));
+      console.error(
+        chalk.gray(`  Did you mean to reference a property? Try: $.${varName} or _.${varName}`)
+      );
     } else {
       console.error(chalk.gray(`  ${error}`));
     }
@@ -270,26 +261,26 @@ export class EnquirerReplManager {
 
   private displayTypeError(error: string): void {
     console.error(chalk.red('❌ Type Error:'));
-    
+
     if (error.includes('Cannot read property')) {
       console.error(chalk.yellow('  → Trying to access a property of null or undefined'));
       console.error(chalk.gray('  Use optional chaining (?.) to safely access nested properties'));
     } else if (error.includes('is not a function')) {
       console.error(chalk.yellow('  → Trying to call something that is not a function'));
     }
-    
+
     console.error(chalk.gray(`  ${error}`));
   }
 
   private displayRangeError(error: string): void {
     console.error(chalk.red('❌ Range Error:'));
-    
+
     if (error.includes('Maximum call stack')) {
       console.error(chalk.yellow('  → Infinite recursion detected'));
     } else if (error.includes('Invalid array length')) {
       console.error(chalk.yellow('  → Array size is too large or negative'));
     }
-    
+
     console.error(chalk.gray(`  ${error}`));
   }
 
@@ -304,12 +295,12 @@ export class EnquirerReplManager {
       const dataToSave = {
         data: this.currentData,
         timestamp: new Date().toISOString(),
-        history: this.history.filter(cmd => !cmd.startsWith('.'))
+        history: this.history.filter(cmd => !cmd.startsWith('.')),
       };
 
       await fs.writeFile(filename, JSON.stringify(dataToSave, null, 2));
       console.log(chalk.green(`✅ Session saved to: ${filename}`));
-      
+
       const stats = await fs.stat(filename);
       console.log(chalk.gray(`  Size: ${stats.size} bytes`));
     } catch (error) {
@@ -336,13 +327,12 @@ export class EnquirerReplManager {
 
       if (session.data) {
         this.currentData = session.data;
-        this.evaluator.setData(session.data);
         console.log(chalk.green(`✅ Session loaded from: ${filename}`));
-        
+
         if (session.timestamp) {
           console.log(chalk.gray(`  Saved at: ${session.timestamp}`));
         }
-        
+
         console.log(chalk.cyan('  Data is now available as $'));
       } else {
         console.error(chalk.yellow('⚠️  No data found in session file'));
@@ -367,7 +357,7 @@ export class EnquirerReplManager {
     console.log(chalk.gray('  History file:'), this.historyFile || '.jsq_history');
     console.log(chalk.gray('  Autocomplete:'), 'Enabled');
     console.log(chalk.gray('  Multiline:'), 'Enabled (Shift+Enter)');
-    
+
     if (this.currentData !== null) {
       const dataType = Array.isArray(this.currentData) ? 'Array' : typeof this.currentData;
       const dataSize = JSON.stringify(this.currentData).length;
@@ -375,7 +365,7 @@ export class EnquirerReplManager {
     } else {
       console.log(chalk.gray('  Current data:'), 'None');
     }
-    
-    console.log(chalk.gray('  Logger level:'), this.logger.level || 'info');
+
+    // Logger level removed
   }
 }

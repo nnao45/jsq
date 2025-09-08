@@ -5,41 +5,41 @@
  * 使い方: npx tsx src/core/repl/enquirer/demo.ts
  */
 
+import { ApplicationContext } from '../../application-context.js';
+import { ExpressionEvaluator as JsqEvaluator } from '../../lib/evaluator.js';
 import { EnquirerReplManager } from './enquirer-repl-manager.js';
-import { JsqEvaluator } from '../../evaluator/jsq-evaluator.js';
-import { Logger } from '../../utils/logger.js';
 
 async function main() {
-  // ロガーの準備
-  const logger = new Logger({ level: 'info' });
-  
   // 評価エンジンの準備
-  const evaluator = new JsqEvaluator({ 
-    logger,
-    enableAsync: true 
-  });
+  const appContext = new ApplicationContext();
+  const evaluator = new JsqEvaluator(
+    {
+      rawOutput: false,
+      monochrome: false,
+    } as any,
+    appContext
+  );
 
   // サンプルデータをセット
   const sampleData = {
     users: [
       { id: 1, name: 'Alice', age: 25, skills: ['JavaScript', 'Python'] },
       { id: 2, name: 'Bob', age: 30, skills: ['Java', 'Go'] },
-      { id: 3, name: 'Charlie', age: 35, skills: ['Ruby', 'PHP'] }
+      { id: 3, name: 'Charlie', age: 35, skills: ['Ruby', 'PHP'] },
     ],
     products: [
       { id: 101, name: 'Laptop', price: 1200, category: 'Electronics' },
       { id: 102, name: 'Mouse', price: 25, category: 'Electronics' },
-      { id: 103, name: 'Keyboard', price: 75, category: 'Electronics' }
+      { id: 103, name: 'Keyboard', price: 75, category: 'Electronics' },
     ],
     metadata: {
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      environment: 'development'
-    }
+      environment: 'development',
+    },
   };
 
-  evaluator.setData(sampleData);
-  console.log('Sample data loaded:', JSON.stringify(sampleData, null, 2));
+  console.log('Sample data:', JSON.stringify(sampleData, null, 2));
   console.log('\n---\n');
   console.log('✨ New features in Enquirer Edition:');
   console.log('  • 📚 History navigation with ↑/↓ keys');
@@ -59,7 +59,7 @@ async function main() {
   // Enquirer REPLの起動
   const repl = new EnquirerReplManager({
     evaluator,
-    logger
+    initialData: sampleData,
   });
 
   try {
@@ -75,7 +75,7 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   console.error('Uncaught Exception:', error);
   process.exit(1);
 });

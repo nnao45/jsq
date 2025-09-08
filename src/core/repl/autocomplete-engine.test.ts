@@ -114,7 +114,10 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '$.',
         cursorPosition: 2,
-        currentData: [{ id: 1, name: 'Item 1' }, { id: 2, name: 'Item 2' }],
+        currentData: [
+          { id: 1, name: 'Item 1' },
+          { id: 2, name: 'Item 2' },
+        ],
       };
       const result = engine.getSuggestions(context);
       expect(result.completions).toContain('[0]');
@@ -270,12 +273,12 @@ describe('AutocompleteEngine', () => {
         cursorPosition: 3,
         currentData: { name: 'test', number: 42 },
       };
-      
+
       const result1 = engine.getSuggestions(context);
       console.log('First result:', result1);
       const result2 = engine.getSuggestions(context);
       console.log('Second result:', result2);
-      
+
       // Check that completions are the same (cache is working)
       expect(result1.completions).toEqual(result2.completions);
       expect(result1.replaceStart).toEqual(result2.replaceStart);
@@ -288,10 +291,10 @@ describe('AutocompleteEngine', () => {
         cursorPosition: 6,
         currentData: { test: 'value' },
       };
-      
+
       engine.getSuggestions(context);
       engine.clearCache();
-      
+
       // After clearing, should still work
       const result = engine.getSuggestions(context);
       expect(result.completions).toContain('test');
@@ -436,7 +439,7 @@ describe('AutocompleteEngine', () => {
         currentData: { value: 10 },
       };
       const result = engine.getSuggestions(context);
-      // Should suggest lodash methods after '_.'  
+      // Should suggest lodash methods after '_.'
       expect(result.completions.length).toBeGreaterThan(0);
       // map and filter might be beyond the 100 item limit
       // Just check that we got lodash/smartdollar methods

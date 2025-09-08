@@ -65,7 +65,9 @@ export class MockOutputProvider implements OutputProvider {
   }
 
   getHistory(): string[] {
-    return this.getAllOutput().split('\n').filter(line => line.trim() !== '');
+    return this.getAllOutput()
+      .split('\n')
+      .filter(line => line.trim() !== '');
   }
 
   private recordMethodCall(methodName: string, args: unknown[]): void {

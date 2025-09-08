@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CustomAutocompletePrompt } from './custom-autocomplete-prompt.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CustomAutocompletePrompt } from './custom-autocomplete-prompt.js';
 
 // Enquirerのモック
 vi.mock('enquirer', () => {
@@ -11,28 +11,28 @@ vi.mock('enquirer', () => {
     cursor = 0;
     value = '';
     choices: any[] = [];
-    
+
     constructor(public options: any) {}
-    
-    async keypress(input: string, key: any): Promise<void> {
+
+    async keypress(_input: string, _key: any): Promise<void> {
       // デフォルトの実装
     }
-    
+
     async render(): Promise<void> {
       // デフォルトの実装
     }
-    
+
     async submit(): Promise<void> {
       this.value = this.input;
     }
-    
+
     format(value: string): string {
       return value;
     }
   }
-  
+
   return {
-    AutoComplete: MockAutoComplete
+    AutoComplete: MockAutoComplete,
   };
 });
 
@@ -41,14 +41,14 @@ vi.mock('node:fs/promises', () => ({
   default: {
     readFile: vi.fn(),
     writeFile: vi.fn(),
-    mkdir: vi.fn()
-  }
+    mkdir: vi.fn(),
+  },
 }));
 
 describe('CustomAutocompletePrompt', () => {
   let prompt: CustomAutocompletePrompt;
   const mockHistoryFile = '.test_history';
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -60,9 +60,9 @@ describe('CustomAutocompletePrompt', () => {
   describe('constructor', () => {
     it('should initialize with default options', () => {
       prompt = new CustomAutocompletePrompt({
-        message: 'test>'
+        message: 'test>',
       });
-      
+
       expect(prompt).toBeDefined();
       expect((prompt as any).maxHistory).toBe(1000);
       expect((prompt as any).history).toEqual([]);
@@ -73,9 +73,9 @@ describe('CustomAutocompletePrompt', () => {
       prompt = new CustomAutocompletePrompt({
         message: 'test>',
         historyFile: mockHistoryFile,
-        maxHistory: 500
+        maxHistory: 500,
       });
-      
+
       expect((prompt as any).maxHistory).toBe(500);
       expect((prompt as any).historyFile).toBe(mockHistoryFile);
     });
@@ -83,15 +83,15 @@ describe('CustomAutocompletePrompt', () => {
     it('should load history from file if specified', async () => {
       const mockHistory = 'command1\ncommand2\ncommand3';
       vi.mocked(fs.readFile).mockResolvedValue(mockHistory);
-      
+
       prompt = new CustomAutocompletePrompt({
         message: 'test>',
-        historyFile: mockHistoryFile
+        historyFile: mockHistoryFile,
       });
-      
+
       // loadHistoryが非同期なので少し待つ
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       expect(fs.readFile).toHaveBeenCalledWith(
         path.resolve(os.homedir(), mockHistoryFile),
         'utf-8'
@@ -103,41 +103,41 @@ describe('CustomAutocompletePrompt', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
         message: 'test>',
-        historyFile: mockHistoryFile
+        historyFile: mockHistoryFile,
       });
     });
 
     it('should add non-empty input to history', () => {
       prompt.addToHistory('test command');
-      
+
       expect((prompt as any).history).toContain('test command');
     });
 
     it('should not add empty or whitespace input', () => {
       prompt.addToHistory('');
       prompt.addToHistory('   ');
-      
+
       expect((prompt as any).history).toHaveLength(0);
     });
 
     it('should not add duplicate commands', () => {
       prompt.addToHistory('test command');
       prompt.addToHistory('test command');
-      
+
       expect((prompt as any).history).toHaveLength(1);
     });
 
     it('should maintain max history limit', () => {
       prompt = new CustomAutocompletePrompt({
         message: 'test>',
-        maxHistory: 3
+        maxHistory: 3,
       });
-      
+
       prompt.addToHistory('command1');
       prompt.addToHistory('command2');
       prompt.addToHistory('command3');
       prompt.addToHistory('command4');
-      
+
       const history = (prompt as any).history;
       expect(history).toHaveLength(3);
       expect(history).toEqual(['command2', 'command3', 'command4']);
@@ -146,12 +146,12 @@ describe('CustomAutocompletePrompt', () => {
     it('should save history to file', async () => {
       vi.mocked(fs.mkdir).mockResolvedValue(undefined);
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-      
+
       prompt.addToHistory('test command');
-      
+
       // saveHistoryが非同期なので少し待つ
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       expect(fs.writeFile).toHaveBeenCalledWith(
         path.resolve(os.homedir(), mockHistoryFile),
         'test command\n'
@@ -162,9 +162,9 @@ describe('CustomAutocompletePrompt', () => {
   describe('keypress handling', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
-        message: 'test>'
+        message: 'test>',
       });
-      
+
       // 履歴を準備
       (prompt as any).history = ['command1', 'command2', 'command3'];
       (prompt as any).input = 'current input';
@@ -172,9 +172,9 @@ describe('CustomAutocompletePrompt', () => {
 
     it('should navigate history with up key', async () => {
       const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
-      
+
       await prompt.keypress('', { name: 'up' });
-      
+
       expect((prompt as any).isNavigatingHistory).toBe(true);
       expect((prompt as any).historyIndex).toBe(2);
       expect((prompt as any).input).toBe('command3');
@@ -183,55 +183,55 @@ describe('CustomAutocompletePrompt', () => {
     });
 
     it('should navigate history with multiple up keys', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
-      
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+
       await prompt.keypress('', { name: 'up' });
       await prompt.keypress('', { name: 'up' });
       await prompt.keypress('', { name: 'up' });
-      
+
       expect((prompt as any).historyIndex).toBe(0);
       expect((prompt as any).input).toBe('command1');
     });
 
     it('should not go beyond history bounds', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
-      
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+
       // すでに最初まで行く
       await prompt.keypress('', { name: 'up' });
       await prompt.keypress('', { name: 'up' });
       await prompt.keypress('', { name: 'up' });
-      
+
       // さらに上を押しても最初のまま
       await prompt.keypress('', { name: 'up' });
-      
+
       expect((prompt as any).historyIndex).toBe(0);
       expect((prompt as any).input).toBe('command1');
     });
 
     it('should navigate forward with down key', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
-      
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+
       // まず履歴を遡る
       await prompt.keypress('', { name: 'up' });
       await prompt.keypress('', { name: 'up' });
-      
+
       // 下キーで進む
       await prompt.keypress('', { name: 'down' });
-      
+
       expect((prompt as any).historyIndex).toBe(2);
       expect((prompt as any).input).toBe('command3');
     });
 
     it('should return to original input when navigating past newest', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
       const originalInput = 'current input';
-      
+
       // 履歴を遡る
       await prompt.keypress('', { name: 'up' });
-      
+
       // 最新まで戻る
       await prompt.keypress('', { name: 'down' });
-      
+
       expect((prompt as any).isNavigatingHistory).toBe(false);
       expect((prompt as any).input).toBe(originalInput);
     });
@@ -240,13 +240,14 @@ describe('CustomAutocompletePrompt', () => {
       // 履歴ナビゲーション開始
       await prompt.keypress('', { name: 'up' });
       expect((prompt as any).isNavigatingHistory).toBe(true);
-      
+
       // 他のキーでナビゲーション終了
-      const superKeypressSpy = vi.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(prompt)), 'keypress')
+      const superKeypressSpy = vi
+        .spyOn(Object.getPrototypeOf(Object.getPrototypeOf(prompt)), 'keypress')
         .mockResolvedValue(undefined);
-      
+
       await prompt.keypress('a', { name: 'a' });
-      
+
       expect((prompt as any).isNavigatingHistory).toBe(false);
       expect(superKeypressSpy).toHaveBeenCalledWith('a', { name: 'a' });
     });
@@ -255,7 +256,7 @@ describe('CustomAutocompletePrompt', () => {
   describe('format', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
-        message: 'test>'
+        message: 'test>',
       });
       (prompt as any).history = ['cmd1', 'cmd2', 'cmd3'];
     });
@@ -267,7 +268,7 @@ describe('CustomAutocompletePrompt', () => {
 
     it('should show history indicator when navigating', async () => {
       await prompt.keypress('', { name: 'up' });
-      
+
       const formatted = prompt.format('cmd3');
       expect(formatted).toBe('[history 3/3] cmd3');
     });
@@ -277,18 +278,18 @@ describe('CustomAutocompletePrompt', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
         message: 'test>',
-        historyFile: mockHistoryFile
+        historyFile: mockHistoryFile,
       });
-      
+
       vi.mocked(fs.mkdir).mockResolvedValue(undefined);
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
     });
 
     it('should add input to history on submit', async () => {
       (prompt as any).value = 'submitted command';
-      
+
       await prompt.submit();
-      
+
       expect((prompt as any).history).toContain('submitted command');
     });
   });
@@ -296,7 +297,7 @@ describe('CustomAutocompletePrompt', () => {
   describe('multiline support', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
-        message: 'test>'
+        message: 'test>',
       });
     });
 
@@ -304,9 +305,9 @@ describe('CustomAutocompletePrompt', () => {
       const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
       (prompt as any).input = 'const obj = {';
       (prompt as any).cursor = 13; // at the end
-      
+
       await prompt.keypress('', { name: 'return', shift: true });
-      
+
       expect((prompt as any).input).toBe('const obj = {\n  ');
       expect((prompt as any).cursor).toBe(16);
       expect((prompt as any).isMultiline).toBe(true);
@@ -314,48 +315,49 @@ describe('CustomAutocompletePrompt', () => {
     });
 
     it('should calculate indent correctly for nested structures', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
       (prompt as any).input = 'const obj = {\n  inner: {';
       (prompt as any).cursor = 24; // at the end
-      
+
       await prompt.keypress('', { name: 'return', shift: true });
-      
+
       expect((prompt as any).input).toBe('const obj = {\n  inner: {\n    ');
       expect((prompt as any).cursor).toBe(29); // 4 spaces indent
     });
 
     it('should auto-continue on unclosed brackets', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
       (prompt as any).input = 'const arr = [';
       (prompt as any).cursor = 13;
-      
+
       // Regular Enter should also continue multiline
       await prompt.keypress('', { name: 'return', shift: false });
-      
+
       expect((prompt as any).input).toBe('const arr = [\n  ');
       expect((prompt as any).isMultiline).toBe(true);
     });
 
     it('should auto-continue on trailing operators', async () => {
-      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      const _renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
       (prompt as any).input = 'const result = 1 +';
       (prompt as any).cursor = 18;
-      
+
       await prompt.keypress('', { name: 'return', shift: false });
-      
+
       expect((prompt as any).input).toBe('const result = 1 +\n');
       expect((prompt as any).isMultiline).toBe(true);
     });
 
     it('should execute normally when brackets are closed', async () => {
-      const superKeypressSpy = vi.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(prompt)), 'keypress')
+      const superKeypressSpy = vi
+        .spyOn(Object.getPrototypeOf(Object.getPrototypeOf(prompt)), 'keypress')
         .mockResolvedValue(undefined);
-      
+
       (prompt as any).input = 'const obj = {}';
       (prompt as any).cursor = 14;
-      
+
       await prompt.keypress('', { name: 'return', shift: false });
-      
+
       expect(superKeypressSpy).toHaveBeenCalledWith('', { name: 'return', shift: false });
     });
   });
@@ -363,20 +365,20 @@ describe('CustomAutocompletePrompt', () => {
   describe('format with multiline', () => {
     beforeEach(() => {
       prompt = new CustomAutocompletePrompt({
-        message: 'test>'
+        message: 'test>',
       });
     });
 
     it('should format multiline input correctly', () => {
       (prompt as any).isMultiline = true;
-      
+
       const formatted = prompt.format('const obj = {\n  name: "test"\n}');
       expect(formatted).toBe('const obj = {\n...  name: "test"\n...}');
     });
 
     it('should not format single line input', () => {
       (prompt as any).isMultiline = false;
-      
+
       const formatted = prompt.format('const x = 5');
       expect(formatted).toBe('const x = 5');
     });
