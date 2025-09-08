@@ -1307,7 +1307,7 @@ describe('ReplManager', () => {
       // Should detect incomplete expression and not evaluate
       expect(mockEvaluator).not.toHaveBeenCalled();
       expect(replManager.getCurrentInput()).toBe('function test() {');
-      
+
       // Continue with function body
       await mockInput.playAll(0, [
         { str: '\n' },
@@ -1331,11 +1331,7 @@ describe('ReplManager', () => {
       expect(replManager.getCurrentInput()).toBe('function test() {\n  return 42;');
 
       // Complete the function
-      await mockInput.playAll(0, [
-        { str: '\n' },
-        { str: '}' },
-        { key: { name: 'return' } },
-      ]);
+      await mockInput.playAll(0, [{ str: '\n' }, { str: '}' }, { key: { name: 'return' } }]);
 
       // Now it should evaluate
       expect(mockEvaluator).toHaveBeenCalledWith('function test() {\n  return 42;\n}');
@@ -1348,10 +1344,7 @@ describe('ReplManager', () => {
       replManager.start();
 
       // Test multiline array
-      await mockInput.playAll(0, [
-        { str: '[' },
-        { key: { name: 'return' } },
-      ]);
+      await mockInput.playAll(0, [{ str: '[' }, { key: { name: 'return' } }]);
 
       expect(mockEvaluator).not.toHaveBeenCalled();
       expect(replManager.getCurrentInput()).toBe('[');
@@ -1378,11 +1371,7 @@ describe('ReplManager', () => {
 
       expect(mockEvaluator).not.toHaveBeenCalled();
 
-      await mockInput.playAll(0, [
-        { str: '\n' },
-        { str: ']' },
-        { key: { name: 'return' } },
-      ]);
+      await mockInput.playAll(0, [{ str: '\n' }, { str: ']' }, { key: { name: 'return' } }]);
 
       expect(mockEvaluator).toHaveBeenCalledWith('[\n  1,\n  2\n]');
       expect(replManager.getCurrentInput()).toBe('');
@@ -1394,10 +1383,7 @@ describe('ReplManager', () => {
       replManager.start();
 
       // Start multiline object
-      await mockInput.playAll(0, [
-        { str: '{' },
-        { key: { name: 'return' } },
-      ]);
+      await mockInput.playAll(0, [{ str: '{' }, { key: { name: 'return' } }]);
 
       expect(replManager.getCurrentInput()).toBe('{');
 
@@ -1415,9 +1401,7 @@ describe('ReplManager', () => {
       expect(replManager.getCurrentInput()).toBe('{\n  key: ');
 
       // Interrupt with Ctrl+C
-      await mockInput.playAll(0, [
-        { key: { name: 'c', ctrl: true } },
-      ]);
+      await mockInput.playAll(0, [{ key: { name: 'c', ctrl: true } }]);
 
       // Input should be cleared
       expect(replManager.getCurrentInput()).toBe('');
@@ -1425,7 +1409,7 @@ describe('ReplManager', () => {
     });
 
     it('should handle async evaluation errors properly', async () => {
-      const asyncErrorEvaluator: EvaluationHandler = vi.fn(async (expression) => {
+      const asyncErrorEvaluator: EvaluationHandler = vi.fn(async expression => {
         if (expression === '.throwAsync') {
           throw new Error('Async error occurred');
         }
@@ -1485,7 +1469,7 @@ describe('ReplManager', () => {
       ]);
 
       await new Promise(resolve => setTimeout(resolve, 20));
-      
+
       const outputs = mockOutput.getHistory();
       expect(outputs.some(o => o.includes('Async error occurred'))).toBe(true);
       expect(replManager.getCurrentInput()).toBe('');
@@ -1513,7 +1497,7 @@ describe('ReplManager', () => {
       ]);
 
       await new Promise(resolve => setTimeout(resolve, 20));
-      
+
       const outputs2 = mockOutput.getHistory();
       expect(outputs2.some(o => o.includes('Promise rejected'))).toBe(true);
       expect(replManager.getCurrentInput()).toBe('');
@@ -1543,7 +1527,7 @@ describe('ReplManager', () => {
       ]);
 
       await new Promise(resolve => setTimeout(resolve, 30));
-      
+
       const outputs3 = mockOutput.getHistory();
       expect(outputs3.some(o => o.includes('Delayed error'))).toBe(true);
       expect(replManager.getCurrentInput()).toBe('');
@@ -1551,7 +1535,7 @@ describe('ReplManager', () => {
 
     it('should handle concurrent async evaluations correctly', async () => {
       let evaluationCount = 0;
-      const concurrentEvaluator: EvaluationHandler = vi.fn(async (expression) => {
+      const concurrentEvaluator: EvaluationHandler = vi.fn(async expression => {
         evaluationCount++;
         const currentCount = evaluationCount;
         await new Promise(resolve => setTimeout(resolve, 20));
@@ -1587,11 +1571,7 @@ describe('ReplManager', () => {
       replManager.start();
 
       // Type quickly to trigger multiple evaluations
-      await mockInput.playAll(5, [
-        { str: '1' },
-        { str: '+' },
-        { str: '1' },
-      ]);
+      await mockInput.playAll(5, [{ str: '1' }, { str: '+' }, { str: '1' }]);
 
       // Wait for debounce
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -1606,9 +1586,7 @@ describe('ReplManager', () => {
       );
 
       // Press enter for final evaluation
-      await mockInput.playAll(0, [
-        { key: { name: 'return' } },
-      ]);
+      await mockInput.playAll(0, [{ key: { name: 'return' } }]);
 
       await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -1675,24 +1653,20 @@ describe('ReplManager', () => {
 
       const longString = 'a'.repeat(200);
       const chars = longString.split('');
-      
+
       for (const char of chars) {
         await mockInput.playKey(char);
       }
 
       expect(replManager.getCurrentInput()).toBe(longString);
-      
+
       // Ensure cursor can navigate through long line
-      await mockInput.playAll(0, [
-        { key: { name: 'home' } },
-      ]);
-      
+      await mockInput.playAll(0, [{ key: { name: 'home' } }]);
+
       expect(replManager.getCursorPosition()).toBe(0);
-      
-      await mockInput.playAll(0, [
-        { key: { name: 'end' } },
-      ]);
-      
+
+      await mockInput.playAll(0, [{ key: { name: 'end' } }]);
+
       expect(replManager.getCursorPosition()).toBe(longString.length);
     });
 
@@ -1710,38 +1684,33 @@ describe('ReplManager', () => {
 
       for (let i = 0; i < unicodeTests.length; i++) {
         const test = unicodeTests[i];
-        
+
         // For subsequent tests, clear any existing input
         if (i > 0) {
           // Add some text first so Ctrl+C won't exit
           await mockInput.playNext({ str: 'x' });
-          await mockInput.playAll(0, [
-            { key: { name: 'c', ctrl: true } },
-          ]);
-          
+          await mockInput.playAll(0, [{ key: { name: 'c', ctrl: true } }]);
+
           // Wait a bit after Ctrl+C
           await new Promise(resolve => setTimeout(resolve, 10));
         }
-        
+
         // Type unicode characters
         for (const char of test.chars) {
           await mockInput.playNext({ str: char });
         }
-        
+
         expect(replManager.getCurrentInput()).toBe(test.expected);
-        
+
         // Test navigation through unicode
-        await mockInput.playAll(0, [
-          { key: { name: 'left' } },
-          { key: { name: 'left' } },
-        ]);
-        
+        await mockInput.playAll(0, [{ key: { name: 'left' } }, { key: { name: 'left' } }]);
+
         expect(replManager.getCursorPosition()).toBe(test.expected.length - 2);
       }
     });
 
     it('should handle ANSI escape sequences in output', async () => {
-      const ansiEvaluator: EvaluationHandler = vi.fn(async (expression) => {
+      const ansiEvaluator: EvaluationHandler = vi.fn(async expression => {
         if (expression === '.colored') {
           return { result: '\x1b[31mRed Text\x1b[0m' };
         }
@@ -1794,7 +1763,7 @@ describe('ReplManager', () => {
       ]);
 
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       const outputs = mockOutput.getHistory();
       // In test environment, color codes might be stripped
       expect(outputs.some(o => o.includes('Red Text'))).toBe(true);
@@ -1807,24 +1776,22 @@ describe('ReplManager', () => {
       // Mix of ASCII, emojis, and CJK characters
       const mixedInput = 'Hello😀世界!';
       const chars = Array.from(mixedInput);
-      
+
       for (const char of chars) {
         await mockInput.playKey(char);
       }
 
       expect(replManager.getCurrentInput()).toBe(mixedInput);
-      
+
       // Navigate through mixed width characters
-      await mockInput.playAll(0, [
-        { key: { name: 'home' } },
-      ]);
-      
+      await mockInput.playAll(0, [{ key: { name: 'home' } }]);
+
       // Move right through each character
       for (let i = 0; i < chars.length; i++) {
         expect(replManager.getCursorPosition()).toBe(i);
         await mockInput.playNext({ key: { name: 'right' } });
       }
-      
+
       expect(replManager.getCursorPosition()).toBe(chars.length);
     });
 
@@ -1856,16 +1823,16 @@ describe('ReplManager', () => {
 
     it('should handle StringBuffer edge cases properly', () => {
       const { replManager, mockInput, mockOutput } = createTestSetup();
-      
+
       // Test empty buffer operations
       expect(replManager.getCurrentInput()).toBe('');
       expect(replManager.getCursorPosition()).toBe(0);
-      
+
       // Test cursor at boundaries
-      replManager['moveCursorLeft']();
+      replManager.moveCursorLeft();
       expect(replManager.getCursorPosition()).toBe(0); // Should not go negative
-      
-      replManager['moveCursorRight']();
+
+      replManager.moveCursorRight();
       expect(replManager.getCursorPosition()).toBe(0); // Should not exceed buffer length
     });
   });

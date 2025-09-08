@@ -1,9 +1,12 @@
-import { AutoComplete } from 'enquirer';
-import type { Choice } from 'enquirer';
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import os from 'node:os';
-import { AutocompleteEngine, type CompletionContext, type CompletionResult } from '../autocomplete-engine.js';
+import path from 'node:path';
+import { AutoComplete, type Choice } from 'enquirer';
+import type {
+  AutocompleteEngine,
+  CompletionContext,
+  CompletionResult,
+} from '../autocomplete-engine.js';
 
 export interface CustomAutocompleteOptions {
   name?: string;
@@ -29,7 +32,6 @@ export class CustomAutocompletePrompt extends AutoComplete {
   private originalInput: string = '';
   private isNavigatingHistory: boolean = false;
   private isMultiline: boolean = false;
-  private multilineIndent: number = 0;
   private autocompleteEngine?: AutocompleteEngine;
   private currentData?: unknown;
   private isShowingCompletions: boolean = false;
@@ -42,15 +44,20 @@ export class CustomAutocompletePrompt extends AutoComplete {
       limit: options.limit || 10,
       initial: options.initial || '',
       choices: [],
-      suggest: options.suggest || (options.autocompleteEngine ? async (input: string) => {
-        return this.getAutocompleteSuggestions(input);
-      } : undefined)
+      suggest:
+        options.suggest ||
+        (options.autocompleteEngine
+          ? async (input: string, _choices: Choice[]) => {
+              const suggestions = await this.getAutocompleteSuggestions(input);
+              return suggestions.map(s => ({ name: s, value: s }));
+            }
+          : undefined),
     });
 
     this.maxHistory = options.maxHistory || 1000;
     this.autocompleteEngine = options.autocompleteEngine;
     this.currentData = options.currentData;
-    
+
     if (options.historyFile) {
       this.historyFile = options.historyFile;
       // 履歴ファイルを非同期で読み込む
@@ -73,7 +80,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
         .split('\n')
         .filter(line => line.trim())
         .slice(-this.maxHistory); // 最大履歴数を保つ
-    } catch (error) {
+    } catch (_error) {
       // ファイルが存在しない場合は無視
     }
   }
@@ -87,14 +94,14 @@ export class CustomAutocompletePrompt extends AutoComplete {
     try {
       const historyPath = path.resolve(os.homedir(), this.historyFile);
       const dir = path.dirname(historyPath);
-      
+
       // ディレクトリが存在しない場合は作成
       await fs.mkdir(dir, { recursive: true });
-      
+
       // 履歴を保存（最大履歴数を保つ）
       const historyToSave = this.history.slice(-this.maxHistory);
-      await fs.writeFile(historyPath, historyToSave.join('\n') + '\n');
-    } catch (error) {
+      await fs.writeFile(historyPath, `${historyToSave.join('\n')}\n`);
+    } catch (_error) {
       // エラーは無視（書き込み権限がない場合など）
     }
   }
@@ -109,7 +116,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
     }
 
     this.history.push(input);
-    
+
     // 最大履歴数を超えたら古いものを削除
     if (this.history.length > this.maxHistory) {
       this.history = this.history.slice(-this.maxHistory);
@@ -136,7 +143,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
    */
   private shouldContinueMultiline(input: string): boolean {
     const trimmed = input.trim();
-    
+
     // 未完了の括弧があるか確認
     const openParens = (input.match(/\(/g) || []).length;
     const closeParens = (input.match(/\)/g) || []).length;
@@ -144,27 +151,25 @@ export class CustomAutocompletePrompt extends AutoComplete {
     const closeBrackets = (input.match(/\]/g) || []).length;
     const openBraces = (input.match(/\{/g) || []).length;
     const closeBraces = (input.match(/\}/g) || []).length;
-    
-    const hasUnclosedBrackets = 
-      openParens > closeParens || 
-      openBrackets > closeBrackets || 
-      openBraces > closeBraces;
-    
+
+    const hasUnclosedBrackets =
+      openParens > closeParens || openBrackets > closeBrackets || openBraces > closeBraces;
+
     // 行末が特定の文字で終わっているか
-    const endsWithContinuation = /[,\\\+\-\*\/=&\|]$/.test(trimmed);
-    
+    const endsWithContinuation = /[,\\+\-*/=&|]$/.test(trimmed);
+
     return hasUnclosedBrackets || endsWithContinuation;
   }
 
   /**
    * キー入力のハンドリングをオーバーライド
    */
-  async keypress(input: string, key: any = {}): Promise<void> {
+  override async keypress(input: string, key: any = {}): Promise<void> {
     // Tab: 補完を表示/選択
     if (key.name === 'tab') {
       if (this.autocompleteEngine && this.input.trim()) {
         const suggestions = await this.getAutocompleteSuggestions(this.input);
-        
+
         if (suggestions.length > 0) {
           // 補完候補が1つしかない場合は直接適用
           if (suggestions.length === 1) {
@@ -192,18 +197,18 @@ export class CustomAutocompletePrompt extends AutoComplete {
     if (key.name === 'return' && key.shift) {
       const beforeCursor = this.input.substring(0, this.cursor);
       const afterCursor = this.input.substring(this.cursor);
-      
+
       // 現在の行のインデントレベルを計算
       const currentLine = beforeCursor.split('\n').pop() || '';
       const baseIndent = currentLine.match(/^(\s*)/)?.[1]?.length || 0;
       const additionalIndent = this.calculateIndent(currentLine) * 2; // 2スペースインデント
       const totalIndent = baseIndent + additionalIndent;
-      
+
       // 改行とインデントを挿入
-      const newLineWithIndent = '\n' + ' '.repeat(totalIndent);
+      const newLineWithIndent = `\n${' '.repeat(totalIndent)}`;
       this.input = beforeCursor + newLineWithIndent + afterCursor;
       this.cursor = beforeCursor.length + newLineWithIndent.length;
-      
+
       this.isMultiline = true;
       await this.render();
       return;
@@ -216,21 +221,21 @@ export class CustomAutocompletePrompt extends AutoComplete {
         // Shift+Enterと同じ処理
         const beforeCursor = this.input.substring(0, this.cursor);
         const afterCursor = this.input.substring(this.cursor);
-        
+
         const currentLine = beforeCursor.split('\n').pop() || '';
         const baseIndent = currentLine.match(/^(\s*)/)?.[1]?.length || 0;
         const additionalIndent = this.calculateIndent(currentLine) * 2;
         const totalIndent = baseIndent + additionalIndent;
-        
-        const newLineWithIndent = '\n' + ' '.repeat(totalIndent);
+
+        const newLineWithIndent = `\n${' '.repeat(totalIndent)}`;
         this.input = beforeCursor + newLineWithIndent + afterCursor;
         this.cursor = beforeCursor.length + newLineWithIndent.length;
-        
+
         this.isMultiline = true;
         await this.render();
         return;
       }
-      
+
       // 通常の実行処理は親クラスに委譲
       await super.keypress(input, key);
       return;
@@ -288,9 +293,9 @@ export class CustomAutocompletePrompt extends AutoComplete {
   /**
    * 実行結果を返す前に履歴に追加
    */
-  async submit(): Promise<void> {
+  override async submit(): Promise<void> {
     const result = this.value;
-    
+
     // 履歴に追加
     if (typeof result === 'string') {
       this.addToHistory(result);
@@ -308,17 +313,19 @@ export class CustomAutocompletePrompt extends AutoComplete {
       const historyIndicator = `[history ${this.historyIndex + 1}/${this.history.length}]`;
       return `${historyIndicator} ${value}`;
     }
-    
+
     // マルチラインモードの表示
     if (this.isMultiline && value.includes('\n')) {
       const lines = value.split('\n');
-      return lines.map((line, index) => {
-        if (index === 0) return line;
-        // ... の後ろのスペースは元の行のインデントをそのまま保持
-        return `...${line}`;
-      }).join('\n');
+      return lines
+        .map((line, index) => {
+          if (index === 0) return line;
+          // ... の後ろのスペースは元の行のインデントをそのまま保持
+          return `...${line}`;
+        })
+        .join('\n');
     }
-    
+
     return value;
   }
 
@@ -341,12 +348,12 @@ export class CustomAutocompletePrompt extends AutoComplete {
       const context: CompletionContext = {
         input,
         cursorPosition: this.cursor,
-        currentData: this.currentData
+        currentData: this.currentData,
       };
 
       this.completionResult = this.autocompleteEngine.getSuggestions(context);
       return this.completionResult.completions;
-    } catch (error) {
+    } catch (_error) {
       // エラーが発生した場合は空の配列を返す
       return [];
     }
@@ -361,7 +368,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
     const { replaceStart, replaceEnd } = this.completionResult;
     const beforeReplace = this.input.substring(0, replaceStart);
     const afterReplace = this.input.substring(replaceEnd);
-    
+
     this.input = beforeReplace + completion + afterReplace;
     this.cursor = beforeReplace.length + completion.length;
   }

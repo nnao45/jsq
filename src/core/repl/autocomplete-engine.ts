@@ -16,90 +16,413 @@ export class AutocompleteEngine {
   private readonly maxDepth = 3;
   private readonly cache = new Map<string, CompletionResult>();
   private readonly jsArrayMethods = [
-    'concat', 'every', 'filter', 'find', 'findIndex', 'flat', 'flatMap',
-    'forEach', 'includes', 'indexOf', 'join', 'lastIndexOf', 'map', 'pop',
-    'push', 'reduce', 'reduceRight', 'reverse', 'shift', 'slice', 'some',
-    'sort', 'splice', 'unshift', 'at', 'fill', 'copyWithin', 'entries',
-    'keys', 'values', 'toLocaleString', 'toString', 'length'
+    'concat',
+    'every',
+    'filter',
+    'find',
+    'findIndex',
+    'flat',
+    'flatMap',
+    'forEach',
+    'includes',
+    'indexOf',
+    'join',
+    'lastIndexOf',
+    'map',
+    'pop',
+    'push',
+    'reduce',
+    'reduceRight',
+    'reverse',
+    'shift',
+    'slice',
+    'some',
+    'sort',
+    'splice',
+    'unshift',
+    'at',
+    'fill',
+    'copyWithin',
+    'entries',
+    'keys',
+    'values',
+    'toLocaleString',
+    'toString',
+    'length',
   ];
   private readonly jsObjectMethods = [
-    'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',
-    'toLocaleString', 'toString', 'valueOf', 'constructor'
+    'hasOwnProperty',
+    'isPrototypeOf',
+    'propertyIsEnumerable',
+    'toLocaleString',
+    'toString',
+    'valueOf',
+    'constructor',
   ];
   private readonly jsStringMethods = [
-    'charAt', 'charCodeAt', 'concat', 'endsWith', 'includes', 'indexOf',
-    'lastIndexOf', 'match', 'padEnd', 'padStart', 'repeat', 'replace',
-    'search', 'slice', 'split', 'startsWith', 'substring', 'toLowerCase',
-    'toUpperCase', 'trim', 'trimEnd', 'trimStart', 'valueOf', 'toString',
-    'length', 'localeCompare', 'normalize'
+    'charAt',
+    'charCodeAt',
+    'concat',
+    'endsWith',
+    'includes',
+    'indexOf',
+    'lastIndexOf',
+    'match',
+    'padEnd',
+    'padStart',
+    'repeat',
+    'replace',
+    'search',
+    'slice',
+    'split',
+    'startsWith',
+    'substring',
+    'toLowerCase',
+    'toUpperCase',
+    'trim',
+    'trimEnd',
+    'trimStart',
+    'valueOf',
+    'toString',
+    'length',
+    'localeCompare',
+    'normalize',
   ];
   // Lodash methods extracted from lodash-shared-methods.ts
   private readonly lodashMethodNames = [
-    'filter', 'map', 'find', 'findIndex', 'reduce', 'each', 'forEach', 
-    'includes', 'some', 'every', 'flatten', 'flattenDeep', 'flattenDepth',
-    'compact', 'concat', 'chunk', 'difference', 'drop', 'dropRight', 'fill',
-    'findLastIndex', 'head', 'first', 'indexOf', 'initial', 'intersection',
-    'last', 'lastIndexOf', 'nth', 'pull', 'pullAll', 'pullAt', 'slice',
-    'tail', 'take', 'takeRight', 'union', 'uniq', 'uniqBy', 'uniqWith',
-    'without', 'xor', 'zip', 'unzip', 'where', 'pluck', 'size', 'sample',
-    'shuffle', 'reverse', 'join', 'split', 'sortBy', 'orderBy', 'groupBy',
-    'countBy', 'keyBy', 'partition', 'reject', 'invoke', 'indexBy',
-    'sum', 'sumBy', 'mean', 'meanBy', 'min', 'minBy', 'max', 'maxBy',
-    'add', 'subtract', 'multiply', 'divide', 'round', 'floor', 'ceil',
-    'now', 'isArray', 'isObject', 'isString', 'isNumber', 'isBoolean',
-    'isFunction', 'isUndefined', 'isNull', 'isEmpty', 'isEqual', 'isNaN',
-    'isFinite', 'has', 'get', 'set', 'unset', 'pick', 'omit', 'keys',
-    'values', 'entries', 'merge', 'assign', 'defaults', 'clone', 'cloneDeep',
-    'extend', 'tap', 'thru', 'at', 'property', 'propertyOf', 'matcher',
-    'matches', 'isMatch', 'escape', 'unescape', 'template', 'trim', 'trimStart',
-    'trimEnd', 'truncate', 'pad', 'padStart', 'padEnd', 'repeat', 'replace',
-    'split', 'toLower', 'toLowerCase', 'toUpper', 'toUpperCase', 'capitalize',
-    'camelCase', 'kebabCase', 'snakeCase', 'lowerCase', 'upperCase', 'startCase',
-    'words', 'parseInt', 'constant', 'identity', 'noop', 'times', 'uniqueId',
-    'result', 'chain', 'value', 'debounce', 'throttle', 'curry', 'partial',
-    'partialRight', 'memoize', 'once', 'wrap', 'negate', 'compose', 'flow',
-    'flowRight', 'bind', 'bindKey', 'delay', 'defer', 'flip', 'overArgs',
-    'rearg', 'rest', 'spread'
+    'filter',
+    'map',
+    'find',
+    'findIndex',
+    'reduce',
+    'each',
+    'forEach',
+    'includes',
+    'some',
+    'every',
+    'flatten',
+    'flattenDeep',
+    'flattenDepth',
+    'compact',
+    'concat',
+    'chunk',
+    'difference',
+    'drop',
+    'dropRight',
+    'fill',
+    'findLastIndex',
+    'head',
+    'first',
+    'indexOf',
+    'initial',
+    'intersection',
+    'last',
+    'lastIndexOf',
+    'nth',
+    'pull',
+    'pullAll',
+    'pullAt',
+    'slice',
+    'tail',
+    'take',
+    'takeRight',
+    'union',
+    'uniq',
+    'uniqBy',
+    'uniqWith',
+    'without',
+    'xor',
+    'zip',
+    'unzip',
+    'where',
+    'pluck',
+    'size',
+    'sample',
+    'shuffle',
+    'reverse',
+    'join',
+    'split',
+    'sortBy',
+    'orderBy',
+    'groupBy',
+    'countBy',
+    'keyBy',
+    'partition',
+    'reject',
+    'invoke',
+    'indexBy',
+    'sum',
+    'sumBy',
+    'mean',
+    'meanBy',
+    'min',
+    'minBy',
+    'max',
+    'maxBy',
+    'add',
+    'subtract',
+    'multiply',
+    'divide',
+    'round',
+    'floor',
+    'ceil',
+    'now',
+    'isArray',
+    'isObject',
+    'isString',
+    'isNumber',
+    'isBoolean',
+    'isFunction',
+    'isUndefined',
+    'isNull',
+    'isEmpty',
+    'isEqual',
+    'isNaN',
+    'isFinite',
+    'has',
+    'get',
+    'set',
+    'unset',
+    'pick',
+    'omit',
+    'keys',
+    'values',
+    'entries',
+    'merge',
+    'assign',
+    'defaults',
+    'clone',
+    'cloneDeep',
+    'extend',
+    'tap',
+    'thru',
+    'at',
+    'property',
+    'propertyOf',
+    'matcher',
+    'matches',
+    'isMatch',
+    'escape',
+    'unescape',
+    'template',
+    'trim',
+    'trimStart',
+    'trimEnd',
+    'truncate',
+    'pad',
+    'padStart',
+    'padEnd',
+    'repeat',
+    'replace',
+    'split',
+    'toLower',
+    'toLowerCase',
+    'toUpper',
+    'toUpperCase',
+    'capitalize',
+    'camelCase',
+    'kebabCase',
+    'snakeCase',
+    'lowerCase',
+    'upperCase',
+    'startCase',
+    'words',
+    'parseInt',
+    'constant',
+    'identity',
+    'noop',
+    'times',
+    'uniqueId',
+    'result',
+    'chain',
+    'value',
+    'debounce',
+    'throttle',
+    'curry',
+    'partial',
+    'partialRight',
+    'memoize',
+    'once',
+    'wrap',
+    'negate',
+    'compose',
+    'flow',
+    'flowRight',
+    'bind',
+    'bindKey',
+    'delay',
+    'defer',
+    'flip',
+    'overArgs',
+    'rearg',
+    'rest',
+    'spread',
   ];
   // SmartDollar methods extracted from smart-dollar-shared-methods.ts
   private readonly smartDollarMethodNames = [
-    'map', 'filter', 'reduce', 'each', 'forEach', 'find', 'some', 'every',
-    'includes', 'indexOf', 'slice', 'concat', 'push', 'pop', 'shift', 'unshift',
-    'splice', 'join', 'reverse', 'sort', 'keys', 'values', 'entries', 'hasOwn',
-    'hasOwnProperty', 'assign', 'pipe', 'tap', 'log', 'value', 'split',
-    'replace', 'trim', 'toLowerCase', 'toUpperCase', 'substring', 'substr',
-    'charAt', 'charCodeAt', 'match', 'search', 'test', 'where', 'pluck',
-    'sortBy', 'groupBy', 'countBy', 'uniq', 'first', 'last', 'take', 'skip',
-    'flatten', 'flatMap', 'compact', 'pick', 'omit', 'merge', 'extend',
-    'clone', 'isEmpty', 'isArray', 'isObject', 'isString', 'isNumber',
-    'parseJSON', 'sum', 'mean', 'min', 'max', 'range', 'random', 'clamp',
-    'capitalize', 'escape', 'unescape', 'debounce', 'throttle', 'once',
-    'memoize', 'curry', 'partial', 'mapAsync', 'mapAsyncSeq', 'filterAsync',
-    'reduceAsync', 'forEachAsync', 'forEachAsyncSeq', 'fold', 'scan', 
-    'takeWhile', 'dropWhile', 'partition', 'chunk', 'zip', 'zipWith',
-    'unzip', 'fromPairs', 'toPairs', 'invert', 'mapKeys', 'mapValues',
-    'keyBy', 'difference', 'intersection', 'union', 'xor', 'without',
-    'pull', 'pullAt', 'nth', 'sample', 'sampleSize', 'shuffle', 'size',
-    'at', 'get', 'set', 'update', 'defaults', 'defaultsDeep', 'has',
-    'hasIn', 'invertBy', 'findKey', 'findIndex', 'findLastIndex',
-    'head', 'tail', 'initial', 'cons', 'snoc', 'repeat', 'cycle',
-    'iterate', 'unfold', 'span', 'break', 'splitAt', 'elem', 'notElem',
-    'lookup', 'findIndices', 'elemIndex', 'elemIndices', 'nub', 'nubBy',
-    'all', 'any', 'and', 'or', 'not'
+    'map',
+    'filter',
+    'reduce',
+    'each',
+    'forEach',
+    'find',
+    'some',
+    'every',
+    'includes',
+    'indexOf',
+    'slice',
+    'concat',
+    'push',
+    'pop',
+    'shift',
+    'unshift',
+    'splice',
+    'join',
+    'reverse',
+    'sort',
+    'keys',
+    'values',
+    'entries',
+    'hasOwn',
+    'hasOwnProperty',
+    'assign',
+    'pipe',
+    'tap',
+    'log',
+    'value',
+    'split',
+    'replace',
+    'trim',
+    'toLowerCase',
+    'toUpperCase',
+    'substring',
+    'substr',
+    'charAt',
+    'charCodeAt',
+    'match',
+    'search',
+    'test',
+    'where',
+    'pluck',
+    'sortBy',
+    'groupBy',
+    'countBy',
+    'uniq',
+    'first',
+    'last',
+    'take',
+    'skip',
+    'flatten',
+    'flatMap',
+    'compact',
+    'pick',
+    'omit',
+    'merge',
+    'extend',
+    'clone',
+    'isEmpty',
+    'isArray',
+    'isObject',
+    'isString',
+    'isNumber',
+    'parseJSON',
+    'sum',
+    'mean',
+    'min',
+    'max',
+    'range',
+    'random',
+    'clamp',
+    'capitalize',
+    'escape',
+    'unescape',
+    'debounce',
+    'throttle',
+    'once',
+    'memoize',
+    'curry',
+    'partial',
+    'mapAsync',
+    'mapAsyncSeq',
+    'filterAsync',
+    'reduceAsync',
+    'forEachAsync',
+    'forEachAsyncSeq',
+    'fold',
+    'scan',
+    'takeWhile',
+    'dropWhile',
+    'partition',
+    'chunk',
+    'zip',
+    'zipWith',
+    'unzip',
+    'fromPairs',
+    'toPairs',
+    'invert',
+    'mapKeys',
+    'mapValues',
+    'keyBy',
+    'difference',
+    'intersection',
+    'union',
+    'xor',
+    'without',
+    'pull',
+    'pullAt',
+    'nth',
+    'sample',
+    'sampleSize',
+    'shuffle',
+    'size',
+    'at',
+    'get',
+    'set',
+    'update',
+    'defaults',
+    'defaultsDeep',
+    'has',
+    'hasIn',
+    'invertBy',
+    'findKey',
+    'findIndex',
+    'findLastIndex',
+    'head',
+    'tail',
+    'initial',
+    'cons',
+    'snoc',
+    'repeat',
+    'cycle',
+    'iterate',
+    'unfold',
+    'span',
+    'break',
+    'splitAt',
+    'elem',
+    'notElem',
+    'lookup',
+    'findIndices',
+    'elemIndex',
+    'elemIndices',
+    'nub',
+    'nubBy',
+    'all',
+    'any',
+    'and',
+    'or',
+    'not',
   ];
 
   getSuggestions(context: CompletionContext): CompletionResult {
     const { input, cursorPosition } = context;
-    
+
     // Extract the expression to complete
-    const { expression, replaceStart, replaceEnd } = this.extractExpression(
-      input,
-      cursorPosition
-    );
-    
+    const { expression, replaceStart, replaceEnd } = this.extractExpression(input, cursorPosition);
+
     // Debug log
     // console.log('Extracted expression:', expression, 'from', input, 'at', cursorPosition);
-    
+
     if (!expression) {
       return { completions: [], replaceStart: cursorPosition, replaceEnd: cursorPosition };
     }
@@ -119,20 +442,20 @@ export class AutocompleteEngine {
         return {
           ...cached,
           replaceStart: adjustedReplaceStart,
-          replaceEnd
+          replaceEnd,
         };
       }
     }
 
     try {
       const completions = this.generateCompletions(expression, context);
-      
+
       const result = {
         completions: completions.slice(0, this.maxCompletions),
         replaceStart: adjustedReplaceStart,
-        replaceEnd
+        replaceEnd,
       };
-      
+
       // Don't cache empty results
       if (result.completions.length > 0) {
         this.cache.set(cacheKey, result);
@@ -144,7 +467,10 @@ export class AutocompleteEngine {
     }
   }
 
-  private extractExpression(input: string, cursorPosition: number): {
+  private extractExpression(
+    input: string,
+    cursorPosition: number
+  ): {
     expression: string;
     replaceStart: number;
     replaceEnd: number;
@@ -157,7 +483,7 @@ export class AutocompleteEngine {
 
     // カーソル位置までの式を抽出（カーソル位置より後ろは含めない）
     const expression = input.slice(start, cursorPosition);
-    
+
     // 置換範囲はカーソル位置までとする
     return { expression, replaceStart: start, replaceEnd: cursorPosition };
   }
@@ -225,9 +551,7 @@ export class AutocompleteEngine {
       if (obj && typeof obj === 'object') {
         const keys = this.getObjectKeys(obj);
         completions.push(
-          ...keys
-            .filter(key => key.toLowerCase().startsWith(prefixLower))
-            .map(key => key) // Return just the key, not the full path
+          ...keys.filter(key => key.toLowerCase().startsWith(prefixLower)).map(key => key) // Return just the key, not the full path
         );
       }
 
@@ -299,9 +623,7 @@ export class AutocompleteEngine {
 
     // Add common globals
     const globals = ['console', 'JSON', 'Math', 'Date', 'Array', 'Object', 'String'];
-    completions.push(
-      ...globals.filter(g => g.toLowerCase().startsWith(prefixLower))
-    );
+    completions.push(...globals.filter(g => g.toLowerCase().startsWith(prefixLower)));
 
     return completions;
   }
@@ -324,10 +646,10 @@ export class AutocompleteEngine {
         // This is a simplified version - in production, we'd want proper AST parsing
         let current: unknown = context.currentData;
         const parts = subPath.split('.');
-        
+
         for (const part of parts) {
           if (!part) continue;
-          
+
           // Handle array access
           const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
           if (arrayMatch) {
@@ -350,12 +672,12 @@ export class AutocompleteEngine {
               current = undefined;
             }
           }
-          
+
           if (current === undefined || current === null) {
             return undefined;
           }
         }
-        
+
         return current;
       } catch {
         return undefined;

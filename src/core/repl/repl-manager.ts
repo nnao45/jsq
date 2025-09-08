@@ -2,8 +2,8 @@ import type { Key } from 'node:readline';
 import type { JsqOptions } from '@/types/cli';
 import type { ReplIO, ReplOptions } from '@/types/repl';
 import { OutputFormatter } from '@/utils/output-formatter';
-import { StringBuffer } from './string-buffer';
 import { AutocompleteEngine, type CompletionContext } from './autocomplete-engine';
+import { StringBuffer } from './string-buffer';
 
 export interface ReplState {
   data: unknown;
@@ -136,9 +136,19 @@ export class ReplManager {
         await this.handleControlKey(key);
       } else if (
         key?.name &&
-        ['return', 'backspace', 'delete', 'left', 'right', 'up', 'down', 'home', 'end', 'tab', 'escape'].includes(
-          key.name
-        )
+        [
+          'return',
+          'backspace',
+          'delete',
+          'left',
+          'right',
+          'up',
+          'down',
+          'home',
+          'end',
+          'tab',
+          'escape',
+        ].includes(key.name)
       ) {
         await this.handleSpecialKey(key);
       } else if (str) {
@@ -586,7 +596,7 @@ export class ReplManager {
     if (this.state.hasPreviewLine) {
       this.clearPreviewLine();
     }
-    
+
     if (this.state.isCompleting && this.state.completions.length > 0) {
       // 既に補完中なら次の候補に移動
       this.cycleCompletion();
@@ -604,7 +614,7 @@ export class ReplManager {
       input,
       cursorPosition: cursorPos,
       currentData: this.state.data,
-      previousExpression: this.state.lastResult !== undefined ? '$' : undefined
+      previousExpression: this.state.lastResult !== undefined ? '$' : undefined,
     };
 
     const result = this.autocompleteEngine.getSuggestions(context);
@@ -619,7 +629,7 @@ export class ReplManager {
     this.state.isCompleting = true;
     this.state.completionStart = result.replaceStart;
     this.state.completionEnd = result.replaceEnd;
-    this.state.originalInput = undefined;  // 新しい補完セッションの開始時にリセット
+    this.state.originalInput = undefined; // 新しい補完セッションの開始時にリセット
 
     // 最初の補完候補を適用
     this.applyCompletion();
@@ -632,12 +642,12 @@ export class ReplManager {
 
     // 次の補完候補に移動（循環）
     this.state.completionIndex = (this.state.completionIndex + 1) % this.state.completions.length;
-    
+
     // 初回のTab押下時の状態を保持するため、indexを0にリセットしてからapplyCompletionを呼ぶ
     if (this.state.completionIndex === 0) {
       this.state.originalInput = undefined;
     }
-    
+
     this.applyCompletion();
   }
 
@@ -648,25 +658,25 @@ export class ReplManager {
 
     const completion = this.state.completions[this.state.completionIndex];
     const input = this.state.currentInput.toString();
-    
+
     // 元の入力を保存（初回のTab押下時のみ）
     if (this.state.completionIndex === 0 && !this.state.originalInput) {
       this.state.originalInput = input;
       this.state.originalCursorPosition = this.state.cursorPosition;
     }
-    
+
     // 元の入力に基づいて補完を適用
     const baseInput = this.state.originalInput || input;
     const beforeCompletion = baseInput.slice(0, this.state.completionStart);
     const afterCompletion = baseInput.slice(this.state.completionEnd);
-    
+
     // 補完候補を適用して新しい入力を構築
     const newInput = beforeCompletion + completion + afterCompletion;
 
     // バッファを更新
     this.state.currentInput.clear();
     this.state.currentInput.insert(0, newInput);
-    
+
     // カーソルを補完後の位置に移動
     this.state.cursorPosition = this.state.completionStart + completion.length;
 
@@ -716,5 +726,4 @@ export class ReplManager {
       this.clearPreviewLine();
     }
   }
-
 }
