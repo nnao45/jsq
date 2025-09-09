@@ -2,6 +2,7 @@ import type { Key } from 'node:readline';
 import type { JsqOptions } from '@/types/cli';
 import type { ReplIO, ReplOptions } from '@/types/repl';
 import { OutputFormatter } from '@/utils/output-formatter';
+import { debounce, type DebouncedFunction } from '@/utils/debounce';
 import { AutocompleteEngine, type CompletionContext } from './autocomplete-engine';
 import { StringBuffer } from './string-buffer';
 
@@ -46,10 +47,13 @@ export class ReplManager {
   private exitOnDoubleCtrlC: boolean;
   private isProcessingInput = false;
   private boundHandleKeypress: (str: string | undefined, key: Key | undefined) => Promise<void>;
+  private debouncedHandleKeypress: DebouncedFunction<() => Promise<void>>;
+  private keypressQueue: Array<{ str: string | undefined; key: Key | undefined }> = [];
   private maxHistorySize = 1000;
   private realTimeEvalTimer?: NodeJS.Timeout;
   private isEvaluating = false;
   private autocompleteEngine: AutocompleteEngine;
+  private keypressDebounceDelay: number;
 
   constructor(
     initialData: unknown,
@@ -81,7 +85,12 @@ export class ReplManager {
     this.prompt = replOptions?.prompt || '> ';
     this.realTimeEvaluation = replOptions?.realTimeEvaluation ?? false;
     this.exitOnDoubleCtrlC = replOptions?.exitOnDoubleCtrlC ?? true;
+    this.keypressDebounceDelay = replOptions?.keypressDebounceDelay ?? 10;
     this.boundHandleKeypress = this.handleKeypress.bind(this);
+    this.debouncedHandleKeypress = debounce(
+      this.processKeypressQueue.bind(this),
+      this.keypressDebounceDelay
+    );
     this.autocompleteEngine = new AutocompleteEngine();
 
     if (replOptions?.io) {
@@ -113,6 +122,7 @@ export class ReplManager {
     if (this.realTimeEvalTimer) {
       clearTimeout(this.realTimeEvalTimer);
     }
+    this.debouncedHandleKeypress.cancel();
   }
 
   private displayWelcomeMessage(): void {
@@ -128,6 +138,38 @@ export class ReplManager {
   }
 
   private async handleKeypress(str: string | undefined, key: Key | undefined): Promise<void> {
+    // デバウンスが無効（0ms）の場合は即座に処理
+    if (this.keypressDebounceDelay === 0) {
+      await this.handleKeypressDebounced(str, key);
+      return;
+    }
+    
+    // 特定のキー（Enter、Ctrl+Cなど）は即座に処理
+    const immediateKeys = ['return', 'escape'];
+    const isImmediate = key?.ctrl || (key?.name && immediateKeys.includes(key.name));
+    
+    if (isImmediate) {
+      // 即座に処理するキーの場合、キューを処理してから実行
+      this.debouncedHandleKeypress.cancel();
+      await this.processKeypressQueue();
+      await this.handleKeypressDebounced(str, key);
+    } else {
+      // キューに追加してデバウンス処理
+      this.keypressQueue.push({ str, key });
+      this.debouncedHandleKeypress();
+    }
+  }
+
+  private async processKeypressQueue(): Promise<void> {
+    const queue = [...this.keypressQueue];
+    this.keypressQueue = [];
+    
+    for (const { str, key } of queue) {
+      await this.handleKeypressDebounced(str, key);
+    }
+  }
+
+  private async handleKeypressDebounced(str: string | undefined, key: Key | undefined): Promise<void> {
     if (this.isProcessingInput) return;
 
     this.isProcessingInput = true;
@@ -224,7 +266,7 @@ export class ReplManager {
         this.moveCursorToEnd();
         break;
       case 'tab':
-        this.handleTab();
+        this.handleTab()
         break;
       case 'escape':
         this.cancelCompletion();
@@ -599,7 +641,7 @@ export class ReplManager {
 
     if (this.state.isCompleting && this.state.completions.length > 0) {
       // 既に補完中なら次の候補に移動
-      this.cycleCompletion();
+      this.cycleCompletion()
     } else {
       // 新しい補完を開始
       this.startCompletion();
@@ -690,7 +732,7 @@ export class ReplManager {
 
     // タブ補完後にリアルタイム評価を実行
     if (this.realTimeEvaluation) {
-      this.scheduleRealTimeEvaluation();
+      setTimeout(() => this.scheduleRealTimeEvaluation(), 1000);
     }
   }
 

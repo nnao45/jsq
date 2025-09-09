@@ -383,4 +383,98 @@ describe('CustomAutocompletePrompt', () => {
       expect(formatted).toBe('const x = 5');
     });
   });
+
+  describe('tab completion bug fix', () => {
+    beforeEach(() => {
+      const mockEngine = {
+        getSuggestions: vi.fn().mockReturnValue({
+          completions: [],
+          replaceStart: 0,
+          replaceEnd: 0,
+        }),
+      };
+
+      prompt = new CustomAutocompletePrompt({
+        message: 'test>',
+        autocompleteEngine: mockEngine as any,
+      });
+    });
+
+    it('should not reuse old completion results when pressing tab repeatedly', async () => {
+      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+
+      // 最初のタブで補完結果を設定
+      (prompt as any).input = '$.value';
+      (prompt as any).cursor = 7;
+      (prompt as any).completionResult = {
+        completions: ['valueOf'],
+        replaceStart: 2,
+        replaceEnd: 7,
+      };
+
+      // 入力を変更
+      (prompt as any).input = '$.hasAvailableSubscription';
+      (prompt as any).cursor = 26;
+
+      // タブを押す（新しい補完候補なし）
+      await prompt.keypress('', { name: 'tab' });
+
+      // completionResultがクリアされていることを確認
+      expect((prompt as any).completionResult).toBeUndefined();
+      expect(renderSpy).not.toHaveBeenCalled();
+    });
+
+    it('should clear completion result after applying completion', async () => {
+      const mockEngine = {
+        getSuggestions: vi.fn().mockReturnValue({
+          completions: ['valueOf'],
+          replaceStart: 2,
+          replaceEnd: 5,
+        }),
+      };
+
+      prompt = new CustomAutocompletePrompt({
+        message: 'test>',
+        autocompleteEngine: mockEngine as any,
+      });
+
+      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+
+      (prompt as any).input = '$.val';
+      (prompt as any).cursor = 5;
+
+      // タブを押して補完を適用
+      await prompt.keypress('', { name: 'tab' });
+
+      // 補完が適用されたことを確認
+      expect((prompt as any).input).toBe('$.valueOf');
+      expect((prompt as any).completionResult).toBeUndefined();
+      expect(renderSpy).toHaveBeenCalled();
+    });
+
+    it('should clear completion result when closing completion choices', async () => {
+      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      
+      // 補完候補を表示中の状態を設定
+      (prompt as any).isShowingCompletions = true;
+      (prompt as any).choices = [{ name: 'valueOf', value: 'valueOf' }];
+      (prompt as any).focused = { name: 'valueOf', value: 'valueOf' };
+      (prompt as any).completionResult = {
+        completions: ['valueOf'],
+        replaceStart: 2,
+        replaceEnd: 7,
+      };
+      (prompt as any).input = '$.val';
+      (prompt as any).cursor = 5;
+
+      // タブを押して選択を適用
+      await prompt.keypress('', { name: 'tab' });
+
+      // 補完が適用され、状態がクリアされたことを確認
+      expect((prompt as any).isShowingCompletions).toBe(false);
+      expect((prompt as any).choices).toEqual([]);
+      expect((prompt as any).completionResult).toBeUndefined();
+      expect(renderSpy).toHaveBeenCalled();
+    });
+  });
 });

@@ -51,14 +51,7 @@ export class CustomAutocompletePrompt extends AutoComplete implements AutoComple
       limit: options.limit || 10,
       initial: options.initial || '',
       choices: [],
-      suggest:
-        options.suggest ||
-        (options.autocompleteEngine
-          ? async (input: string, _choices: Choice[]) => {
-              const suggestions = await this.getAutocompleteSuggestions(input);
-              return suggestions.map(s => ({ name: s, value: s }));
-            }
-          : undefined),
+      suggest: undefined, // 手動でタブキー処理を行うため、自動補完は無効化
     });
 
     this.maxHistory = options.maxHistory || 1000;
@@ -174,6 +167,7 @@ export class CustomAutocompletePrompt extends AutoComplete implements AutoComple
   override async keypress(input: string, key: any = {}): Promise<void> {
     // Tab: 補完を表示/選択
     if (key.name === 'tab') {
+      
       // 補完候補が表示されている場合
       if (this.isShowingCompletions) {
         // 選択された候補を適用
@@ -181,6 +175,7 @@ export class CustomAutocompletePrompt extends AutoComplete implements AutoComple
           this.applyCompletion(this.focused.value);
           this.isShowingCompletions = false;
           this.choices = [];
+          this.completionResult = undefined; // 使用後はクリア
           await this.render();
         }
         return; // デフォルト処理を防ぐ
@@ -201,7 +196,12 @@ export class CustomAutocompletePrompt extends AutoComplete implements AutoComple
             this.choices = suggestions.map(s => ({ name: s, value: s }));
             await this.render();
           }
+        } else {
+          // 補完候補がない場合は、前回の補完結果をクリア
+          this.completionResult = undefined;
         }
+      } else {
+        this.completionResult = undefined; // エンジンがない場合もクリア
       }
       return; // Tabキーのデフォルト処理を防ぐために必ずreturn
     }
@@ -414,7 +414,11 @@ export class CustomAutocompletePrompt extends AutoComplete implements AutoComple
     const beforeReplace = this.input.substring(0, replaceStart);
     const afterReplace = this.input.substring(replaceEnd);
 
+
     this.input = beforeReplace + completion + afterReplace;
     this.cursor = beforeReplace.length + completion.length;
+    
+    // 補完を適用したら結果をクリア
+    this.completionResult = undefined;
   }
 }
