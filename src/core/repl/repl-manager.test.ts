@@ -58,6 +58,7 @@ describe('ReplManager', () => {
       prompt: '> ',
       realTimeEvaluation: false,
       exitOnDoubleCtrlC: false,
+      keypressDebounceDelay: 0, // テスト時はデバウンスを無効化
       io: {
         input: mockInput,
         output: mockOutput,
@@ -320,6 +321,7 @@ describe('ReplManager', () => {
         prompt: '> ',
         realTimeEvaluation: true,
         exitOnDoubleCtrlC: false,
+        keypressDebounceDelay: 0,
         io: {
           input: mockInput,
           output: mockOutput,
@@ -362,6 +364,7 @@ describe('ReplManager', () => {
         prompt: '> ',
         realTimeEvaluation: true,
         exitOnDoubleCtrlC: false,
+        keypressDebounceDelay: 0,
         io: {
           input: mockInput,
           output: mockOutput,
@@ -449,6 +452,7 @@ describe('ReplManager', () => {
         prompt: '> ',
         realTimeEvaluation: true,
         exitOnDoubleCtrlC: false,
+        keypressDebounceDelay: 0,
         io: {
           input: mockInput,
           output: mockOutput,
@@ -539,6 +543,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -637,6 +642,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -726,6 +732,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -832,6 +839,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -953,6 +961,7 @@ describe('ReplManager', () => {
         {
           prompt: '> ',
           realTimeEvaluation: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: replManager.io.output,
@@ -1194,6 +1203,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -1443,6 +1453,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -1573,8 +1584,8 @@ describe('ReplManager', () => {
       // Type quickly to trigger multiple evaluations
       await mockInput.playAll(5, [{ str: '1' }, { str: '+' }, { str: '1' }]);
 
-      // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for both keypress debounce (100ms) and real-time eval debounce (100ms)
+      await new Promise(resolve => setTimeout(resolve, 250));
 
       // Should only evaluate once due to debouncing
       expect(concurrentEvaluator).toHaveBeenCalledTimes(1);
@@ -1621,6 +1632,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,
@@ -1740,6 +1752,7 @@ describe('ReplManager', () => {
           prompt: '> ',
           realTimeEvaluation: false,
           exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
           io: {
             input: mockInput,
             output: mockOutput,

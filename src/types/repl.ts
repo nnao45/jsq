@@ -28,4 +28,5 @@ export interface ReplOptions {
   realTimeEvaluation?: boolean;
   io?: ReplIO;
   exitOnDoubleCtrlC?: boolean;
+  keypressDebounceDelay?: number;
 }
