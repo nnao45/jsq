@@ -109,11 +109,18 @@ export class EnquirerReplManager {
     // JavaScript式の評価
     try {
       const result = await this.evaluator.evaluate(input, this.currentData, this.lastResult);
-      console.log(chalk.green('→'), result);
-      // 評価結果を保存して次の補完で使えるようにする
-      this.lastResult = result;
-      if (result !== undefined && result !== null) {
-        this.currentData = result;
+      
+      if (result.error) {
+        this.displayError(result.error);
+      } else {
+        console.log(chalk.green('→'), result.value);
+        // タブ補完が評価値の下に表示されるように改行を追加
+        console.log();
+        // 評価結果を保存して次の補完で使えるようにする
+        this.lastResult = result.value;
+        if (result.value !== undefined && result.value !== null) {
+          this.currentData = result.value;
+        }
       }
     } catch (error) {
       this.displayError(error);

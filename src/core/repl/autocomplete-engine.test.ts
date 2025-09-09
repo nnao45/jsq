@@ -63,6 +63,56 @@ describe('AutocompleteEngine', () => {
       expect(result.replaceStart).toBe(2); // after the dot
     });
 
+    it('should complete array methods without dot after $', () => {
+      const context: CompletionContext = {
+        input: '$.ma',
+        cursorPosition: 4,
+        currentData: [1, 2, 3],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('map');
+      expect(result.replaceStart).toBe(2); // after $
+    });
+
+    it('should complete array methods with partial match without dot', () => {
+      const context: CompletionContext = {
+        input: '$.fi',
+        cursorPosition: 4,
+        currentData: ['a', 'b', 'c'],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('find');
+      expect(result.completions).toContain('findIndex');
+      expect(result.completions).toContain('fill');
+      expect(result.completions).not.toContain('map'); // doesn't start with 'fi'
+    });
+
+    it('should complete object properties without dot after $', () => {
+      const context: CompletionContext = {
+        input: '$.na',
+        cursorPosition: 4,
+        currentData: { name: 'test', namespace: 'default', value: 42 },
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('name');
+      expect(result.completions).toContain('namespace');
+      expect(result.completions).not.toContain('value'); // doesn't start with 'na'
+      expect(result.replaceStart).toBe(2); // after $
+    });
+
+    it('should complete string methods without dot after $', () => {
+      const context: CompletionContext = {
+        input: '$.ch',
+        cursorPosition: 4,
+        currentData: 'hello world',
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('charAt');
+      expect(result.completions).toContain('charCodeAt');
+      expect(result.completions).not.toContain('split'); // doesn't start with 'ch'
+    });
+
     it('should filter properties by prefix', () => {
       const context: CompletionContext = {
         input: '$.na',
@@ -263,6 +313,52 @@ describe('AutocompleteEngine', () => {
       };
       const result = engine.getSuggestions(context);
       expect(result.completions.length).toBeLessThanOrEqual(100); // maxCompletions default
+    });
+  });
+
+  describe('Prefix matching', () => {
+    it('should complete array methods with prefix matching', () => {
+      const context: CompletionContext = {
+        input: '$.items.m',
+        cursorPosition: 9,
+        currentData: { items: [1, 2, 3] },
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('map');
+      expect(result.completions).not.toContain('some'); // 'some' doesn't start with 'm'
+      expect(result.replaceStart).toBe(8); // Start after the dot
+    });
+
+    it('should complete lodash methods with prefix matching', () => {
+      const context: CompletionContext = {
+        input: '_.fl',
+        cursorPosition: 4,
+        currentData: {},
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('flatten');
+      expect(result.completions).toContain('flatMap');
+      expect(result.completions).toContain('flow');
+      expect(result.completions).toContain('flowRight');
+      expect(result.completions).not.toContain('filter'); // 'filter' starts with 'fi', not 'fl'
+    });
+
+    it('should only include methods starting with prefix', () => {
+      const context: CompletionContext = {
+        input: '$.items.f',
+        cursorPosition: 9,
+        currentData: { items: [1, 2, 3] },
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('find');
+      expect(result.completions).toContain('findIndex');
+      expect(result.completions).toContain('flat');
+      expect(result.completions).toContain('flatMap');
+      expect(result.completions).toContain('forEach');
+      expect(result.completions).toContain('fill');
+      expect(result.completions).not.toContain('shift'); // 'shift' doesn't start with 'f'
+      expect(result.completions).not.toContain('map'); // 'map' doesn't start with 'f'
     });
   });
 

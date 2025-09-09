@@ -687,6 +687,11 @@ export class ReplManager {
     if (this.state.completions.length > 1) {
       this.displayCompletionInfo();
     }
+
+    // タブ補完後にリアルタイム評価を実行
+    if (this.realTimeEvaluation) {
+      this.scheduleRealTimeEvaluation();
+    }
   }
 
   private displayCompletionInfo(): void {
