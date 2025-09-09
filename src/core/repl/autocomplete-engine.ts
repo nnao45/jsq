@@ -508,14 +508,15 @@ export class AutocompleteEngine {
       return [expression];
     }
 
-    // Handle method chaining on $ or _ (with incomplete property)
-    if (expression.startsWith('$.') || expression.startsWith('_.')) {
+    // Handle $.xxx pattern (e.g., $.ma for map, $.na for name)
+    if (expression.startsWith('$.')) {
       const prefix = expression.slice(2);
-      // For $., return property completions
-      if (expression.startsWith('$.')) {
-        return this.getPropertyCompletions('$', prefix, context);
-      }
-      // For _., return lodash method completions
+      return this.getPropertyCompletions('$', prefix, context);
+    }
+
+    // Handle _.xxx pattern for lodash methods
+    if (expression.startsWith('_.')) {
+      const prefix = expression.slice(2);
       return this.getMethodCompletions(prefix);
     }
 

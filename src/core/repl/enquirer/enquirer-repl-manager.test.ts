@@ -200,7 +200,7 @@ describe('EnquirerReplManager', () => {
 
       await processInput('1 + 1');
 
-      expect(mockEvaluator.evaluate).toHaveBeenCalledWith('1 + 1');
+      expect(mockEvaluator.evaluate).toHaveBeenCalledWith('1 + 1', null, undefined);
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('→'), 'test result');
     });
 
@@ -296,7 +296,7 @@ describe('EnquirerReplManager', () => {
       const suggestions = await getSuggestions('test');
 
       expect(suggestions).toEqual([]);
-      expect(mockLogger.error).toHaveBeenCalledWith('Autocomplete error:', expect.any(Error));
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Autocomplete error:', expect.any(Error));
     });
   });
 
@@ -305,7 +305,7 @@ describe('EnquirerReplManager', () => {
       await replManager.stop();
 
       expect((replManager as any).shouldExit).toBe(true);
-      expect(mockLogger.info).toHaveBeenCalledWith('Stopping Enquirer REPL...');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Stopping Enquirer REPL...');
     });
   });
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { cpus } from 'node:os';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import { createAndStartRepl } from '@/core/repl/repl-factory';
@@ -17,6 +20,13 @@ import { getStdinStream, readStdin } from '@/utils/input';
 import { OutputFormatter } from '@/utils/output-formatter';
 import { detectRuntime } from '@/utils/runtime';
 
+// Get package version dynamically
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, '..', 'package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+const VERSION = packageJson.version;
+
 // Set up process exit handlers to prevent QuickJS GC issues
 setupProcessExitHandlers();
 
@@ -25,7 +35,7 @@ const program = new Command();
 program
   .name('jsq')
   .description('A jQuery-like JSON query tool for the command line')
-  .version('0.1.16');
+  .version(VERSION, '-V, --version', 'output the version number');
 
 // Add runtime info to verbose output
 function logRuntimeInfo(options: JsqOptions): void {

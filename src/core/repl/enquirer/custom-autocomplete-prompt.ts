@@ -8,6 +8,11 @@ import type {
   CompletionResult,
 } from '../autocomplete-engine.js';
 
+// Enquirer's ArrayPrompt base class has focused getter but it's not in the type definitions
+interface AutoCompleteWithFocused extends AutoComplete {
+  focused?: Choice;
+}
+
 export interface CustomAutocompleteOptions {
   name?: string;
   message: string;
@@ -24,7 +29,9 @@ export interface CustomAutocompleteOptions {
  * Enquirerを拡張したカスタムオートコンプリートプロンプト
  * 履歴機能、マルチライン対応などを追加
  */
-export class CustomAutocompletePrompt extends AutoComplete {
+export class CustomAutocompletePrompt extends AutoComplete implements AutoCompleteWithFocused {
+  // focused property is inherited from ArrayPrompt base class
+  declare focused?: Choice;
   private history: string[] = [];
   private historyIndex: number = -1;
   private historyFile?: string;
@@ -167,6 +174,19 @@ export class CustomAutocompletePrompt extends AutoComplete {
   override async keypress(input: string, key: any = {}): Promise<void> {
     // Tab: 補完を表示/選択
     if (key.name === 'tab') {
+      // 補完候補が表示されている場合
+      if (this.isShowingCompletions) {
+        // 選択された候補を適用
+        if (this.focused) {
+          this.applyCompletion(this.focused.value);
+          this.isShowingCompletions = false;
+          this.choices = [];
+          await this.render();
+        }
+        return; // デフォルト処理を防ぐ
+      }
+      
+      // 補完候補を新たに取得
       if (this.autocompleteEngine && this.input.trim()) {
         const suggestions = await this.getAutocompleteSuggestions(this.input);
 
@@ -183,7 +203,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
           }
         }
       }
-      return;
+      return; // Tabキーのデフォルト処理を防ぐために必ずreturn
     }
 
     // Escape: 補完候補を閉じる
@@ -216,6 +236,15 @@ export class CustomAutocompletePrompt extends AutoComplete {
 
     // Enter: 通常の実行（マルチライン判定あり）
     if (key.name === 'return' && !key.shift) {
+      // 補完候補表示中は選択を適用
+      if (this.isShowingCompletions && this.focused) {
+        this.applyCompletion(this.focused.value);
+        this.isShowingCompletions = false;
+        this.choices = [];
+        await this.render();
+        return;
+      }
+      
       // マルチラインモードで、まだ継続すべき場合
       if (this.shouldContinueMultiline(this.input)) {
         // Shift+Enterと同じ処理
@@ -240,8 +269,14 @@ export class CustomAutocompletePrompt extends AutoComplete {
       await super.keypress(input, key);
       return;
     }
-    // 上キー: 履歴を遡る
+    // 上キー: 履歴を遡る or 補完候補の選択
     if (key.name === 'up') {
+      // 補完候補表示中は候補の選択
+      if (this.isShowingCompletions) {
+        await super.keypress(input, key);
+        return;
+      }
+      
       if (!this.isNavigatingHistory) {
         // 初めて上キーを押した時、現在の入力を保存
         this.originalInput = this.input;
@@ -258,8 +293,14 @@ export class CustomAutocompletePrompt extends AutoComplete {
       return;
     }
 
-    // 下キー: 履歴を進める
+    // 下キー: 履歴を進める or 補完候補の選択
     if (key.name === 'down') {
+      // 補完候補表示中は候補の選択
+      if (this.isShowingCompletions) {
+        await super.keypress(input, key);
+        return;
+      }
+      
       if (this.isNavigatingHistory) {
         if (this.historyIndex < this.history.length - 1) {
           this.historyIndex++;
@@ -273,9 +314,6 @@ export class CustomAutocompletePrompt extends AutoComplete {
           this.historyIndex = -1;
         }
         await this.render();
-      } else {
-        // 通常の下キー処理（補完候補の選択）
-        await super.keypress(input, key);
       }
       return;
     }
@@ -284,6 +322,12 @@ export class CustomAutocompletePrompt extends AutoComplete {
     if (this.isNavigatingHistory && key.name !== 'up' && key.name !== 'down') {
       this.isNavigatingHistory = false;
       this.historyIndex = -1;
+    }
+
+    // 補完候補表示中に文字キーが入力されたら補完を閉じる
+    if (this.isShowingCompletions && input && !['up', 'down', 'tab', 'return', 'escape'].includes(key.name)) {
+      this.isShowingCompletions = false;
+      this.choices = [];
     }
 
     // デフォルトのキー処理
@@ -328,6 +372,7 @@ export class CustomAutocompletePrompt extends AutoComplete {
 
     return value;
   }
+
 
   /**
    * 現在のデータを更新
