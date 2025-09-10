@@ -1849,4 +1849,124 @@ describe('ReplManager', () => {
       expect(replManager.getCursorPosition()).toBe(0); // Should not exceed buffer length
     });
   });
+
+  describe('Tab completion bug fix', () => {
+    it('should not concatenate completions when cycling back to first suggestion', async () => {
+      const { replManager, mockInput, mockOutput } = createTestSetup();
+
+      replManager.start();
+      mockOutput.clear();
+
+      // Type $.to
+      await mockInput.playAll(0, [
+        { str: '$' },
+        { str: '.' },
+        { str: 't' },
+        { str: 'o' },
+      ]);
+
+      expect(replManager.getCurrentInput()).toBe('$.to');
+
+      // Press Tab to show completions
+      await mockInput.playNext({ key: { name: 'tab' } });
+
+      // First completion applied (toLocaleString)
+      expect(replManager.getCurrentInput()).toBe('$.toLocaleString');
+
+      // Press Tab again to cycle to next completion
+      await mockInput.playNext({ key: { name: 'tab' } });
+
+      // Second completion applied (toString)
+      expect(replManager.getCurrentInput()).toBe('$.toString');
+
+      // Press Tab again to cycle back to first
+      await mockInput.playNext({ key: { name: 'tab' } });
+
+      // Should show first completion again, not concatenate
+      expect(replManager.getCurrentInput()).toBe('$.toLocaleString');
+      expect(replManager.getCurrentInput()).not.toContain('toLocaleStringString');
+    });
+
+    it('should maintain original input when cycling through multiple completions', async () => {
+      const { replManager, mockInput, mockOutput } = createTestSetup();
+
+      // Set up test data with multiple properties starting with 'val'
+      const testData = {
+        value: 1,
+        valueOf: () => 1,
+        validate: () => true,
+      };
+
+      const testEvaluator: EvaluationHandler = vi.fn(async (expression, _data, _opts, lastResult) => {
+        if (expression === '$') {
+          return { result: testData };
+        }
+        return { result: null };
+      });
+
+      const replManagerWithData = new ReplManager(
+        testData,
+        {
+          expression: '',
+          color: false,
+          raw: false,
+          compact: false,
+          stream: false,
+          keyDelimiter: '.',
+          repl: false,
+          realTimeEvaluation: false,
+          replFileMode: false,
+          verbose: false,
+        },
+        testEvaluator,
+        {
+          prompt: '> ',
+          realTimeEvaluation: false,
+          exitOnDoubleCtrlC: false,
+          keypressDebounceDelay: 0,
+          io: {
+            input: mockInput,
+            output: mockOutput,
+          },
+        }
+      );
+
+      replManagerWithData.start();
+      mockOutput.clear();
+
+      // Type $.val
+      await mockInput.playAll(0, [
+        { str: '$' },
+        { str: '.' },
+        { str: 'v' },
+        { str: 'a' },
+        { str: 'l' },
+      ]);
+
+      // Press Tab multiple times
+      await mockInput.playNext({ key: { name: 'tab' } });
+      const first = replManagerWithData.getCurrentInput();
+      
+      await mockInput.playNext({ key: { name: 'tab' } });
+      const second = replManagerWithData.getCurrentInput();
+      
+      await mockInput.playNext({ key: { name: 'tab' } });
+      const third = replManagerWithData.getCurrentInput();
+      
+      // Cycle back to first
+      await mockInput.playNext({ key: { name: 'tab' } });
+      const backToFirst = replManagerWithData.getCurrentInput();
+
+      // Verify we cycled properly
+      expect(first).toMatch(/^\$\.val(ue|ueOf|idate)$/);
+      expect(second).toMatch(/^\$\.val(ue|ueOf|idate)$/);
+      expect(third).toMatch(/^\$\.val(ue|ueOf|idate)$/);
+      expect(backToFirst).toBe(first);
+
+      // Verify no concatenation happened
+      expect(backToFirst).not.toContain('valuevalue');
+      expect(backToFirst).not.toContain('valueOfvalue');
+      expect(backToFirst).not.toContain('validatevalue');
+    });
+  });
 });

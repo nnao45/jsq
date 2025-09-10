@@ -685,10 +685,7 @@ export class ReplManager {
     // 次の補完候補に移動（循環）
     this.state.completionIndex = (this.state.completionIndex + 1) % this.state.completions.length;
 
-    // 初回のTab押下時の状態を保持するため、indexを0にリセットしてからapplyCompletionを呼ぶ
-    if (this.state.completionIndex === 0) {
-      this.state.originalInput = undefined;
-    }
+    // コメント削除（この処理は不要）
 
     this.applyCompletion();
   }

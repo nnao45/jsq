@@ -9,10 +9,23 @@ vi.mock('enquirer', () => {
   class MockAutoComplete {
     input = '';
     cursor = 0;
-    value = '';
     choices: any[] = [];
+    state = {
+      status: 'pending',
+      lines: 0,
+      input: '',
+      submitted: false,
+    };
+    _value = '';
 
-    constructor(public options: any) {}
+    get value() {
+      return this._value;
+    }
+
+    constructor(public options: any) {
+      this.input = options.initial || '';
+      this._value = options.initial || '';
+    }
 
     async keypress(_input: string, _key: any): Promise<void> {
       // デフォルトの実装
@@ -23,7 +36,7 @@ vi.mock('enquirer', () => {
     }
 
     async submit(): Promise<void> {
-      this.value = this.input;
+      this._value = this.input;
     }
 
     format(value: string): string {
@@ -262,14 +275,17 @@ describe('CustomAutocompletePrompt', () => {
     });
 
     it('should show normal format when not navigating history', () => {
-      const formatted = prompt.format('test input');
+      (prompt as any).input = 'test input';
+      const formatted = prompt.format();
       expect(formatted).toBe('test input');
     });
 
     it('should show history indicator when navigating', async () => {
+      const renderSpy = vi.spyOn(prompt, 'render' as any).mockResolvedValue(undefined);
+      
       await prompt.keypress('', { name: 'up' });
 
-      const formatted = prompt.format('cmd3');
+      const formatted = prompt.format();
       expect(formatted).toBe('[history 3/3] cmd3');
     });
   });
@@ -286,7 +302,8 @@ describe('CustomAutocompletePrompt', () => {
     });
 
     it('should add input to history on submit', async () => {
-      (prompt as any).value = 'submitted command';
+      (prompt as any).input = 'submitted command';
+      (prompt as any)._value = 'submitted command';
 
       await prompt.submit();
 
@@ -371,15 +388,17 @@ describe('CustomAutocompletePrompt', () => {
 
     it('should format multiline input correctly', () => {
       (prompt as any).isMultiline = true;
+      (prompt as any).input = 'const obj = {\n  name: "test"\n}';
 
-      const formatted = prompt.format('const obj = {\n  name: "test"\n}');
+      const formatted = prompt.format();
       expect(formatted).toBe('const obj = {\n...  name: "test"\n...}');
     });
 
     it('should not format single line input', () => {
       (prompt as any).isMultiline = false;
+      (prompt as any).input = 'const x = 5';
 
-      const formatted = prompt.format('const x = 5');
+      const formatted = prompt.format();
       expect(formatted).toBe('const x = 5');
     });
   });
@@ -458,7 +477,8 @@ describe('CustomAutocompletePrompt', () => {
       // 補完候補を表示中の状態を設定
       (prompt as any).isShowingCompletions = true;
       (prompt as any).choices = [{ name: 'valueOf', value: 'valueOf' }];
-      (prompt as any).focused = { name: 'valueOf', value: 'valueOf' };
+      (prompt as any).savedInput = '$.val'; // 保存された入力値も設定
+      (prompt as any).index = 0; // focusedの代わりにindexを設定
       (prompt as any).completionResult = {
         completions: ['valueOf'],
         replaceStart: 2,
@@ -467,8 +487,8 @@ describe('CustomAutocompletePrompt', () => {
       (prompt as any).input = '$.val';
       (prompt as any).cursor = 5;
 
-      // タブを押して選択を適用
-      await prompt.keypress('', { name: 'tab' });
+      // Enterで選択を適用
+      await prompt.keypress('', { name: 'return' });
 
       // 補完が適用され、状態がクリアされたことを確認
       expect((prompt as any).isShowingCompletions).toBe(false);
