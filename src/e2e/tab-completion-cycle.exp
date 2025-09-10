@@ -1,0 +1,112 @@
+#!/usr/bin/expect -f
+
+# タブ補完の巡回バグをテストするE2Eテスト
+
+set timeout 5
+set test_passed true
+
+# テストデータを作成
+exec echo {{"test": "data", "value": 42}} > test-tab-completion.json
+
+# JSQを起動
+spawn sh -c "cat test-tab-completion.json | node dist/index.js"
+
+# REPLプロンプトを待つ
+expect {
+    "> " { 
+        puts "✓ REPL started" 
+    }
+    timeout { 
+        puts "✗ REPL failed to start"
+        set test_passed false
+    }
+}
+
+# $.と入力
+send "$."
+
+# 少し待つ
+after 100
+
+# タブキーを押す（補完候補を表示）
+send "\t"
+
+# 補完候補が表示されるまで待つ
+after 200
+
+# 現在の入力を確認（$.のまま）
+expect {
+    -re {> \$\.[[:space:]]*$} {
+        puts "✓ 入力は$.のまま（1回目のタブ後）"
+    }
+    -re {> \$\.[a-zA-Z]+} {
+        puts "✗ 候補が入力に挿入された（1回目のタブ後）"
+        set test_passed false
+    }
+}
+
+# 2回目のタブ（次の候補へ）
+send "\t"
+after 200
+
+expect {
+    -re {> \$\.[[:space:]]*$} {
+        puts "✓ 入力は$.のまま（2回目のタブ後）"
+    }
+    -re {> \$\.[a-zA-Z]+} {
+        puts "✗ 候補が入力に挿入された（2回目のタブ後）"
+        set test_passed false
+    }
+}
+
+# 3回目のタブ（更に次の候補へ）
+send "\t"
+after 200
+
+expect {
+    -re {> \$\.[[:space:]]*$} {
+        puts "✓ 入力は$.のまま（3回目のタブ後）"
+    }
+    -re {> \$\.[a-zA-Z]+} {
+        puts "✗ 候補が入力に挿入された（3回目のタブ後）"
+        set test_passed false
+    }
+}
+
+# 10回タブを押して巡回を確認
+for {set i 4} {$i <= 10} {incr i} {
+    send "\t"
+    after 100
+}
+
+# 最終確認
+expect {
+    -re {> \$\.[[:space:]]*$} {
+        puts "✓ 10回のタブ後も入力は$.のまま"
+    }
+    -re {> \$\.([a-zA-Z]+)} {
+        set captured $expect_out(1,string)
+        puts "✗ 候補が入力に挿入された: $captured"
+        set test_passed false
+    }
+}
+
+# Ctrl+Cで終了
+send "\x03"
+expect eof
+
+# クリーンアップ
+exec rm -f test-tab-completion.json
+
+# 結果を表示
+if {$test_passed} {
+    puts "\n=========================================="
+    puts "✅ タブ補完の巡回テスト: PASSED"
+    puts "=========================================="
+    exit 0
+} else {
+    puts "\n=========================================="
+    puts "❌ タブ補完の巡回テスト: FAILED"
+    puts "=========================================="
+    exit 1
+}
