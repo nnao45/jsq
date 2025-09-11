@@ -491,10 +491,23 @@ export class AutocompleteEngine {
   private generateCompletions(expression: string, context: CompletionContext): string[] {
     const completions: string[] = [];
 
+    // Handle $.. pattern (recursive descent - not yet supported in jsq)
+    if (expression === '$..') {
+      // Return a special message or empty array
+      // Since jsq doesn't support the .. operator, we'll show available properties instead
+      return this.getPropertyCompletions('$', '', context);
+    }
+
     // Handle property access (e.g., "obj.prop", "arr[0].prop")
     const propertyMatch = expression.match(/^(.+)\.([^.]*)$/);
     if (propertyMatch) {
       const [, objPath, prefix] = propertyMatch;
+      
+      // Special case: if objPath ends with ., it might be $.., which should be treated as $
+      if (objPath === '$.') {
+        return this.getPropertyCompletions('$', prefix, context);
+      }
+      
       // Check if it's lodash methods
       if (objPath === '_') {
         return this.getMethodCompletions(prefix);
