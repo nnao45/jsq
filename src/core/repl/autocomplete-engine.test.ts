@@ -421,6 +421,77 @@ describe('AutocompleteEngine', () => {
     });
   });
 
+  describe('$.. pattern handling', () => {
+    it('should return property suggestions for $.. pattern', () => {
+      const context: CompletionContext = {
+        input: '$..',
+        cursorPosition: 3,
+        currentData: { users: [], config: {}, count: 42, tags: [] }
+      };
+      
+      const result = engine.getSuggestions(context);
+      
+      expect(result.completions).toContain('users');
+      expect(result.completions).toContain('config');
+      expect(result.completions).toContain('count');
+      expect(result.completions).toContain('tags');
+      expect(result.replaceStart).toBe(3);
+      expect(result.replaceEnd).toBe(3);
+    });
+
+    it('should handle $..u pattern', () => {
+      const context: CompletionContext = {
+        input: '$..u',
+        cursorPosition: 4,
+        currentData: { users: [], unicorn: 'rainbow', count: 42 }
+      };
+      
+      const result = engine.getSuggestions(context);
+      
+      // Since $.. is treated as $, this should filter properties starting with 'u'
+      expect(result.completions).toContain('users');
+      expect(result.completions).toContain('unicorn');
+      expect(result.completions).not.toContain('count');
+    });
+
+    it('should differentiate between $. and $..', () => {
+      const testData = { prop1: 'value1', prop2: 'value2' };
+      
+      const context1: CompletionContext = {
+        input: '$.',
+        cursorPosition: 2,
+        currentData: testData
+      };
+      
+      const context2: CompletionContext = {
+        input: '$..',
+        cursorPosition: 3,
+        currentData: testData
+      };
+      
+      const result1 = engine.getSuggestions(context1);
+      const result2 = engine.getSuggestions(context2);
+      
+      // Both should return the same completions for now
+      expect(result1.completions.sort()).toEqual(result2.completions.sort());
+      expect(result1.replaceStart).toBe(2);
+      expect(result2.replaceStart).toBe(3);
+    });
+
+    it('should not provide suggestions for _.. pattern', () => {
+      const context: CompletionContext = {
+        input: '_..',
+        cursorPosition: 3,
+        currentData: { test: 'data' }
+      };
+      
+      const result = engine.getSuggestions(context);
+      
+      // _.. is not a valid lodash pattern
+      expect(result.completions).toHaveLength(0);
+    });
+  });
+
   describe('Edge cases for autocomplete', () => {
     it('should handle completion with cursor in middle of expression', () => {
       const context: CompletionContext = {
