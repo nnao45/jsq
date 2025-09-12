@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+# Create test data
+exec echo {{"test": "value"}} > /tmp/test.json
+
+# Start jsq in prompts mode
+spawn node dist/index.js --file /tmp/test.json --prompts
+
+expect "Welcome to jsq REPL"
+expect -re {\?.*>}
+
+# Type $. and see what happens
+send "$."
+sleep 0.2
+
+# Press tab once
+send "\t"
+sleep 1
+
+# Send some text to see buffer
+send "hello"
+sleep 0.5
+
+# Exit
+send "\x03\x03"
+expect eof
+
+exec rm -f /tmp/test.json

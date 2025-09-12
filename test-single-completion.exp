@@ -1,0 +1,46 @@
+#\!/usr/bin/expect -f
+
+set timeout 5
+
+# Create test data
+exec echo {{"test": "value", "another": "data"}} > /tmp/test.json
+
+# Start jsq in prompts mode
+spawn node dist/index.js --file /tmp/test.json --prompts
+
+expect "Welcome to jsq REPL"
+expect -re {\?.*>}
+
+# Type $.te and press tab (should complete to $.test)
+send "$.te\t"
+sleep 0.5
+
+# Check if it auto-completed
+expect {
+    "$.test" {
+        puts "✓ Single completion auto-applied\!"
+    }
+    timeout {
+        puts "✗ Single completion didn't work"
+    }
+}
+
+# Try another one - $.a should complete to $.another
+send "\r"
+expect -re {\?.*>}
+send "$.a\t"
+sleep 0.5
+
+expect {
+    "$.another" {
+        puts "✓ Second single completion worked\!"
+    }
+    timeout {
+        puts "✗ Second completion didn't work"
+    }
+}
+
+send "\x03\x03"
+expect eof
+
+exec rm -f /tmp/test.json

@@ -1,0 +1,77 @@
+#!/usr/bin/expect -f
+
+set timeout 5
+
+# Create test data
+exec echo {{"test": "value", "testing": "another", "testcase": "third"}} > /tmp/test.json
+
+# Start jsq in prompts mode
+spawn node dist/index.js --file /tmp/test.json --prompts
+
+expect "Welcome to jsq REPL"
+expect -re {\?.*>}
+
+puts "\n=== Testing inline tab completion ==="
+
+# Type $.t and press tab
+send "$.t\t"
+sleep 0.5
+
+# Should see completion on the same line
+expect {
+    -re {\? > \$.test.*\[1/3\].*test} {
+        puts "✓ First completion shown inline"
+    }
+    timeout {
+        puts "✗ First completion not shown inline"
+    }
+}
+
+# Press tab to cycle
+send "\t"
+sleep 0.5
+
+# Should still be on same line
+expect {
+    -re {\? > \$.testcase.*\[2/3\].*testcase} {
+        puts "✓ Cycled to second completion inline"
+    }
+    timeout {
+        puts "✗ Second completion not inline"
+    }
+}
+
+# Press tab again
+send "\t"
+sleep 0.5
+
+expect {
+    -re {\? > \$.testing.*\[3/3\].*testing} {
+        puts "✓ Cycled to third completion inline"
+    }
+    timeout {
+        puts "✗ Third completion not inline"
+    }
+}
+
+# Type a character to clear completion
+send "x"
+sleep 0.2
+
+# Check that completion status is cleared
+expect {
+    -re {\? > \$.testingx[^[]*$} {
+        puts "✓ Completion status cleared when typing"
+    }
+    timeout {
+        puts "✗ Completion status not cleared"
+    }
+}
+
+# Exit
+send "\x03\x03"
+expect eof
+
+exec rm -f /tmp/test.json
+
+puts "\n✓ Inline tab completion test completed"

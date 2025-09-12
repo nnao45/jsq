@@ -109,8 +109,8 @@ export class ExpressionEvaluator {
         throw new Error(`Security validation failed: ${validation.errors.join(', ')}`);
       }
 
-      // Special case: if expression is exactly '$' and data is null/undefined, return the raw data
-      if (transformedExpression.trim() === '$' && (data === null || data === undefined)) {
+      // Special case: if expression is exactly '$', return the raw data
+      if (transformedExpression.trim() === '$') {
         return data;
       }
 

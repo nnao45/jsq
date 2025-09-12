@@ -43,9 +43,7 @@ export async function createTTYInputStream(): Promise<NodeJS.ReadStream | null> 
       return stream;
     }
   } catch (error) {
-    if (process.env.JSQ_DEBUG || process.env.NODE_ENV === 'development') {
-      console.error('TTY creation error:', error);
-    }
+    // verboseオプションは呼び出し元から渡されるので、ここではログを出さない
     return null;
   }
 }
@@ -81,6 +79,11 @@ export async function getInteractiveInputStream(
       if (verbose) {
         console.error(`[${runtime}] Successfully opened TTY device`);
       }
+      
+      // TTYストリームが正常に開かれた場合、process.stdinをpauseする
+      // これにより、既存のstdinデータがREPLに流れ込むのを防ぐ
+      process.stdin.pause();
+      
       return ttyStream;
     }
 

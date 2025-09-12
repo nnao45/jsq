@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+# Test tab completion overlay on evaluation result
+
+set timeout 5
+
+# Start jsq with test data
+spawn npx tsx src/index.ts -r
+
+# Wait for REPL prompt
+expect "Welcome to jsq REPL"
+expect "> "
+
+# Type an expression that will show evaluation
+send "$.name\r"
+expect "→"
+expect "> "
+
+# Type a new expression and wait for real-time evaluation
+send "$.n"
+sleep 0.2
+expect "→"
+
+# Press tab to see completion overlay
+send "\t"
+expect "\[1/"
+
+# Wait 1.5 seconds to see if it reverts to evaluation
+sleep 1.5
+
+# Exit
+send ".exit\r"
+expect eof

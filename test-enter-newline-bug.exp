@@ -1,0 +1,64 @@
+#!/usr/bin/expect -f
+
+# Test for the bug where entering a newline and then typing "$" shows the previous evaluation result
+
+set timeout 10
+
+# Start jsq in prompts mode with stdin
+spawn sh -c "echo '{}' | node dist/index.js --prompts"
+
+# Wait for prompt
+expect {
+    "> " { }
+    timeout { exit 1 }
+}
+
+# Type an expression and see the real-time evaluation
+send "\"Hello\" + \" World\"\r"
+
+# Wait for the evaluation result
+expect {
+    "→ \"Hello World\"" { }
+    timeout { exit 1 }
+}
+
+# Wait for next prompt
+expect {
+    "> " { }
+    timeout { exit 1 }
+}
+
+# Press Enter to create an empty line
+send "\r"
+
+# Wait for next prompt
+expect {
+    "> " { }
+    timeout { exit 1 }
+}
+
+# Type just "$" and check that it doesn't show "Hello World"
+send "$"
+
+# Make sure we don't see the previous result
+set timeout 2
+expect {
+    "→ \"Hello World\"" {
+        puts "\nERROR: Previous result appeared when typing '$' on new line"
+        exit 1
+    }
+    "→ null" {
+        puts "\nSUCCESS: Correctly shows null for $ on new line"
+    }
+    "→ undefined" {
+        puts "\nSUCCESS: Correctly shows undefined for $ on new line"
+    }
+    timeout {
+        puts "\nSUCCESS: No previous result shown"
+    }
+}
+
+# Exit
+send ".exit\r"
+
+exit 0

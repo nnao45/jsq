@@ -421,7 +421,7 @@ export class AutocompleteEngine {
     const { expression, replaceStart, replaceEnd } = this.extractExpression(input, cursorPosition);
 
     // Debug log
-    // console.log('Extracted expression:', expression, 'from', input, 'at', cursorPosition);
+    // console.error('[DEBUG AutocompleteEngine] Extracted expression:', expression, 'from', input, 'at', cursorPosition);
 
     if (!expression) {
       return { completions: [], replaceStart: cursorPosition, replaceEnd: cursorPosition };
@@ -434,8 +434,9 @@ export class AutocompleteEngine {
       adjustedReplaceStart = lastDotIndex + 1;
     }
 
-    // Check cache
-    const cacheKey = `${expression}:${JSON.stringify(context.currentData?.constructor?.name)}`;
+    // Check cache - include a hash of the data structure to ensure cache invalidation when data changes
+    const dataHash = this.getDataHash(context.currentData);
+    const cacheKey = `${expression}:${dataHash}`;
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
       if (cached) {
@@ -484,8 +485,14 @@ export class AutocompleteEngine {
     // カーソル位置までの式を抽出（カーソル位置より後ろは含めない）
     const expression = input.slice(start, cursorPosition);
 
-    // 置換範囲はカーソル位置までとする
-    return { expression, replaceStart: start, replaceEnd: cursorPosition };
+    // 置換範囲の終了位置を探す（カーソル位置から右側の単語境界まで）
+    let end = cursorPosition;
+    while (end < input.length && /[a-zA-Z0-9_]/.test(input[end])) {
+      end++;
+    }
+
+    // 置換範囲はカーソル位置から単語の終わりまでとする
+    return { expression, replaceStart: start, replaceEnd: end };
   }
 
   private generateCompletions(expression: string, context: CompletionContext): string[] {
@@ -516,9 +523,13 @@ export class AutocompleteEngine {
     }
 
     // Handle $ or _ at the beginning (without dot)
-    if (expression === '$' || expression === '_') {
-      // Just return the symbol itself
-      return [expression];
+    if (expression === '$') {
+      // Return available properties for $
+      return this.getPropertyCompletions('$', '', context);
+    }
+    if (expression === '_') {
+      // Return available methods for _
+      return this.getMethodCompletions('');
     }
 
     // Handle $.xxx pattern (e.g., $.ma for map, $.na for name)
@@ -584,6 +595,24 @@ export class AutocompleteEngine {
           ...this.jsStringMethods
             .filter(method => method.toLowerCase().startsWith(prefixLower))
             .map(method => method) // Return just the method name
+        );
+      }
+
+      // Add boolean methods if it's a boolean
+      if (typeof obj === 'boolean') {
+        completions.push(
+          ...['toString', 'valueOf']
+            .filter(method => method.toLowerCase().startsWith(prefixLower))
+            .map(method => method)
+        );
+      }
+
+      // Add number methods if it's a number
+      if (typeof obj === 'number') {
+        completions.push(
+          ...['toString', 'valueOf', 'toFixed', 'toExponential', 'toPrecision', 'toLocaleString']
+            .filter(method => method.toLowerCase().startsWith(prefixLower))
+            .map(method => method)
         );
       }
 
@@ -735,5 +764,26 @@ export class AutocompleteEngine {
 
   clearCache(): void {
     this.cache.clear();
+  }
+
+  private getDataHash(data: unknown): string {
+    if (data === null) return 'null';
+    if (data === undefined) return 'undefined';
+    
+    const type = typeof data;
+    if (type === 'object') {
+      // Create a simple hash based on object structure
+      try {
+        if (Array.isArray(data)) {
+          return `array:${data.length}`;
+        }
+        const keys = Object.keys(data).sort().slice(0, 10); // First 10 keys for performance
+        return `object:${keys.join(',')}`;
+      } catch {
+        return `object:unknown`;
+      }
+    }
+    
+    return `${type}:${String(data).slice(0, 20)}`;
   }
 }

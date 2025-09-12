@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
@@ -7,6 +7,8 @@ import type { JsqOptions } from '@/types/cli';
 import type { InputProvider, ReplIO, ReplOptions } from '@/types/repl';
 import { ReplFileCommunicator } from '@/utils/repl-file-communication';
 import { type EvaluationHandler, ReplManager } from './repl-manager';
+import type { WorkerProvider } from '@/types/dependency-interfaces';
+import { DefaultWorkerProvider } from '@/utils/default-providers';
 
 interface WorkerMessage {
   type: 'ready' | 'result';
@@ -14,7 +16,10 @@ interface WorkerMessage {
   errors?: Array<{ line: number; message: string }>;
 }
 
-export async function createReplEvaluationHandler(options: JsqOptions): Promise<{
+export async function createReplEvaluationHandler(
+  options: JsqOptions,
+  workerProvider?: WorkerProvider
+): Promise<{
   evaluator: EvaluationHandler;
   dispose: () => Promise<void>;
 }> {
@@ -50,7 +55,8 @@ export async function createReplEvaluationHandler(options: JsqOptions): Promise<
     };
   } else {
     // Create worker - repl-worker.js is in same dist directory
-    worker = new Worker(join(__dirname, 'repl-worker.js'));
+    const provider = workerProvider || new DefaultWorkerProvider(__dirname);
+    worker = provider.createWorker('repl-worker.js');
 
     // Wait for worker initialization
     await new Promise<void>((resolve, reject) => {
@@ -149,7 +155,8 @@ export async function createRepl(
   data: unknown,
   options: JsqOptions,
   _context: ApplicationContext,
-  replOptions?: ReplOptions
+  replOptions?: ReplOptions,
+  workerProvider?: WorkerProvider
 ): Promise<ReplManager> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
@@ -179,7 +186,8 @@ export async function createRepl(
     return new ReplManager(data, options, evaluator, defaultReplOptions);
   } else {
     // Create worker for REPL - repl-worker.js is in same dist directory
-    const worker = new Worker(join(__dirname, 'repl-worker.js'), {
+    const provider = workerProvider || new DefaultWorkerProvider(__dirname);
+    const worker = provider.createWorker('repl-worker.js', {
       env: {
         JSQ_UNSAFE: options.unsafe ? 'true' : 'false',
       },
@@ -269,15 +277,40 @@ export async function createAndStartRepl(
     yellow?: string;
     gray?: string;
     reset?: string;
-  }
-): Promise<ReplManager> {
-  const { evaluator, dispose } = await createReplEvaluationHandler(options);
+  },
+  workerProvider?: WorkerProvider
+): Promise<ReplManager | import('./prompts/prompts-repl-manager').PromptsReplManager> {
+  const { evaluator, dispose } = await createReplEvaluationHandler(options, workerProvider);
 
-  const replManager = new ReplManager(data, options, evaluator, {
-    prompt: colors?.prompt || '> ',
-    realTimeEvaluation: process.env.JSQ_DISABLE_REALTIME_EVAL !== 'true',
-    io: createTerminalIO(inputStream),
-  });
+  let replManager: ReplManager | import('./prompts/prompts-repl-manager').PromptsReplManager;
+
+  if (options.readline) {
+    // Use traditional readline-based REPL (legacy mode)
+    replManager = new ReplManager(data, options, evaluator, {
+      prompt: colors?.prompt || '> ',
+      realTimeEvaluation: process.env.JSQ_DISABLE_REALTIME_EVAL !== 'true',
+      io: createTerminalIO(inputStream),
+    });
+  } else {
+    // Use Prompts-based REPL (default)
+    const { PromptsReplManager } = await import('./prompts/prompts-repl-manager');
+    const expressionEvaluator = {
+      evaluate: async (expression: string, currentData: any, lastResult?: any) => {
+        const result = await evaluator(expression, currentData, {}, lastResult);
+        return {
+          value: result.result,
+          error: result.error,
+        };
+      },
+    };
+    replManager = new PromptsReplManager({
+      evaluator: expressionEvaluator,
+      historyFile: '.jsq_history',
+      initialData: data,
+      inputStream: inputStream,
+      realTimeEvaluation: process.env.JSQ_DISABLE_REALTIME_EVAL !== 'true',
+    });
+  }
 
   // Handle cleanup on exit
   const cleanup = async () => {

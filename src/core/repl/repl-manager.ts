@@ -24,6 +24,8 @@ export interface ReplState {
   completionEnd: number;
   originalInput?: string;
   originalCursorPosition: number;
+  isInCompletionMenu?: boolean;
+  menuSelectedIndex?: number;
 }
 
 export interface EvaluationResult {
@@ -237,6 +239,28 @@ export class ReplManager {
   }
 
   private async handleSpecialKey(key: Key): Promise<void> {
+    // 補完メニューモードの場合は特別な処理
+    if (this.state.isInCompletionMenu) {
+      switch (key.name) {
+        case 'up':
+          this.navigateCompletionMenuUp();
+          return;
+        case 'down':
+          this.navigateCompletionMenuDown();
+          return;
+        case 'return':
+          this.selectCompletionFromMenu();
+          return;
+        case 'escape':
+          this.cancelCompletionMenu();
+          return;
+        default:
+          // その他のキーはメニューをキャンセル
+          this.cancelCompletionMenu();
+          break;
+      }
+    }
+
     switch (key.name) {
       case 'return':
         await this.handleEnter();
@@ -266,7 +290,7 @@ export class ReplManager {
         this.moveCursorToEnd();
         break;
       case 'tab':
-        this.handleTab()
+        this.handleTab();
         break;
       case 'escape':
         this.cancelCompletion();
@@ -301,6 +325,8 @@ export class ReplManager {
       this.io.output.write(this.prompt);
       this.state.lastDisplayedInput = '';
       this.state.lastDisplayedCursorPosition = 0;
+      // 画面を更新して入力をクリア
+      this.updateDisplay();
     } else {
       // グレースフルに終了
       this.stop();
@@ -673,8 +699,13 @@ export class ReplManager {
     this.state.completionEnd = result.replaceEnd;
     this.state.originalInput = undefined; // 新しい補完セッションの開始時にリセット
 
-    // 最初の補完候補を適用
-    this.applyCompletion();
+    if (result.completions.length === 1) {
+      // 単一の補完候補の場合は直接適用
+      this.applyCompletion();
+    } else {
+      // 複数の補完候補がある場合はメニューを表示
+      this.showCompletionMenu();
+    }
   }
 
   private cycleCompletion(): void {
@@ -768,6 +799,186 @@ export class ReplManager {
     // 補完情報の表示をクリア
     if (this.state.hasPreviewLine) {
       this.clearPreviewLine();
+    }
+  }
+
+  private showCompletionMenu(): void {
+    if (this.state.completions.length === 0) {
+      return;
+    }
+
+    // 保存する情報
+    const savedInput = this.state.currentInput.toString();
+    const savedCursor = this.state.cursorPosition;
+    this.state.originalInput = savedInput;
+    this.state.originalCursorPosition = savedCursor;
+
+    // メニューモードを開始
+    this.state.isInCompletionMenu = true;
+    this.state.menuSelectedIndex = 0;
+
+    // メニューを描画
+    this.drawCompletionMenu();
+  }
+
+  private drawCompletionMenu(): void {
+    // 補完候補が存在しない場合は何もしない
+    if (!this.state.completions || this.state.completions.length === 0) {
+      return;
+    }
+
+    // 現在の行をクリア
+    this.io.output.clearLine(0);
+    this.io.output.cursorTo(0);
+
+    // 保存した位置を復元
+    const savedPosition = this.state.cursorPosition;
+
+    // メニューを表示
+    this.io.output.write('\n');
+    this.io.output.write('Select completion (↑/↓ to navigate, Enter to select, Esc to cancel):\n');
+    
+    const maxItems = Math.min(this.state.completions.length, 10); // 最大10項目表示
+    for (let i = 0; i < maxItems; i++) {
+      const isSelected = i === this.state.menuSelectedIndex;
+      const prefix = isSelected ? '→ ' : '  ';
+      const item = this.state.completions[i];
+      
+      if (isSelected) {
+        // 選択されている項目をハイライト
+        this.io.output.write(`\x1b[36m${prefix}${item}\x1b[0m\n`);
+      } else {
+        this.io.output.write(`${prefix}${item}\n`);
+      }
+    }
+
+    if (this.state.completions.length > maxItems) {
+      this.io.output.write(`  ... and ${this.state.completions.length - maxItems} more\n`);
+    }
+
+    // カーソルを元の位置に戻す（メニューの行数分上に移動）
+    let menuLines = Math.min(maxItems, this.state.completions.length) + 2;
+    if (this.state.completions.length > maxItems) menuLines++;
+    for (let i = 0; i < menuLines; i++) {
+      this.io.output.write('\x1b[A');
+    }
+    
+    // 元の行を復元
+    const displayInput = this.state.originalInput || this.state.currentInput.toString();
+    this.io.output.write(this.prompt + displayInput);
+    this.io.output.cursorTo(this.prompt.length + savedPosition);
+  }
+
+  private navigateCompletionMenuUp(): void {
+    if (!this.state.isInCompletionMenu || this.state.menuSelectedIndex === undefined) {
+      return;
+    }
+
+    if (this.state.menuSelectedIndex > 0) {
+      this.state.menuSelectedIndex--;
+      this.drawCompletionMenu();
+    }
+  }
+
+  private navigateCompletionMenuDown(): void {
+    if (!this.state.isInCompletionMenu || this.state.menuSelectedIndex === undefined) {
+      return;
+    }
+
+    if (this.state.menuSelectedIndex < this.state.completions.length - 1) {
+      this.state.menuSelectedIndex++;
+      this.drawCompletionMenu();
+    }
+  }
+
+  private selectCompletionFromMenu(): void {
+    if (!this.state.isInCompletionMenu || this.state.menuSelectedIndex === undefined) {
+      return;
+    }
+
+    // 補完候補が存在しない場合は何もしない
+    if (!this.state.completions || this.state.completions.length === 0) {
+      return;
+    }
+
+    // メニューの選択インデックスが範囲外の場合は何もしない
+    if (this.state.menuSelectedIndex < 0 || this.state.menuSelectedIndex >= this.state.completions.length) {
+      return;
+    }
+
+    // originalInput が未定義の場合は現在の入力を使用
+    if (!this.state.originalInput) {
+      this.state.originalInput = this.state.currentInput.toString();
+    }
+
+    // 選択された補完を適用
+    const selectedCompletion = this.state.completions[this.state.menuSelectedIndex];
+    
+    // メニューをクリア
+    this.clearCompletionMenu();
+
+    // 補完を適用
+    const beforeCompletion = this.state.originalInput.slice(0, this.state.completionStart);
+    const afterCompletion = this.state.originalInput.slice(this.state.completionEnd);
+    const newInput = beforeCompletion + selectedCompletion + afterCompletion;
+
+    this.state.currentInput.set(newInput);
+    this.state.cursorPosition = this.state.completionStart + selectedCompletion.length;
+
+    // メニューモードを終了
+    this.state.isInCompletionMenu = false;
+    this.state.menuSelectedIndex = undefined;
+    this.state.isCompleting = false;
+    this.state.completions = [];
+
+    // 表示を更新
+    this.updateDisplay();
+  }
+
+  private cancelCompletionMenu(): void {
+    if (!this.state.isInCompletionMenu) {
+      return;
+    }
+
+    // メニューをクリア
+    this.clearCompletionMenu();
+
+    // 元の入力を復元
+    this.state.currentInput.set(this.state.originalInput!);
+    this.state.cursorPosition = this.state.originalCursorPosition;
+
+    // メニューモードを終了
+    this.state.isInCompletionMenu = false;
+    this.state.menuSelectedIndex = undefined;
+    this.state.isCompleting = false;
+    this.state.completions = [];
+
+    // 表示を更新
+    this.updateDisplay();
+  }
+
+  private clearCompletionMenu(): void {
+    // 補完候補が存在しない場合は何もしない
+    if (!this.state.completions || this.state.completions.length === 0) {
+      return;
+    }
+
+    // メニューの行数を計算
+    const maxItems = Math.min(this.state.completions.length, 10);
+    let menuLines = maxItems + 2; // ヘッダー行 + アイテム
+    if (this.state.completions.length > maxItems) {
+      menuLines++; // "... and X more" 行
+    }
+
+    // メニューを削除
+    for (let i = 0; i < menuLines; i++) {
+      this.io.output.write('\n');
+      this.io.output.clearLine(0);
+    }
+
+    // カーソルを元の位置に戻す
+    for (let i = 0; i < menuLines; i++) {
+      this.io.output.write('\x1b[A');
     }
   }
 }
