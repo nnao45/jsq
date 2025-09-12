@@ -26,6 +26,9 @@ test_files = [
     'test_repl_advanced.py',
     'test_error_recovery.py',
     
+    # Promptsモードテスト
+    'test_prompts_simple.py',
+    
     # セキュリティテスト
     'test_security.py',
     

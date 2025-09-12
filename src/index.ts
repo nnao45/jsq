@@ -66,6 +66,7 @@ const commonOptions = [
   ['--indent <spaces>', 'Number of spaces for indentation (default: 2)'],
   ['--compact', 'Compact output (no spaces after separators)'],
   ['--repl-file-mode', 'Use file-based communication for REPL (experimental)'],
+  ['--readline', 'Use traditional readline-based REPL (legacy mode)'],
 ] as const;
 
 // Helper function to add options to a command
@@ -161,6 +162,25 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   // パイプ経由でデータを受け取った場合、TTYから入力を取得
   const { getInteractiveInputStream } = await import('@/utils/tty-helper');
   const inputStream = await getInteractiveInputStream(options.stdinData, options.verbose);
+  
+  if (options.verbose) {
+    console.error(`[DEBUG] Input stream isTTY: ${inputStream.isTTY}`);
+    console.error(`[DEBUG] Input stream is process.stdin: ${inputStream === process.stdin}`);
+  }
+  
+  // stdinからのデータが残っている場合の処理
+  // ただし、TTYストリームが開けた場合は、元のstdinは既に使用されないので処理不要
+  if (inputStream === process.stdin && !process.stdin.isTTY && options.stdinData) {
+    // 非TTY環境でパイプからデータを読み込んだ場合
+    // stdinはすでにEOFに達している可能性が高いので、新たなstreamを用意する必要がある
+    
+    if (options.verbose) {
+      console.error('[DEBUG] Non-TTY mode with piped data, stdin may be at EOF');
+    }
+    
+    // Resume stdin to allow reading if there's more data
+    process.stdin.resume();
+  }
 
   // 新しいREPL実装を使用
   const replManager = await createAndStartRepl(data, options, inputStream, {
@@ -178,8 +198,20 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
     process.exit(0);
   });
 
-  // Keep the process running
-  inputStream.resume();
+  // Wait for REPL to finish
+  // Check periodically if the REPL has exited
+  await new Promise<void>((resolve) => {
+    const checkInterval = setInterval(() => {
+      // Check if PromptsReplManager's shouldExit is true
+      if (!replManager || (replManager as any).shouldExit === true) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+  });
+
+  // Exit the process when REPL finishes
+  process.exit(0);
 }
 
 async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> {

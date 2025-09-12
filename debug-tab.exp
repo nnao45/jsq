@@ -1,0 +1,62 @@
+#\!/usr/bin/expect -f
+
+set timeout 10
+
+# Test tab completion in prompts mode
+puts "=== Testing tab completion in prompts mode ==="
+
+# Create test data
+set tmpfile [exec mktemp]
+exec echo {{"test": {"nested": "value", "another": "data"}, "value": 42}} > $tmpfile
+
+# Start jsq in prompts mode
+spawn node dist/index.js --file $tmpfile --prompts
+
+expect "Welcome to jsq REPL (Prompts Edition)"
+expect -re {\?.*>}
+
+puts "Sending $.t and pressing tab..."
+send "$.t"
+sleep 0.5
+send "\t"
+sleep 1
+
+# Check what happens
+expect {
+    "test" {
+        puts "✓ Tab completion worked\! Got 'test'"
+    }
+    timeout {
+        puts "✗ Tab completion didn't work"
+    }
+}
+
+# Try another completion
+send "\r"
+expect -re {\?.*>}
+
+puts "Sending $.test. and pressing tab..."
+send "$.test."
+sleep 0.5
+send "\t"
+sleep 1
+
+# Check for multiple suggestions
+expect {
+    "nested" {
+        puts "✓ Nested property completion worked\!"
+    }
+    "another" {
+        puts "✓ Multiple suggestions shown\!"
+    }
+    timeout {
+        puts "✗ Nested completion didn't work"
+    }
+}
+
+send ".exit\r"
+expect eof
+
+exec rm -f $tmpfile
+
+puts "\nDone\!"

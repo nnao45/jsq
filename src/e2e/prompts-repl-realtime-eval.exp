@@ -1,0 +1,169 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+log_user 0
+
+puts "Starting JSQ Prompts REPL Real-time Evaluation E2E Tests..."
+puts "=========================================================="
+
+# Create a temporary file with test data
+set tmpfile [exec mktemp]
+exec echo {{"test": "data", "value": 42, "array": [1, 2, 3]}} > $tmpfile
+
+# Test with --prompts flag
+spawn node dist/index.js --file $tmpfile --prompts
+
+expect "Welcome to jsq REPL (Prompts Edition)"
+expect "> "
+
+# Test 1: Basic real-time evaluation
+puts "\n=== Test 1: Basic real-time evaluation with --prompts ==="
+send "$"
+sleep 0.2
+send "."
+sleep 0.2
+send "t"
+sleep 0.2
+send "e"
+sleep 0.2
+send "s"
+sleep 0.2
+send "t"
+sleep 0.5
+
+# Check if we see the preview
+expect {
+    "→" {
+        puts "✓ Real-time evaluation preview appeared"
+        expect {
+            "data" {
+                puts "✓ Real-time evaluation showed correct value"
+            }
+            timeout {
+                puts "✗ Failed to show correct value"
+                exit 1
+            }
+        }
+    }
+    timeout {
+        puts "✗ Failed to show preview arrow"
+        exit 1
+    }
+}
+
+# Clear line
+send "\x15"
+sleep 0.3
+
+# Test 2: Real-time evaluation with array access
+puts "\n=== Test 2: Real-time evaluation with array access ==="
+send {$.array[0]}
+sleep 0.5
+
+expect {
+    "→" {
+        puts "✓ Array access preview appeared"
+        expect {
+            "1" {
+                puts "✓ Array access showed correct value"
+            }
+            timeout {
+                puts "✗ Failed to show array value"
+                exit 1
+            }
+        }
+    }
+    timeout {
+        puts "✗ Failed to show array access preview"
+        exit 1
+    }
+}
+
+# Submit the command
+send "\r"
+sleep 0.3
+
+expect {
+    "1" {
+        puts "✓ Array access evaluation completed"
+    }
+    timeout {
+        puts "✗ Failed to evaluate array access"
+        exit 1
+    }
+}
+
+# Test 3: Math expression evaluation
+puts "\n=== Test 3: Real-time evaluation with math expression ==="
+send "1 + 2 * 3"
+sleep 0.5
+
+expect {
+    "→" {
+        puts "✓ Math expression preview appeared"
+        expect {
+            "7" {
+                puts "✓ Math expression showed correct value"
+            }
+            timeout {
+                puts "✗ Failed to show math result"
+                exit 1
+            }
+        }
+    }
+    timeout {
+        puts "✗ Failed to show math preview"
+        exit 1
+    }
+}
+
+# Clear line
+send "\x15"
+sleep 0.3
+
+# Test 4: Complex object navigation
+puts "\n=== Test 4: Real-time evaluation with object navigation ==="
+send "$.value * 2"
+sleep 0.5
+
+expect {
+    "→" {
+        puts "✓ Expression preview appeared"
+        expect {
+            "84" {
+                puts "✓ Expression showed correct value"
+            }
+            timeout {
+                puts "✗ Failed to show expression result"
+                exit 1
+            }
+        }
+    }
+    timeout {
+        puts "✗ Failed to show expression preview"
+        exit 1
+    }
+}
+
+# Exit
+send "\r"
+sleep 0.3
+send ".exit\r"
+
+expect {
+    "Goodbye!" {
+        puts "✓ Exit command worked"
+    }
+    timeout {
+        send "\x04"
+    }
+    eof { }
+}
+
+# Clean up
+catch { exec rm $tmpfile }
+
+puts "\n=========================================================="
+puts "Prompts REPL real-time evaluation E2E tests completed!"
+
+exit 0

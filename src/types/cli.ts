@@ -19,6 +19,7 @@ export interface JsqOptions {
   compact?: boolean;
   stdinData?: string;
   replFileMode?: boolean;
+  readline?: boolean;
 }
 
 export interface JsqConfig {

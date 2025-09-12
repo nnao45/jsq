@@ -1,0 +1,77 @@
+#\!/usr/bin/expect -f
+
+set timeout 10
+
+# Create test data  
+exec echo {{"test": "value", "testing": "another", "temp": 123}} > /tmp/test.json
+
+# Start jsq in prompts mode
+spawn node dist/index.js --file /tmp/test.json --prompts
+
+expect "Welcome to jsq REPL"
+expect -re {\?.*>}
+
+# Type $.te and press tab
+send "$.te\t"
+sleep 0.5
+
+# Should show completions
+expect "Available completions:"
+
+# Press tab again to select first completion
+send "\t"
+sleep 0.5
+
+expect {
+    "$.temp" {
+        puts "✓ First tab selected 'temp'"
+    }
+    timeout {
+        puts "✗ Failed to select first completion"
+    }
+}
+
+# Press tab again to cycle
+send "\t" 
+sleep 0.5
+
+expect {
+    "$.test" {
+        puts "✓ Second tab cycled to 'test'"
+    }
+    timeout {
+        puts "✗ Failed to cycle"
+    }
+}
+
+# Press tab again
+send "\t"
+sleep 0.5
+
+expect {
+    "$.testing" {
+        puts "✓ Third tab cycled to 'testing'"
+    }
+    timeout {
+        puts "✗ Failed to cycle to third"
+    }
+}
+
+# Press tab again (should cycle back)
+send "\t"
+sleep 0.5
+
+expect {
+    "$.temp" {
+        puts "✓ Cycled back to first option 'temp'"
+    }
+    timeout {
+        puts "✗ Failed to cycle back"
+    }
+}
+
+# Exit
+send "\x03\x03"
+expect eof
+
+exec rm -f /tmp/test.json

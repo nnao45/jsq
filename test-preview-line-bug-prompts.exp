@@ -1,0 +1,39 @@
+#!/usr/bin/expect -f
+
+# Test for preview line bug fix in prompts mode
+# Issue: After pressing Enter, typing "$" on a new line shows the previous evaluation value
+
+set timeout 5
+spawn node dist/index.js --prompts
+
+# Wait for REPL prompt
+expect "Welcome to jsq REPL (Prompts Edition)"
+expect ">"
+
+# Type an expression that evaluates to 45
+send "40 + 5\r"
+expect "→ 45"
+expect ">"
+
+# Now type "$" on a new line
+send "$"
+
+# Wait a bit for any evaluation to happen
+sleep 0.5
+
+# Check that we don't see the old value (45) appearing
+# The line should only contain our prompt and "$"
+expect {
+    "→ 45" {
+        puts "FAIL: Old evaluation value (45) appeared when typing '$'"
+        exit 1
+    }
+    timeout {
+        # Good - no old value appeared
+        puts "PASS: Old evaluation value did not appear in prompts mode"
+    }
+}
+
+# Clean exit
+send ".exit\r"
+expect eof

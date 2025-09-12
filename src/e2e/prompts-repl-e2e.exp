@@ -1,0 +1,179 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+
+# JSONファイルの準備
+set tmpfile [exec mktemp /tmp/jsq-test-XXXXXX.json]
+exec echo {{"name": "Alice", "age": 25, "skills": ["JavaScript", "TypeScript"], "nested": {"city": "Tokyo"}}} > $tmpfile
+
+puts "=== jsq Prompts REPL E2E Test ==="
+
+# 1. 基本的な起動テスト
+puts "\n\[1\] Basic startup test"
+spawn node dist/index.js --prompts --file $tmpfile
+expect "Welcome to jsq REPL (Prompts Edition) 🚀"
+expect "Type .help for commands, .exit to quit"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect "Bye! 👋"
+wait
+
+# 2. 基本的なクエリテスト
+puts "\n\[2\] Basic query test"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "$.name\r"
+expect "→"
+expect "Alice"
+expect -re {\?.*>.*›}
+send "$.age\r"
+expect "→"
+expect "25"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 3. ネストしたプロパティアクセス
+puts "\n\[3\] Nested property access"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "$.nested.city\r"
+expect "→"
+expect "Tokyo"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 4. 配列アクセス
+puts "\n\[4\] Array access"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "$.skills[0]\r"
+expect "→"
+expect "JavaScript"
+expect -re {\?.*>.*›}
+send "$.skills\r"
+expect "→"
+expect {JavaScript}
+expect {TypeScript}
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 5. ヘルプコマンド
+puts "\n\[5\] Help command"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send ".help\r"
+expect "Available commands:"
+expect ".exit"
+expect ".help"
+expect ".clear"
+expect ".history"
+expect ".save"
+expect ".load"
+expect ".config"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 6. エラーハンドリング
+puts "\n\[6\] Error handling"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "$.nonexistent\r"
+expect "→"
+expect "undefined"
+expect -re {\?.*>.*›}
+
+# 無効な式のテスト
+send "$.\r"
+expect "❌ Syntax Error:"
+expect -re {\?.*>.*›}
+
+# 存在しないコマンド
+send ".unknown\r"
+expect "Unknown command:"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 7. 履歴機能
+puts "\n\[7\] History test"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "$.name\r"
+expect "Alice"
+expect -re {\?.*>.*›}
+send "$.age\r"
+expect "25"
+expect -re {\?.*>.*›}
+send ".history\r"
+expect "Command history:"
+expect "$.name"
+expect "$.age"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 8. Ctrl+C ハンドリング
+puts "\n\[8\] Ctrl+C handling"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send "\x03"
+expect "Use .exit to quit"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 9. セッション保存/読み込み
+puts "\n\[9\] Save and load session"
+set session_file "/tmp/jsq-test-session.json"
+exec rm -f $session_file
+
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send ".save $session_file\r"
+expect "Session saved to:"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# セッションの読み込み
+spawn node dist/index.js --prompts
+expect -re {\?.*>.*›}
+send ".load $session_file\r"
+expect "Session loaded from:"
+expect -re {\?.*>.*›}
+send "$.name\r"
+expect "Alice"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# 10. 設定表示
+puts "\n\[10\] Config display"
+spawn node dist/index.js --prompts --file $tmpfile
+expect -re {\?.*>.*›}
+send ".config\r"
+expect "Current configuration:"
+expect "REPL Mode:"
+expect "Prompts Edition"
+expect -re {\?.*>.*›}
+send ".exit\r"
+expect eof
+wait
+
+# クリーンアップ
+exec rm -f $tmpfile $session_file
+
+puts "\n✓ All Prompts REPL tests passed!"
