@@ -18,13 +18,13 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
           </div>
           
           <div class="flex items-center gap-6">
-            <!-- <a 
+            <a 
               routerLink="/repl" 
               routerLinkActive="text-primary"
               class="text-muted-foreground hover:text-foreground transition-colors font-medium no-underline"
             >
               REPL
-            </a> -->
+            </a>
             <a 
               routerLink="/getting-started" 
               routerLinkActive="text-primary"
