@@ -13,7 +13,7 @@ export function debounce<T extends (...args: any[]) => any>(
 
   const debouncedFn = (...args: Parameters<T>) => {
     lastArgs = args;
-    
+
     if (timeoutId) {
       clearTimeout(timeoutId);
     }

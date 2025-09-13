@@ -1,4 +1,4 @@
-import { Worker } from 'worker_threads';
+import type { Worker } from 'node:worker_threads';
 
 export interface FileSystemProvider {
   readFile(path: string): Promise<string>;

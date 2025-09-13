@@ -1,13 +1,13 @@
-import { promises as fs } from 'fs';
-import { Worker } from 'worker_threads';
-import { join } from 'path';
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import prompts from 'prompts';
-import { 
-  FileSystemProvider, 
-  WorkerProvider, 
-  PromptsProvider, 
+import type {
   ConsoleProvider,
-  ErrorHandler 
+  ErrorHandler,
+  FileSystemProvider,
+  PromptsProvider,
+  WorkerProvider,
 } from '../types/dependency-interfaces';
 
 export class DefaultFileSystemProvider implements FileSystemProvider {

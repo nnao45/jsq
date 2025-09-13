@@ -167,11 +167,11 @@ describe('StringBuffer', () => {
       const buffer = new StringBuffer();
       buffer.insert(0, 'hello');
       expect(buffer.toString()).toBe('hello');
-      
+
       const buffer2 = new StringBuffer();
       buffer2.delete(0);
       expect(buffer2.toString()).toBe('');
-      
+
       const buffer3 = new StringBuffer();
       expect(buffer3.substring(0, 5)).toBe('');
     });
@@ -180,7 +180,7 @@ describe('StringBuffer', () => {
       const largeString = 'a'.repeat(10000);
       const buffer = new StringBuffer(largeString);
       expect(buffer.length()).toBe(10000);
-      
+
       buffer.insert(5000, 'b'.repeat(1000));
       expect(buffer.length()).toBe(11000);
       expect(buffer.substring(5000, 5010)).toBe('bbbbbbbbbb');

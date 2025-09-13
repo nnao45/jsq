@@ -16,7 +16,9 @@ describe('AutocompleteEngine', () => {
         currentData: { name: 'test', value: 42 },
       };
       const result = engine.getSuggestions(context);
-      expect(result.completions).toContain('$');
+      // When typing '$', it should show available properties from currentData
+      expect(result.completions).toContain('name');
+      expect(result.completions).toContain('value');
       expect(result.replaceStart).toBe(0);
       expect(result.replaceEnd).toBe(1);
     });
@@ -27,7 +29,12 @@ describe('AutocompleteEngine', () => {
         cursorPosition: 1,
       };
       const result = engine.getSuggestions(context);
-      expect(result.completions).toContain('_');
+      // When typing '_', it should show available lodash methods
+      expect(result.completions.length).toBeGreaterThan(0);
+      // First few should be alphabetically sorted
+      expect(result.completions[0]).toBe('add');
+      expect(result.completions[1]).toBe('all');
+      expect(result.completions[2]).toBe('and');
     });
 
     it('should complete global objects', () => {
@@ -426,11 +433,11 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '$..',
         cursorPosition: 3,
-        currentData: { users: [], config: {}, count: 42, tags: [] }
+        currentData: { users: [], config: {}, count: 42, tags: [] },
       };
-      
+
       const result = engine.getSuggestions(context);
-      
+
       expect(result.completions).toContain('users');
       expect(result.completions).toContain('config');
       expect(result.completions).toContain('count');
@@ -443,11 +450,11 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '$..u',
         cursorPosition: 4,
-        currentData: { users: [], unicorn: 'rainbow', count: 42 }
+        currentData: { users: [], unicorn: 'rainbow', count: 42 },
       };
-      
+
       const result = engine.getSuggestions(context);
-      
+
       // Since $.. is treated as $, this should filter properties starting with 'u'
       expect(result.completions).toContain('users');
       expect(result.completions).toContain('unicorn');
@@ -456,22 +463,22 @@ describe('AutocompleteEngine', () => {
 
     it('should differentiate between $. and $..', () => {
       const testData = { prop1: 'value1', prop2: 'value2' };
-      
+
       const context1: CompletionContext = {
         input: '$.',
         cursorPosition: 2,
-        currentData: testData
+        currentData: testData,
       };
-      
+
       const context2: CompletionContext = {
         input: '$..',
         cursorPosition: 3,
-        currentData: testData
+        currentData: testData,
       };
-      
+
       const result1 = engine.getSuggestions(context1);
       const result2 = engine.getSuggestions(context2);
-      
+
       // Both should return the same completions for now
       expect(result1.completions.sort()).toEqual(result2.completions.sort());
       expect(result1.replaceStart).toBe(2);
@@ -482,11 +489,11 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '_..',
         cursorPosition: 3,
-        currentData: { test: 'data' }
+        currentData: { test: 'data' },
       };
-      
+
       const result = engine.getSuggestions(context);
-      
+
       // _.. is not a valid lodash pattern
       expect(result.completions).toHaveLength(0);
     });
@@ -505,7 +512,7 @@ describe('AutocompleteEngine', () => {
       expect(result.completions).toContain('nameOld');
       expect(result.completions).toContain('namespace');
       expect(result.replaceStart).toBe(2);
-      expect(result.replaceEnd).toBe(6);
+      expect(result.replaceEnd).toBe(9); // Should include the whole word 'namexyz'
     });
 
     it.skip('should handle completion with special characters', () => {

@@ -509,12 +509,12 @@ export class AutocompleteEngine {
     const propertyMatch = expression.match(/^(.+)\.([^.]*)$/);
     if (propertyMatch) {
       const [, objPath, prefix] = propertyMatch;
-      
+
       // Special case: if objPath ends with ., it might be $.., which should be treated as $
       if (objPath === '$.') {
         return this.getPropertyCompletions('$', prefix, context);
       }
-      
+
       // Check if it's lodash methods
       if (objPath === '_') {
         return this.getMethodCompletions(prefix);
@@ -769,7 +769,7 @@ export class AutocompleteEngine {
   private getDataHash(data: unknown): string {
     if (data === null) return 'null';
     if (data === undefined) return 'undefined';
-    
+
     const type = typeof data;
     if (type === 'object') {
       // Create a simple hash based on object structure
@@ -783,7 +783,7 @@ export class AutocompleteEngine {
         return `object:unknown`;
       }
     }
-    
+
     return `${type}:${String(data).slice(0, 20)}`;
   }
 }

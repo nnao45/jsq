@@ -1,12 +1,13 @@
 import { openSync } from 'node:fs';
 import { ReadStream } from 'node:tty';
+import { createBunTTYStream } from './bun-tty-handler';
 import { detectRuntime } from './runtime';
 
 /**
  * TTYデバイスへの安全なアクセスを提供するヘルパー関数
  * bunとNode.jsの互換性の問題を回避します
  */
-export async function createTTYInputStream(): Promise<NodeJS.ReadStream | null> {
+export async function createTTYInputStream(verbose?: boolean): Promise<NodeJS.ReadStream | null> {
   const runtime = detectRuntime();
 
   // プラットフォーム固有のTTYパスを取得
@@ -19,14 +20,17 @@ export async function createTTYInputStream(): Promise<NodeJS.ReadStream | null> 
 
   try {
     if (runtime === 'bun') {
-      // bunの場合、特別な処理が必要
-      // 方法1: process.stdinのTTYモードを有効にする試み
+      // bunの場合、process.binding('tty_wrap')を使用してTTYを作成
+      const bunTTYStream = createBunTTYStream(verbose);
+      if (bunTTYStream) {
+        return bunTTYStream;
+      }
+
+      // フォールバック: process.stdinのTTYモードを有効にする試み
       if (process.stdin && typeof process.stdin.setRawMode === 'function') {
         return process.stdin;
       }
 
-      // 方法2: Bun固有のAPIを使用（将来のバージョンで改善される可能性）
-      // 現時点では、bunでの/dev/ttyの直接オープンは避ける
       return null;
     } else {
       // Node.jsとDenoの場合
@@ -42,7 +46,7 @@ export async function createTTYInputStream(): Promise<NodeJS.ReadStream | null> 
       stream.isTTY = true;
       return stream;
     }
-  } catch (error) {
+  } catch (_error) {
     // verboseオプションは呼び出し元から渡されるので、ここではログを出さない
     return null;
   }
@@ -66,24 +70,37 @@ export async function getInteractiveInputStream(
     const runtime = detectRuntime();
 
     if (runtime === 'bun') {
-      // bunでは標準入力をそのまま使用
+      // bunでもTTYを開く試み
+      const ttyStream = await createTTYInputStream(verbose);
+      if (ttyStream) {
+        if (verbose) {
+          console.error('[Bun] Successfully opened TTY device using tty_wrap');
+        }
+
+        // TTYストリームが正常に開かれた場合、process.stdinをpauseする
+        process.stdin.pause();
+
+        return ttyStream;
+      }
+
+      // TTYが開けなかった場合のフォールバック
       if (verbose) {
-        console.error('[Bun] Using standard input for REPL (TTY emulation)');
+        console.error('[Bun] Failed to open TTY, using standard input');
       }
       return process.stdin;
     }
 
     // Node.js/Denoの場合、TTYを開く試み
-    const ttyStream = await createTTYInputStream();
+    const ttyStream = await createTTYInputStream(verbose);
     if (ttyStream) {
       if (verbose) {
         console.error(`[${runtime}] Successfully opened TTY device`);
       }
-      
+
       // TTYストリームが正常に開かれた場合、process.stdinをpauseする
       // これにより、既存のstdinデータがREPLに流れ込むのを防ぐ
       process.stdin.pause();
-      
+
       return ttyStream;
     }
 

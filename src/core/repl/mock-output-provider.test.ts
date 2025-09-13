@@ -61,7 +61,7 @@ describe('MockOutputProvider', () => {
       provider.write('hello world');
       provider.clearLine(-1);
       expect(provider.getCurrentLine()).toBe('');
-      
+
       provider.write('test');
       provider.clearLine(1);
       expect(provider.getCurrentLine()).toBe('');
@@ -77,10 +77,10 @@ describe('MockOutputProvider', () => {
 
     it('should clamp cursor to line boundaries', () => {
       provider.write('hello');
-      
+
       provider.cursorTo(-5);
       expect(provider.getCursorPosition()).toBe(0);
-      
+
       provider.cursorTo(100);
       expect(provider.getCursorPosition()).toBe(5);
     });
@@ -99,10 +99,10 @@ describe('MockOutputProvider', () => {
       provider.write('line1\nline2\n');
       const output1 = provider.getOutput();
       const output2 = provider.getOutput();
-      
+
       expect(output1).toEqual(['line1', 'line2']);
       expect(output1).not.toBe(output2);
-      
+
       output1.push('modified');
       expect(provider.getOutput()).toEqual(['line1', 'line2']);
     });
@@ -141,9 +141,9 @@ describe('MockOutputProvider', () => {
     it('should reset all state', () => {
       provider.write('line1\nline2');
       provider.cursorTo(3);
-      
+
       provider.clear();
-      
+
       expect(provider.getCurrentLine()).toBe('');
       expect(provider.getOutput()).toEqual([]);
       expect(provider.getCursorPosition()).toBe(0);
@@ -153,7 +153,7 @@ describe('MockOutputProvider', () => {
     it('should record method call', () => {
       provider.clear();
       expect(provider.getMethodCalls('clear')).toEqual([[]]);
-      
+
       provider.clear();
       expect(provider.getMethodCalls('clear')).toEqual([[], []]);
     });
@@ -184,7 +184,7 @@ describe('MockOutputProvider', () => {
       // clear メソッドを通じてrecordMethodCallをテスト
       provider.clear();
       provider.clear();
-      
+
       const calls = provider.getMethodCalls('clear');
       expect(calls).toHaveLength(2);
       expect(calls[0]).toEqual([]);
@@ -197,21 +197,21 @@ describe('MockOutputProvider', () => {
       // 初期入力
       provider.write('Hello ');
       expect(provider.getCurrentLine()).toBe('Hello ');
-      
+
       // 続きを入力
       provider.write('World!');
       expect(provider.getCurrentLine()).toBe('Hello World!');
-      
+
       // カーソルを移動して挿入
       provider.cursorTo(6);
       provider.write('Beautiful ');
       expect(provider.getCurrentLine()).toBe('Hello Beautiful ');
-      
+
       // 改行して新しい行
       provider.write('\nNew line');
       expect(provider.getCurrentLine()).toBe('New line');
       expect(provider.getOutput()).toEqual(['Hello Beautiful ']);
-      
+
       // 全体の出力を確認
       expect(provider.getAllOutput()).toBe('Hello Beautiful \nNew line');
     });
@@ -219,30 +219,30 @@ describe('MockOutputProvider', () => {
     it('should handle REPL-like interaction', () => {
       // プロンプト表示
       provider.write('> ');
-      
+
       // ユーザー入力
       provider.write('1 + 1');
       expect(provider.getCurrentLine()).toBe('> 1 + 1');
-      
+
       // 結果を改行で出力
       provider.write('\n2\n> ');
       expect(provider.getCurrentLine()).toBe('> ');
       expect(provider.getOutput()).toEqual(['> 1 + 1', '2']);
-      
+
       // 履歴取得
       expect(provider.getHistory()).toEqual(['> 1 + 1', '2', '> ']);
     });
 
     it('should handle backspace-like editing', () => {
       provider.write('hello world');
-      
+
       // カーソルを移動
       provider.cursorTo(5);
-      
+
       // 行をクリアして新しいテキスト
       provider.clearLine(0);
       provider.write('goodbye');
-      
+
       expect(provider.getCurrentLine()).toBe('goodbye');
     });
   });

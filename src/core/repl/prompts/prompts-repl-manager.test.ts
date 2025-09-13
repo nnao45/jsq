@@ -1,17 +1,17 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { PromptsReplManager, type ExpressionEvaluator } from './prompts-repl-manager.js';
-import { 
-  MockFileSystemProvider, 
-  MockPromptsProvider, 
-  MockConsoleProvider 
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  MockConsoleProvider,
+  MockFileSystemProvider,
+  MockPromptsProvider,
 } from '../../../utils/test-providers.js';
+import { type ExpressionEvaluator, PromptsReplManager } from './prompts-repl-manager.js';
 
 describe('PromptsReplManager', () => {
   const createTestSetup = () => {
     const mockFileSystem = new MockFileSystemProvider();
     const mockPromptsProvider = new MockPromptsProvider();
     const mockConsole = new MockConsoleProvider();
-    
+
     const mockEvaluator: ExpressionEvaluator = {
       evaluate: vi.fn(async (expression: string, currentData: any, lastResult?: any) => {
         if (expression === '$') {
@@ -41,7 +41,7 @@ describe('PromptsReplManager', () => {
           return { value: current };
         }
         return { value: `Result of: ${expression}` };
-      })
+      }),
     };
 
     const manager = new PromptsReplManager({
@@ -50,7 +50,7 @@ describe('PromptsReplManager', () => {
       initialData: null,
       fileSystem: mockFileSystem,
       promptsProvider: mockPromptsProvider,
-      console: mockConsole
+      console: mockConsole,
     });
 
     return { manager, mockFileSystem, mockPromptsProvider, mockConsole, mockEvaluator };
@@ -59,13 +59,13 @@ describe('PromptsReplManager', () => {
   describe('initialization', () => {
     it('should create instance with default providers', () => {
       const mockEvaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ value: 'test' }))
+        evaluate: vi.fn(async () => ({ value: 'test' })),
       };
-      
+
       const manager = new PromptsReplManager({
-        evaluator: mockEvaluator
+        evaluator: mockEvaluator,
       });
-      
+
       expect(manager).toBeDefined();
     });
 
@@ -79,21 +79,18 @@ describe('PromptsReplManager', () => {
     it('should handle .exit command', async () => {
       const { manager, mockPromptsProvider } = createTestSetup();
       mockPromptsProvider.setResponses({ command: '.exit' });
-      
+
       const startPromise = manager.start();
       await expect(startPromise).resolves.toBeUndefined();
     });
 
     it('should handle .help command', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.help' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.help' }, { command: '.exit' });
+
       await manager.start();
-      
-      const helpOutput = mockConsole.logs.some(log => 
+
+      const helpOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Available commands'))
       );
       expect(helpOutput).toBe(true);
@@ -101,26 +98,20 @@ describe('PromptsReplManager', () => {
 
     it('should handle .clear command', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.clear' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.clear' }, { command: '.exit' });
+
       await manager.start();
-      
+
       expect(mockConsole.clearCalls).toBeGreaterThan(0);
     });
 
     it('should handle .history command with empty history', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.history' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.history' }, { command: '.exit' });
+
       await manager.start();
-      
-      const historyOutput = mockConsole.logs.some(log => 
+
+      const historyOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('No history yet'))
       );
       expect(historyOutput).toBe(true);
@@ -128,14 +119,11 @@ describe('PromptsReplManager', () => {
 
     it('should handle unknown command', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.unknown' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.unknown' }, { command: '.exit' });
+
       await manager.start();
-      
-      const unknownOutput = mockConsole.logs.some(log => 
+
+      const unknownOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Unknown command'))
       );
       expect(unknownOutput).toBe(true);
@@ -145,38 +133,32 @@ describe('PromptsReplManager', () => {
   describe('expression evaluation', () => {
     it('should evaluate expressions and display results', async () => {
       const { manager, mockPromptsProvider, mockConsole, mockEvaluator } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '$' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '$' }, { command: '.exit' });
+
       await manager.start();
-      
+
       // Check that evaluate was called with the correct parameters
       expect(mockEvaluator.evaluate).toHaveBeenCalled();
       const call = vi.mocked(mockEvaluator.evaluate).mock.calls[0];
       expect(call[0]).toBe('$');
       expect(call[1]).toBe(null);
       expect(call[2]).toBeUndefined();
-      
+
       // Find the log with the result output
-      const resultLog = mockConsole.logs.find(log => 
-        log.length >= 2 && String(log[0]).includes('→')
+      const resultLog = mockConsole.logs.find(
+        log => log.length >= 2 && String(log[0]).includes('→')
       );
       expect(resultLog).toBeDefined();
-      expect(resultLog![1]).toEqual({ test: 'data' });
+      expect(resultLog?.[1]).toEqual({ test: 'data' });
     });
 
     it('should handle evaluation errors', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: 'invalid()' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: 'invalid()' }, { command: '.exit' });
+
       await manager.start();
-      
-      const errorOutput = mockConsole.errors.some(error => 
+
+      const errorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Invalid expression'))
       );
       expect(errorOutput).toBe(true);
@@ -184,18 +166,14 @@ describe('PromptsReplManager', () => {
 
     it('should track last result', async () => {
       const { manager, mockPromptsProvider, mockEvaluator } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '$' },
-        { command: '$_' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '$' }, { command: '$_' }, { command: '.exit' });
+
       await manager.start();
-      
+
       // The first call should be for '.'
       const calls = vi.mocked(mockEvaluator.evaluate).mock.calls;
       expect(calls.length).toBeGreaterThanOrEqual(2);
-      
+
       // Second call should be for '$_' with updated currentData and lastResult
       const secondCall = calls[1];
       expect(secondCall[0]).toBe('$_');
@@ -212,16 +190,16 @@ describe('PromptsReplManager', () => {
         { command: '.save test-session.json' },
         { command: '.exit' }
       );
-      
+
       await manager.start();
-      
+
       const savedContent = mockFileSystem.getFile('test-session.json');
       expect(savedContent).toBeDefined();
-      const parsed = JSON.parse(savedContent!);
+      const parsed = JSON.parse(savedContent as string);
       expect(parsed.data).toEqual({ test: 'data' });
       expect(parsed.history).toContain('$');
-      
-      const successOutput = mockConsole.logs.some(log => 
+
+      const successOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Session saved'))
       );
       expect(successOutput).toBe(true);
@@ -229,18 +207,18 @@ describe('PromptsReplManager', () => {
 
     it('should handle save errors', async () => {
       const { manager, mockPromptsProvider, mockConsole, mockFileSystem } = createTestSetup();
-      
+
       // Make writeFile throw an error
       mockFileSystem.writeFile = vi.fn().mockRejectedValue(new Error('Write failed'));
-      
+
       mockPromptsProvider.setResponses(
         { command: '.save test-session.json' },
         { command: '.exit' }
       );
-      
+
       await manager.start();
-      
-      const errorOutput = mockConsole.errors.some(error => 
+
+      const errorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Failed to save session'))
       );
       expect(errorOutput).toBe(true);
@@ -248,23 +226,23 @@ describe('PromptsReplManager', () => {
 
     it('should load session from file', async () => {
       const { manager, mockPromptsProvider, mockConsole, mockFileSystem } = createTestSetup();
-      
+
       // Prepare a session file
       const sessionData = {
         data: { loaded: 'data' },
         timestamp: new Date().toISOString(),
-        history: ['previous command']
+        history: ['previous command'],
       };
       mockFileSystem.setFile('test-session.json', JSON.stringify(sessionData));
-      
+
       mockPromptsProvider.setResponses(
         { command: '.load test-session.json' },
         { command: '.exit' }
       );
-      
+
       await manager.start();
-      
-      const successOutput = mockConsole.logs.some(log => 
+
+      const successOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Session loaded'))
       );
       expect(successOutput).toBe(true);
@@ -272,14 +250,11 @@ describe('PromptsReplManager', () => {
 
     it('should handle missing filename for load', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.load' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.load' }, { command: '.exit' });
+
       await manager.start();
-      
-      const errorOutput = mockConsole.errors.some(error => 
+
+      const errorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Please specify a filename'))
       );
       expect(errorOutput).toBe(true);
@@ -287,14 +262,11 @@ describe('PromptsReplManager', () => {
 
     it('should handle non-existent file for load', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: '.load nonexistent.json' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: '.load nonexistent.json' }, { command: '.exit' });
+
       await manager.start();
-      
-      const errorOutput = mockConsole.errors.some(error => 
+
+      const errorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('File not found'))
       );
       expect(errorOutput).toBe(true);
@@ -303,15 +275,12 @@ describe('PromptsReplManager', () => {
     it('should handle invalid JSON file', async () => {
       const { manager, mockPromptsProvider, mockConsole, mockFileSystem } = createTestSetup();
       mockFileSystem.setFile('invalid.json', 'not valid json');
-      
-      mockPromptsProvider.setResponses(
-        { command: '.load invalid.json' },
-        { command: '.exit' }
-      );
-      
+
+      mockPromptsProvider.setResponses({ command: '.load invalid.json' }, { command: '.exit' });
+
       await manager.start();
-      
-      const errorOutput = mockConsole.errors.some(error => 
+
+      const errorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Invalid JSON'))
       );
       expect(errorOutput).toBe(true);
@@ -323,39 +292,36 @@ describe('PromptsReplManager', () => {
       const { mockFileSystem } = createTestSetup();
       const historyContent = 'command1\ncommand2\ncommand3';
       mockFileSystem.setFile('.jsq_history', historyContent);
-      
+
       const manager = new PromptsReplManager({
         evaluator: { evaluate: vi.fn(async () => ({ value: 'test' })) },
         historyFile: '.jsq_history',
         fileSystem: mockFileSystem,
         promptsProvider: new MockPromptsProvider(),
-        console: new MockConsoleProvider()
+        console: new MockConsoleProvider(),
       });
-      
+
       // Give some time for async history loading
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       const history = (manager as any).history;
       expect(history).toEqual(['command1', 'command2', 'command3']);
     });
 
     it('should save history to file', async () => {
       const { mockFileSystem, mockPromptsProvider } = createTestSetup();
-      mockPromptsProvider.setResponses(
-        { command: 'test command' },
-        { command: '.exit' }
-      );
-      
+      mockPromptsProvider.setResponses({ command: 'test command' }, { command: '.exit' });
+
       const manager = new PromptsReplManager({
         evaluator: { evaluate: vi.fn(async () => ({ value: 'test' })) },
         historyFile: '.jsq_history',
         fileSystem: mockFileSystem,
         promptsProvider: mockPromptsProvider,
-        console: new MockConsoleProvider()
+        console: new MockConsoleProvider(),
       });
-      
+
       await manager.start();
-      
+
       const savedHistory = mockFileSystem.getFile('.jsq_history');
       expect(savedHistory).toContain('test command');
     });
@@ -369,15 +335,15 @@ describe('PromptsReplManager', () => {
         { command: '.config' },
         { command: '.exit' }
       );
-      
+
       await manager.start();
-      
-      const configOutput = mockConsole.logs.filter(log => 
+
+      const configOutput = mockConsole.logs.filter(log =>
         log.some(arg => String(arg).includes('Current configuration'))
       );
       expect(configOutput.length).toBeGreaterThan(0);
-      
-      const replModeOutput = mockConsole.logs.some(log => 
+
+      const replModeOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Prompts Edition'))
       );
       expect(replModeOutput).toBe(true);
@@ -390,57 +356,51 @@ describe('PromptsReplManager', () => {
     });
 
     it('should display syntax errors with helpful messages', async () => {
-      const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
+      const { mockPromptsProvider, mockConsole } = createTestSetup();
       const evaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ error: 'SyntaxError: Unexpected token }' }))
+        evaluate: vi.fn(async () => ({ error: 'SyntaxError: Unexpected token }' })),
       };
-      
+
       const customManager = new PromptsReplManager({
         evaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: mockPromptsProvider,
-        console: mockConsole
+        console: mockConsole,
       });
-      
-      mockPromptsProvider.setResponses(
-        { command: 'invalid syntax' },
-        { command: '.exit' }
-      );
-      
+
+      mockPromptsProvider.setResponses({ command: 'invalid syntax' }, { command: '.exit' });
+
       await customManager.start();
-      
-      const syntaxErrorOutput = mockConsole.errors.some(error => 
+
+      const syntaxErrorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Syntax Error'))
       );
       expect(syntaxErrorOutput).toBe(true);
     });
 
     it('should display reference errors with suggestions', async () => {
-      const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
+      const { mockPromptsProvider, mockConsole } = createTestSetup();
       const evaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ error: 'ReferenceError: foo is not defined' }))
+        evaluate: vi.fn(async () => ({ error: 'ReferenceError: foo is not defined' })),
       };
-      
+
       const customManager = new PromptsReplManager({
         evaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: mockPromptsProvider,
-        console: mockConsole
+        console: mockConsole,
       });
-      
-      mockPromptsProvider.setResponses(
-        { command: 'foo' },
-        { command: '.exit' }
-      );
-      
+
+      mockPromptsProvider.setResponses({ command: 'foo' }, { command: '.exit' });
+
       await customManager.start();
-      
-      const referenceErrorOutput = mockConsole.errors.some(error => 
+
+      const referenceErrorOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('Reference Error'))
       );
       expect(referenceErrorOutput).toBe(true);
-      
-      const suggestionOutput = mockConsole.errors.some(error => 
+
+      const suggestionOutput = mockConsole.errors.some(error =>
         error.some(arg => String(arg).includes('$.foo'))
       );
       expect(suggestionOutput).toBe(true);
@@ -458,14 +418,16 @@ describe('PromptsReplManager', () => {
   describe('prompt cancellation', () => {
     it('should handle prompt cancellation', async () => {
       const { manager, mockPromptsProvider, mockConsole } = createTestSetup();
-      
+
       // Simulate cancellation by throwing the specific error
-      mockPromptsProvider.prompt = vi.fn().mockRejectedValueOnce(new Error('cancelled'))
+      mockPromptsProvider.prompt = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('cancelled'))
         .mockResolvedValueOnce({ command: '.exit' });
-      
+
       await manager.start();
-      
-      const cancelOutput = mockConsole.logs.some(log => 
+
+      const cancelOutput = mockConsole.logs.some(log =>
         log.some(arg => String(arg).includes('Use .exit to quit'))
       );
       expect(cancelOutput).toBe(true);
@@ -480,106 +442,106 @@ describe('PromptsReplManager', () => {
 
     it('should be enabled when option is set', () => {
       const evaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ value: 42 }))
+        evaluate: vi.fn(async () => ({ value: 42 })),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       expect((manager as any).realTimeEvaluation).toBe(true);
     });
 
     it('should perform immediate evaluation', async () => {
       const mockEvaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ value: 'test result' }))
+        evaluate: vi.fn(async () => ({ value: 'test result' })),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator: mockEvaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       // Initialize rl to prevent early return
       (manager as any).rl = {
         cursor: 0,
-        line: '1 + 1'
+        line: '1 + 1',
       };
-      
+
       // Mock process.stdout
       const originalWrite = process.stdout.write;
       process.stdout.write = vi.fn() as any;
-      
+
       // Access private method for testing
       await (manager as any).performImmediateEvaluation('1 + 1');
-      
+
       // Restore
       process.stdout.write = originalWrite;
-      
+
       expect(mockEvaluator.evaluate).toHaveBeenCalledWith('1 + 1', null, undefined);
     });
 
     it('should not evaluate empty input', async () => {
       const mockEvaluator: ExpressionEvaluator = {
-        evaluate: vi.fn()
+        evaluate: vi.fn(),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator: mockEvaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       await (manager as any).performImmediateEvaluation('');
       await (manager as any).performImmediateEvaluation('   ');
-      
+
       expect(mockEvaluator.evaluate).not.toHaveBeenCalled();
     });
 
     it('should not evaluate commands during real-time', async () => {
       const mockEvaluator: ExpressionEvaluator = {
-        evaluate: vi.fn()
+        evaluate: vi.fn(),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator: mockEvaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       await (manager as any).performImmediateEvaluation('.exit');
       await (manager as any).performImmediateEvaluation('.help');
-      
+
       expect(mockEvaluator.evaluate).not.toHaveBeenCalled();
     });
 
     it('should handle evaluation errors silently', async () => {
       const mockConsole = new MockConsoleProvider();
       const mockEvaluator: ExpressionEvaluator = {
-        evaluate: vi.fn(async () => ({ error: 'Some error' }))
+        evaluate: vi.fn(async () => ({ error: 'Some error' })),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator: mockEvaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: mockConsole,
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       await (manager as any).performImmediateEvaluation('bad code');
-      
+
       // Should not show error in real-time evaluation
       expect(mockConsole.errors).toHaveLength(0);
     });
@@ -593,37 +555,37 @@ describe('PromptsReplManager', () => {
         { value: undefined },
         { value: { obj: 'test' } },
         { value: [1, 2, 3] },
-        { value: new Error('test error') }
+        { value: new Error('test error') },
       ];
-      
+
       for (const testCase of testCases) {
         const mockEvaluator: ExpressionEvaluator = {
-          evaluate: vi.fn(async () => ({ value: testCase.value }))
+          evaluate: vi.fn(async () => ({ value: testCase.value })),
         };
-        
+
         const manager = new PromptsReplManager({
           evaluator: mockEvaluator,
           fileSystem: new MockFileSystemProvider(),
           promptsProvider: new MockPromptsProvider(),
           console: new MockConsoleProvider(),
-          realTimeEvaluation: true
+          realTimeEvaluation: true,
         });
-        
+
         // Initialize rl to prevent crashes
         (manager as any).rl = {
           cursor: 0,
-          line: 'test input'
+          line: 'test input',
         };
-        
+
         // Mock process.stdout.write to prevent actual output
         const originalWrite = process.stdout.write;
         process.stdout.write = vi.fn() as any;
-        
+
         await (manager as any).performImmediateEvaluation('test');
-        
+
         // Restore
         process.stdout.write = originalWrite;
-        
+
         expect(mockEvaluator.evaluate).toHaveBeenCalled();
       }
     });
@@ -633,29 +595,29 @@ describe('PromptsReplManager', () => {
         evaluate: vi.fn(async () => {
           await new Promise(resolve => setTimeout(resolve, 100));
           return { value: 'result' };
-        })
+        }),
       };
-      
+
       const manager = new PromptsReplManager({
         evaluator: mockEvaluator,
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       // Initialize rl
       (manager as any).rl = {
         cursor: 0,
-        line: 'test'
+        line: 'test',
       };
-      
+
       // Start two evaluations
       const eval1 = (manager as any).performImmediateEvaluation('test1');
       const eval2 = (manager as any).performImmediateEvaluation('test2');
-      
+
       await Promise.all([eval1, eval2]);
-      
+
       // Only one should have been executed
       expect(mockEvaluator.evaluate).toHaveBeenCalledTimes(1);
     });
@@ -666,9 +628,9 @@ describe('PromptsReplManager', () => {
         fileSystem: new MockFileSystemProvider(),
         promptsProvider: new MockPromptsProvider(),
         console: new MockConsoleProvider(),
-        realTimeEvaluation: true
+        realTimeEvaluation: true,
       });
-      
+
       // Mock process.stdout.write
       const originalWrite = process.stdout.write;
       const writeCalls: string[] = [];
@@ -676,22 +638,22 @@ describe('PromptsReplManager', () => {
         writeCalls.push(str);
         return true;
       }) as any;
-      
+
       // Set hasPreviewLine flag
       (manager as any).hasPreviewLine = true;
       (manager as any).rl = { prompt: vi.fn() };
-      
+
       // Call clearPreviewLine
       (manager as any).clearPreviewLine();
-      
+
       // Check that it wrote the correct escape sequences
       expect(writeCalls).toContain('\n');
       expect(writeCalls).toContain('\x1b[2K'); // Clear line
       expect(writeCalls).toContain('\x1b[0G'); // Move to beginning
       expect(writeCalls).toContain('\x1b[A'); // Move up
-      
+
       expect((manager as any).hasPreviewLine).toBe(false);
-      
+
       // Restore
       process.stdout.write = originalWrite;
     });

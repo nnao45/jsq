@@ -1,8 +1,8 @@
 import type { Key } from 'node:readline';
 import type { JsqOptions } from '@/types/cli';
 import type { ReplIO, ReplOptions } from '@/types/repl';
+import { type DebouncedFunction, debounce } from '@/utils/debounce';
 import { OutputFormatter } from '@/utils/output-formatter';
-import { debounce, type DebouncedFunction } from '@/utils/debounce';
 import { AutocompleteEngine, type CompletionContext } from './autocomplete-engine';
 import { StringBuffer } from './string-buffer';
 
@@ -145,11 +145,11 @@ export class ReplManager {
       await this.handleKeypressDebounced(str, key);
       return;
     }
-    
+
     // 特定のキー（Enter、Ctrl+Cなど）は即座に処理
     const immediateKeys = ['return', 'escape'];
     const isImmediate = key?.ctrl || (key?.name && immediateKeys.includes(key.name));
-    
+
     if (isImmediate) {
       // 即座に処理するキーの場合、キューを処理してから実行
       this.debouncedHandleKeypress.cancel();
@@ -165,13 +165,16 @@ export class ReplManager {
   private async processKeypressQueue(): Promise<void> {
     const queue = [...this.keypressQueue];
     this.keypressQueue = [];
-    
+
     for (const { str, key } of queue) {
       await this.handleKeypressDebounced(str, key);
     }
   }
 
-  private async handleKeypressDebounced(str: string | undefined, key: Key | undefined): Promise<void> {
+  private async handleKeypressDebounced(
+    str: string | undefined,
+    key: Key | undefined
+  ): Promise<void> {
     if (this.isProcessingInput) return;
 
     this.isProcessingInput = true;
@@ -667,7 +670,7 @@ export class ReplManager {
 
     if (this.state.isCompleting && this.state.completions.length > 0) {
       // 既に補完中なら次の候補に移動
-      this.cycleCompletion()
+      this.cycleCompletion();
     } else {
       // 新しい補完を開始
       this.startCompletion();
@@ -837,13 +840,13 @@ export class ReplManager {
     // メニューを表示
     this.io.output.write('\n');
     this.io.output.write('Select completion (↑/↓ to navigate, Enter to select, Esc to cancel):\n');
-    
+
     const maxItems = Math.min(this.state.completions.length, 10); // 最大10項目表示
     for (let i = 0; i < maxItems; i++) {
       const isSelected = i === this.state.menuSelectedIndex;
       const prefix = isSelected ? '→ ' : '  ';
       const item = this.state.completions[i];
-      
+
       if (isSelected) {
         // 選択されている項目をハイライト
         this.io.output.write(`\x1b[36m${prefix}${item}\x1b[0m\n`);
@@ -862,7 +865,7 @@ export class ReplManager {
     for (let i = 0; i < menuLines; i++) {
       this.io.output.write('\x1b[A');
     }
-    
+
     // 元の行を復元
     const displayInput = this.state.originalInput || this.state.currentInput.toString();
     this.io.output.write(this.prompt + displayInput);
@@ -902,7 +905,10 @@ export class ReplManager {
     }
 
     // メニューの選択インデックスが範囲外の場合は何もしない
-    if (this.state.menuSelectedIndex < 0 || this.state.menuSelectedIndex >= this.state.completions.length) {
+    if (
+      this.state.menuSelectedIndex < 0 ||
+      this.state.menuSelectedIndex >= this.state.completions.length
+    ) {
       return;
     }
 
@@ -913,7 +919,7 @@ export class ReplManager {
 
     // 選択された補完を適用
     const selectedCompletion = this.state.completions[this.state.menuSelectedIndex];
-    
+
     // メニューをクリア
     this.clearCompletionMenu();
 

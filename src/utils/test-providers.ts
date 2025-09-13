@@ -1,10 +1,10 @@
-import { Worker } from 'worker_threads';
-import { 
-  FileSystemProvider, 
-  WorkerProvider, 
-  PromptsProvider, 
+import type { Worker } from 'node:worker_threads';
+import type {
   ConsoleProvider,
-  ErrorHandler 
+  ErrorHandler,
+  FileSystemProvider,
+  PromptsProvider,
+  WorkerProvider,
 } from '../types/dependency-interfaces';
 
 export class MockFileSystemProvider implements FileSystemProvider {
@@ -44,7 +44,7 @@ export class MockFileSystemProvider implements FileSystemProvider {
 
 export class MockWorkerProvider implements WorkerProvider {
   public createdWorkers: Array<{ scriptPath: string; options?: any }> = [];
-  
+
   createWorker(scriptPath: string, options?: any): Worker {
     this.createdWorkers.push({ scriptPath, options });
     // Return a mock worker for testing
@@ -118,5 +118,79 @@ export class MockErrorHandler implements ErrorHandler {
   reset(): void {
     this.handledErrors = [];
     this.formattedErrors = [];
+  }
+}
+
+export class MockInputProvider {
+  private events: Map<string, Function[]> = new Map();
+  // @ts-expect-error - used in pause/resume methods
+  private isPaused = false;
+
+  on(event: string, callback: Function): this {
+    if (!this.events.has(event)) {
+      this.events.set(event, []);
+    }
+    this.events.get(event)?.push(callback);
+    return this;
+  }
+
+  off(event: string, callback: Function): this {
+    const callbacks = this.events.get(event);
+    if (callbacks) {
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+    return this;
+  }
+
+  emit(event: string, ...args: any[]): void {
+    const callbacks = this.events.get(event);
+    if (callbacks) {
+      callbacks.forEach(cb => {
+        cb(...args);
+      });
+    }
+  }
+
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  resume(): void {
+    this.isPaused = false;
+  }
+
+  get isTTY(): boolean {
+    return true;
+  }
+
+  setRawMode(_mode: boolean): this {
+    return this;
+  }
+}
+
+export class MockOutputProvider {
+  public output: string[] = [];
+
+  write(data: string): void {
+    this.output.push(data);
+  }
+
+  clearLine(_direction: -1 | 0 | 1): void {
+    // Mock implementation
+  }
+
+  cursorTo(_x: number): void {
+    // Mock implementation
+  }
+
+  clear(): void {
+    this.output = [];
+  }
+
+  getOutput(): string {
+    return this.output.join('');
   }
 }
