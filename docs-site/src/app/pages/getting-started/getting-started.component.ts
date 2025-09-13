@@ -108,24 +108,6 @@ jsq '$.filter(log => log.level === "error")' --file logs.jsonl --stream
 jsq '$.filter(row => row.status === "active")' --file users.csv --file-format csv
 \`\`\`
 
-## Interactive REPL
-
-Launch the interactive REPL for real-time data exploration:
-
-\`\`\`bash
-# Start REPL with a file
-jsq --repl --file data.json
-
-# Or pipe data to REPL
-echo '{"test": 123}' | jsq --repl
-\`\`\`
-
-REPL Features:
-- Real-time evaluation as you type
-- Colorful dynamic prompt
-- Toggle data view with \`Ctrl+R\`
-- Exit with \`Ctrl+C\` or type \`exit\`
-
 ## Web Browser Usage (WASM)
 
 jsq can run directly in the browser! Check out our interactive playground or integrate it into your web applications.

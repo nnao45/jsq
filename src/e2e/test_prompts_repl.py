@@ -57,7 +57,7 @@ def test_basic_startup():
         child.expect('Welcome to jsq REPL \\(Prompts Edition\\)')
         child.expect('Type .help for commands')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 終了
         child.sendline('.exit')
@@ -87,7 +87,7 @@ def test_basic_queries():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 基本的なプロパティアクセス
         test_cases = [
@@ -103,7 +103,7 @@ def test_basic_queries():
             child.expect('→')
             child.expect(expected)
             # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -131,7 +131,7 @@ def test_commands():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # ヘルプコマンド
         child.sendline('.help')
@@ -141,17 +141,17 @@ def test_commands():
         child.expect('.clear')
         child.expect('.history')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 履歴コマンド
         child.sendline('$.test')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         child.sendline('.history')
         child.expect('Command history:')
         child.expect('\\$.test')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 設定表示
         child.sendline('.config')
@@ -159,13 +159,13 @@ def test_commands():
         child.expect('REPL Mode:')
         child.expect('Prompts Edition')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 不明なコマンド
         child.sendline('.unknown')
         child.expect('Unknown command:')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -193,26 +193,26 @@ def test_error_handling():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 構文エラー
         child.sendline('$.')
         child.expect('❌ Syntax Error:')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 存在しないプロパティ
         child.sendline('$.nonexistent')
         child.expect('→')
         child.expect('undefined')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 無効な式
         child.sendline('invalid expression')
         child.expect('❌')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -247,12 +247,12 @@ def test_session_save_load():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline(f'.save {session_file}')
         child.expect('Session saved to:')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -262,25 +262,25 @@ def test_session_save_load():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts'], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline(f'.load {session_file}')
         child.expect('Session loaded from:')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # データが正しく読み込まれたか確認
         child.sendline('$.original')
         child.expect('→')
         child.expect('data')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('$.number')
         child.expect('→')
         child.expect('42')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -310,20 +310,20 @@ def test_ctrl_c_handling():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # Ctrl+Cを送信
         child.sendcontrol('c')
         child.expect('Use .exit to quit')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 通常の操作が続けられることを確認
         child.sendline('$.test')
         child.expect('→')
         child.expect('data')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)
@@ -351,24 +351,24 @@ def test_empty_input():
         child = pexpect.spawn('node', [JSQ_PATH, '--prompts', '--file', tmpfile], 
                               encoding='utf-8', timeout=10)
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 空入力を送信
         child.sendline('')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # スペースのみの入力
         child.sendline('   ')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         # 通常の操作が続けられることを確認
         child.sendline('$.test')
         child.expect('→')
         child.expect('data')
         # promptsライブラリの特殊なプロンプト形式に対応
-        child.expect_exact('? > › ')
+        child.expect_exact('> › ')
         
         child.sendline('.exit')
         child.expect(pexpect.EOF)

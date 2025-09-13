@@ -348,7 +348,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.rl = readline.createInterface({
       input: this.inputStream,
       output: process.stdout,
-      prompt: chalk.cyan('? ') + chalk.bold('> '),
+      prompt: chalk.bold('> '),
       terminal: this.inputStream.isTTY || false,
       // Remove completer option to prevent readline from interfering with our tab handling
     });
@@ -837,7 +837,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         // Get terminal width and truncate if needed
         const termWidth = process.stdout.columns || 80;
         const prefix = '→ ';
-        const promptLength = 4; // "? > " length
+        const promptLength = 2; // "> " length
         const maxOutputWidth = termWidth - prefix.length - 2; // -2 for some padding
 
         if (output.length > maxOutputWidth) {
