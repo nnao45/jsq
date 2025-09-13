@@ -1858,12 +1858,7 @@ describe('ReplManager', () => {
       mockOutput.clear();
 
       // Type $.to
-      await mockInput.playAll(0, [
-        { str: '$' },
-        { str: '.' },
-        { str: 't' },
-        { str: 'o' },
-      ]);
+      await mockInput.playAll(0, [{ str: '$' }, { str: '.' }, { str: 't' }, { str: 'o' }]);
 
       expect(replManager.getCurrentInput()).toBe('$.to');
 
@@ -1897,12 +1892,14 @@ describe('ReplManager', () => {
         validate: () => true,
       };
 
-      const testEvaluator: EvaluationHandler = vi.fn(async (expression, _data, _opts, lastResult) => {
-        if (expression === '$') {
-          return { result: testData };
+      const testEvaluator: EvaluationHandler = vi.fn(
+        async (expression, _data, _opts, _lastResult) => {
+          if (expression === '$') {
+            return { result: testData };
+          }
+          return { result: null };
         }
-        return { result: null };
-      });
+      );
 
       const replManagerWithData = new ReplManager(
         testData,
@@ -1946,13 +1943,13 @@ describe('ReplManager', () => {
       // Press Tab multiple times
       await mockInput.playNext({ key: { name: 'tab' } });
       const first = replManagerWithData.getCurrentInput();
-      
+
       await mockInput.playNext({ key: { name: 'tab' } });
       const second = replManagerWithData.getCurrentInput();
-      
+
       await mockInput.playNext({ key: { name: 'tab' } });
       const third = replManagerWithData.getCurrentInput();
-      
+
       // Cycle back to first
       await mockInput.playNext({ key: { name: 'tab' } });
       const backToFirst = replManagerWithData.getCurrentInput();

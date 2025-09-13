@@ -1,22 +1,27 @@
-import chalk from 'chalk';
 import * as readline from 'node:readline';
+import chalk from 'chalk';
 // Define the interface expected by PromptsReplManager
 export interface ExpressionEvaluator {
-  evaluate(expression: string, currentData: any, lastResult?: any): Promise<{ value?: any; error?: any }>;
+  evaluate(
+    expression: string,
+    currentData: any,
+    lastResult?: any
+  ): Promise<{ value?: any; error?: any }>;
 }
-import { AutocompleteEngine } from '../autocomplete-engine.js';
-import type { 
-  FileSystemProvider, 
-  PromptsProvider, 
-  ConsoleProvider 
+
+import type {
+  ConsoleProvider,
+  FileSystemProvider,
+  PromptsProvider,
 } from '../../../types/dependency-interfaces.js';
 import type { ReplManagerInterface } from '../../../types/repl-interface.js';
-import { 
-  DefaultFileSystemProvider, 
-  DefaultPromptsProvider, 
-  DefaultConsoleProvider 
+import {
+  DefaultConsoleProvider,
+  DefaultFileSystemProvider,
+  DefaultPromptsProvider,
 } from '../../../utils/default-providers.js';
 import { OutputFormatter } from '../../../utils/output-formatter.js';
+import { AutocompleteEngine } from '../autocomplete-engine.js';
 
 interface PromptsReplOptions {
   evaluator: ExpressionEvaluator;
@@ -71,14 +76,14 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.console = options.console || new DefaultConsoleProvider();
     this.autocompleteEngine = new AutocompleteEngine();
     this.realTimeEvaluation = options.realTimeEvaluation ?? true;
-    
+
     // Initialize OutputFormatter with compact mode for REPL
     this.outputFormatter = new OutputFormatter({
       compact: true,
       noColor: false,
-      isReplMode: true
+      isReplMode: true,
     });
-    
+
     if (this.historyFile) {
       this.loadHistory().catch(() => {});
     }
@@ -89,14 +94,14 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.console.log(chalk.gray('Type .help for commands, .exit to quit\n'));
 
     // For non-TTY environments with real-time evaluation, disable it
-    // const _shouldUseRealTime = this.realTimeEvaluation && 
-    //                         this.inputStream && 
+    // const _shouldUseRealTime = this.realTimeEvaluation &&
+    //                         this.inputStream &&
     //                         this.inputStream.isTTY;
     // will be used in future real-time evaluation feature
 
     // Always use readline mode for better tab completion support in TTY environments
     // In non-TTY environments, use prompts mode as readline doesn't work well
-    const useReadlineMode = this.inputStream !== undefined && this.inputStream.isTTY;
+    const useReadlineMode = this.inputStream?.isTTY;
 
     if (useReadlineMode) {
       // Use readline for better tab completion support
@@ -139,7 +144,7 @@ export class PromptsReplManager implements ReplManagerInterface {
           }
           reject(new Error('Timeout waiting for input'));
         }, 30000); // 30 second timeout
-        
+
         const onEnd = () => {
           clearTimeout(timeout);
           if (this.inputStream) {
@@ -150,7 +155,7 @@ export class PromptsReplManager implements ReplManagerInterface {
           this.shouldExit = true;
           resolve('.exit');
         };
-        
+
         const onData = (chunk: Buffer) => {
           const str = chunk.toString();
           if (str.includes('\n')) {
@@ -161,7 +166,7 @@ export class PromptsReplManager implements ReplManagerInterface {
               this.inputStream.removeListener('end', onEnd);
             }
             const input = (buffer + str).trim();
-            if (input && input.trim()) {
+            if (input?.trim()) {
               this.history.push(input);
               this.saveHistory().catch(() => {});
             }
@@ -170,7 +175,7 @@ export class PromptsReplManager implements ReplManagerInterface {
             buffer += str;
           }
         };
-        
+
         if (this.inputStream) {
           // Check if stream is still readable
           if (this.inputStream.readable) {
@@ -188,26 +193,26 @@ export class PromptsReplManager implements ReplManagerInterface {
           clearTimeout(timeout);
           reject(new Error('No input stream available'));
         }
-        
+
         // Show prompt
         process.stdout.write('> ');
       });
     }
-    
+
     // TTY mode - use prompts
     const response = await this.promptsProvider.prompt({
       type: 'text',
       name: 'command',
-      message: '>'
+      message: '>',
     });
 
     const input = response.command;
-    
-    if (input && input.trim()) {
+
+    if (input?.trim()) {
       this.history.push(input);
       this.saveHistory().catch(() => {});
     }
-    
+
     return input;
   }
 
@@ -223,7 +228,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       const context = {
         input: input,
         cursorPosition: input.length,
-        currentData: this.currentData
+        currentData: this.currentData,
       };
       const result = this.autocompleteEngine.getSuggestions(context);
       return result.completions;
@@ -241,7 +246,7 @@ export class PromptsReplManager implements ReplManagerInterface {
 
     try {
       const result = await this.evaluator.evaluate(input, this.currentData, this.lastResult);
-      
+
       if (result.error) {
         this.displayError(result.error);
       } else {
@@ -349,38 +354,38 @@ export class PromptsReplManager implements ReplManagerInterface {
     });
 
     // Enable keypress events only in TTY mode
-    if (this.inputStream && this.inputStream.isTTY) {
+    if (this.inputStream?.isTTY) {
       readline.emitKeypressEvents(this.inputStream);
       if (this.inputStream.setRawMode) {
         this.inputStream.setRawMode(true);
       }
     }
 
-    this.rl.on('line', async (line) => {
+    this.rl.on('line', async line => {
       currentInput = '';
       if (evaluationTimer) {
         clearTimeout(evaluationTimer);
         evaluationTimer = undefined;
       }
-      
+
       // Clear preview line when submitting
       this.clearPreviewLine();
-      
+
       // Clear completion status
       this.clearCompletionStatus();
-      
+
       // Clear completion timer
       if (this.completionStatusTimer) {
         clearTimeout(this.completionStatusTimer);
         this.completionStatusTimer = undefined;
       }
-      
+
       // Reset completion state
       this.completionState = null;
-      
+
       // Clear autocomplete engine cache to ensure fresh completions next time
       this.autocompleteEngine.clearCache();
-      
+
       // Reset evaluation state to ensure no leftover preview
       this.isEvaluating = false;
       this.hasPreviewLine = false;
@@ -389,7 +394,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         this.history.push(line);
         // this._historyIndex = this.history.length;
         this.saveHistory().catch(() => {});
-        
+
         try {
           await this.processInput(line);
         } catch (error) {
@@ -399,7 +404,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         // Empty line - reset current data to prevent showing previous results
         this.currentData = null;
       }
-      
+
       if (!this.shouldExit && this.rl) {
         this.rl.prompt();
       }
@@ -408,7 +413,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.rl.on('SIGINT', () => {
       const currentLine = (this.rl as any).line || '';
       const now = Date.now();
-      
+
       if (currentLine.trim() === '') {
         // Check for double Ctrl+C within 300ms
         if (now - this.lastSigintTime < 300) {
@@ -417,7 +422,7 @@ export class PromptsReplManager implements ReplManagerInterface {
           if (this.rl) this.rl.close();
           return;
         }
-        
+
         // First Ctrl+C on empty line - show hint
         this.console.log('\n(To exit, press Ctrl+C again)');
         this.lastSigintTime = now;
@@ -452,52 +457,56 @@ export class PromptsReplManager implements ReplManagerInterface {
           // Prevent default tab behavior by removing any tab character that was inserted
           let currentLine = (this.rl as any).line || '';
           const currentCursor = (this.rl as any).cursor || 0;
-          
+
           // If a tab character was inserted, remove it
           if (currentLine.includes('\t')) {
             currentLine = currentLine.replace(/\t/g, '');
             (this.rl as any).line = currentLine;
             (this.rl as any).cursor = Math.min(currentCursor, currentLine.length);
           }
-          
+
           // Check if we should use cached completions (for cycling)
-          const shouldUseCached = this.completionState && 
-            this.completionState.isActive &&
+          const shouldUseCached =
+            this.completionState?.isActive &&
             this.completionState.lastLine === currentLine &&
             this.completionState.lastCompletions.length > 1;
-          
+
           if (shouldUseCached && this.completionState) {
             // Use cached completions for cycling
             const completions = this.completionState.lastCompletions;
-            this.completionState.currentIndex = (this.completionState.currentIndex + 1) % completions.length;
+            this.completionState.currentIndex =
+              (this.completionState.currentIndex + 1) % completions.length;
             const selectedCompletion = completions[this.completionState.currentIndex];
-            const applied = this.applyCompletion(this.completionState.lastPrefix, selectedCompletion);
+            const applied = this.applyCompletion(
+              this.completionState.lastPrefix,
+              selectedCompletion
+            );
             (this.rl as any).line = applied;
             (this.rl as any).cursor = applied.length;
             this.completionState.lastLine = applied;
-            
+
             // Show which completion we're on (on the same line)
             // Note: showCompletionStatus will handle the line refresh
             // this.showCompletionStatus(this.completionState.currentIndex + 1, completions.length, selectedCompletion);
-            
+
             // Trigger immediate evaluation after cycling through completions
             if (this.realTimeEvaluation && applied.trim()) {
               setTimeout(async () => {
                 await this.performImmediateEvaluation(applied);
               }, 50);
             }
-            
+
             return;
           }
-          
+
           // Manually trigger completion
           const completions = await this.getSuggestions(currentLine);
-          
+
           if (completions.length === 0) {
             this.completionState = null;
             return;
           }
-          
+
           if (completions.length === 1) {
             // Single completion - apply it directly
             const applied = this.applyCompletion(currentLine, completions[0]);
@@ -506,7 +515,7 @@ export class PromptsReplManager implements ReplManagerInterface {
             // We need to manually refresh the line without causing a newline
             this.refreshCurrentLine();
             this.completionState = null;
-            
+
             // Trigger immediate evaluation after tab completion
             if (this.realTimeEvaluation && applied.trim()) {
               setTimeout(async () => {
@@ -521,20 +530,20 @@ export class PromptsReplManager implements ReplManagerInterface {
               lastPrefix: currentLine,
               lastCursorPos: currentCursor,
               lastLine: currentLine,
-              isActive: true
+              isActive: true,
             };
-            
+
             // Apply first completion immediately
             const firstCompletion = completions[0];
             const applied = this.applyCompletion(currentLine, firstCompletion);
             (this.rl as any).line = applied;
             (this.rl as any).cursor = applied.length;
             this.completionState.lastLine = applied;
-            
+
             // Show status message (on the same line)
             // Note: showCompletionStatus will handle the line refresh
             // this.showCompletionStatus(1, completions.length, firstCompletion, true);
-            
+
             // Trigger immediate evaluation for first completion
             if (this.realTimeEvaluation && applied.trim()) {
               setTimeout(async () => {
@@ -544,9 +553,9 @@ export class PromptsReplManager implements ReplManagerInterface {
           }
           return;
         }
-        
+
         // Reset completion state on any other key
-        if (key && key.name !== 'tab' || (!key && char)) {
+        if ((key && key.name !== 'tab') || (!key && char)) {
           this.completionState = null;
           // Clear any completion status display
           this.clearCompletionStatus();
@@ -556,7 +565,7 @@ export class PromptsReplManager implements ReplManagerInterface {
             this.completionStatusTimer = undefined;
           }
         }
-        
+
         if (!key || key.name === 'return' || key.name === 'tab' || key.ctrl || key.meta) {
           // Clear preview line on return key
           if (key && key.name === 'return') {
@@ -565,15 +574,15 @@ export class PromptsReplManager implements ReplManagerInterface {
           }
           return;
         }
-        
+
         // Update current input
         currentInput = (this.rl as any).line || '';
-        
+
         // Debounce immediate evaluation
         if (evaluationTimer) {
           clearTimeout(evaluationTimer);
         }
-        
+
         if (this.realTimeEvaluation && currentInput.trim()) {
           evaluationTimer = setTimeout(async () => {
             // Ensure we're still on the same line and the input hasn't changed
@@ -589,7 +598,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.rl.prompt();
 
     // Keep the process alive
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       const checkInterval = setInterval(() => {
         if (this.shouldExit || !this.rl) {
           clearInterval(checkInterval);
@@ -602,7 +611,7 @@ export class PromptsReplManager implements ReplManagerInterface {
   private applyCompletion(currentLine: string, completion: string): string {
     // AutocompleteEngine returns just the property/method name, not the full path
     // So we need to apply it correctly based on the current line
-    
+
     // If we're completing after a dot (e.g., "$.test.")
     const lastDotIndex = currentLine.lastIndexOf('.');
     if (lastDotIndex >= 0) {
@@ -611,7 +620,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       // Return prefix + completion
       return prefix + completion;
     }
-    
+
     // If we're completing from the start or middle of a property
     // Find where the current property starts
     const match = currentLine.match(/(\$|_|\w+)\.?(\w*)$/);
@@ -624,7 +633,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       // Otherwise, append the completion
       return beforeMatch + completion;
     }
-    
+
     // Default case - just return the completion
     return completion;
   }
@@ -634,7 +643,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       // Save current cursor position and line content
       const currentLine = this.rl ? (this.rl as any).line || '' : '';
       const cursorPos = this.rl ? (this.rl as any).cursor || 0 : 0;
-      
+
       // Move to the line below
       process.stdout.write('\n');
       // Clear that line
@@ -642,59 +651,59 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G');
       // Move back up
       process.stdout.write('\x1b[A');
-      
+
       // Restore the prompt and current line
       if (this.rl) {
         // Clear current line first
         process.stdout.write('\x1b[2K');
         process.stdout.write('\x1b[0G');
-        
+
         // Rewrite prompt and input
         const promptText = chalk.cyan('? ') + chalk.bold('> ');
         process.stdout.write(promptText + currentLine);
-        
+
         // Restore cursor position
-        process.stdout.write('\x1b[' + (4 + cursorPos + 1) + 'G');
+        process.stdout.write(`\x1b[${4 + cursorPos + 1}G`);
       }
-      
+
       this.hasPreviewLine = false;
     }
   }
 
   private refreshCurrentLine(): void {
     if (!this.rl) return;
-    
+
     // Save current cursor position and line
     const savedCursorPos = (this.rl as any).cursor || 0;
     const currentLine = (this.rl as any).line || '';
-    
+
     // Clear the current line
     process.stdout.write('\x1b[2K'); // Clear entire line
     process.stdout.write('\x1b[0G'); // Move to beginning of line
-    
+
     // Rewrite prompt and current input
     const promptText = chalk.cyan('? ') + chalk.bold('> ');
     process.stdout.write(promptText + currentLine);
-    
+
     // Return cursor to its original position
-    process.stdout.write('\x1b[' + (4 + savedCursorPos + 1) + 'G');
+    process.stdout.write(`\x1b[${4 + savedCursorPos + 1}G`);
   }
 
   private clearCompletionStatus(): void {
     if (!this.hasCompletionStatus || !this.rl) return;
-    
+
     // Clear any existing timer
     if (this.completionStatusTimer) {
       clearTimeout(this.completionStatusTimer);
       this.completionStatusTimer = undefined;
     }
-    
+
     // Clear the completion status line
     process.stdout.write('\n'); // Move to next line
     process.stdout.write('\x1b[2K'); // Clear entire line
     process.stdout.write('\x1b[A'); // Move back up
     process.stdout.write('\x1b[0G'); // Move to beginning of line
-    
+
     // Simply refresh the line without the completion status
     this.refreshCurrentLine();
     this.hasCompletionStatus = false;
@@ -790,29 +799,25 @@ export class PromptsReplManager implements ReplManagerInterface {
 
   private async performImmediateEvaluation(input: string): Promise<void> {
     if (!input.trim() || !this.rl || this.isEvaluating) return;
-    
+
     const trimmed = input.trim();
-    
+
     // Don't evaluate commands
     if (trimmed.startsWith('.')) return;
-    
+
     // Clear existing preview before evaluating
     this.clearPreviewLine();
-    
+
     // Double-check current line is still the same
     const currentLineNow = (this.rl as any).line || '';
     if (currentLineNow !== input) {
       return;
     }
-    
+
     this.isEvaluating = true;
     try {
-      const result = await this.evaluator.evaluate(
-        trimmed, 
-        this.currentData, 
-        this.lastResult
-      );
-      
+      const result = await this.evaluator.evaluate(trimmed, this.currentData, this.lastResult);
+
       // Only show results, not errors (during real-time evaluation)
       if (!result.error && result.value !== undefined) {
         // Format the output compactly with colors
@@ -825,40 +830,37 @@ export class PromptsReplManager implements ReplManagerInterface {
           // Use OutputFormatter for colorized compact output
           output = this.outputFormatter.format(result.value);
         }
-        
+
         // Escape newlines and other control characters for single-line display
-        output = output
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')
-          .replace(/\t/g, '\\t');
-        
+        output = output.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+
         // Get terminal width and truncate if needed
         const termWidth = process.stdout.columns || 80;
         const prefix = '→ ';
         const promptLength = 4; // "? > " length
         const maxOutputWidth = termWidth - prefix.length - 2; // -2 for some padding
-        
+
         if (output.length > maxOutputWidth) {
-          output = output.substring(0, maxOutputWidth - 3) + '...';
+          output = `${output.substring(0, maxOutputWidth - 3)}...`;
         }
-        
+
         // Show result on next line
         const savedCursorPos = (this.rl as any).cursor || 0;
         const currentLine = (this.rl as any).line || '';
-        
+
         process.stdout.write('\n');
         process.stdout.write(chalk.gray(prefix) + chalk.dim(output));
-        
+
         // Move cursor back to the original position
         process.stdout.write('\x1b[A'); // Move up one line
         process.stdout.write('\x1b[0G'); // Move to beginning of line
         process.stdout.write(chalk.cyan('? ') + chalk.bold('> ') + currentLine); // Rewrite prompt and current input
         // ANSIエスケープシーケンスは1ベース、カーソル位置は0ベースなので+1
-        process.stdout.write('\x1b[' + (promptLength + savedCursorPos + 1) + 'G'); // Position cursor correctly
-        
+        process.stdout.write(`\x1b[${promptLength + savedCursorPos + 1}G`); // Position cursor correctly
+
         this.hasPreviewLine = true;
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently ignore errors during immediate evaluation
     } finally {
       this.isEvaluating = false;
@@ -932,7 +934,9 @@ export class PromptsReplManager implements ReplManagerInterface {
 
     if (error.includes('Cannot read property')) {
       this.console.error(chalk.yellow('  → Trying to access a property of null or undefined'));
-      this.console.error(chalk.gray('  Use optional chaining (?.) to safely access nested properties'));
+      this.console.error(
+        chalk.gray('  Use optional chaining (?.) to safely access nested properties')
+      );
     } else if (error.includes('is not a function')) {
       this.console.error(chalk.yellow('  → Trying to call something that is not a function'));
     }
@@ -1091,22 +1095,22 @@ export class PromptsReplManager implements ReplManagerInterface {
 
   private async loadHistory(): Promise<void> {
     if (!this.historyFile) return;
-    
+
     try {
       const content = await this.fileSystem.readFile(this.historyFile);
       this.history = content.split('\n').filter(line => line.trim());
-    } catch (error) {
+    } catch (_error) {
       // ファイルがない場合は無視
     }
   }
 
   private async saveHistory(): Promise<void> {
     if (!this.historyFile) return;
-    
+
     try {
       const content = this.history.slice(-1000).join('\n');
       await this.fileSystem.writeFile(this.historyFile, content);
-    } catch (error) {
+    } catch (_error) {
       // 保存に失敗しても続行
     }
   }

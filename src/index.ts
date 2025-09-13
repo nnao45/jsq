@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { cpus } from 'node:os';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { cpus } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { JsqProcessor } from '@/core/lib/processor';
 import { createAndStartRepl } from '@/core/repl/repl-factory';
@@ -162,22 +162,22 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   // パイプ経由でデータを受け取った場合、TTYから入力を取得
   const { getInteractiveInputStream } = await import('@/utils/tty-helper');
   const inputStream = await getInteractiveInputStream(options.stdinData, options.verbose);
-  
+
   if (options.verbose) {
     console.error(`[DEBUG] Input stream isTTY: ${inputStream.isTTY}`);
     console.error(`[DEBUG] Input stream is process.stdin: ${inputStream === process.stdin}`);
   }
-  
+
   // stdinからのデータが残っている場合の処理
   // ただし、TTYストリームが開けた場合は、元のstdinは既に使用されないので処理不要
   if (inputStream === process.stdin && !process.stdin.isTTY && options.stdinData) {
     // 非TTY環境でパイプからデータを読み込んだ場合
     // stdinはすでにEOFに達している可能性が高いので、新たなstreamを用意する必要がある
-    
+
     if (options.verbose) {
       console.error('[DEBUG] Non-TTY mode with piped data, stdin may be at EOF');
     }
-    
+
     // Resume stdin to allow reading if there's more data
     process.stdin.resume();
   }
@@ -200,7 +200,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
 
   // Wait for REPL to finish
   // Check periodically if the REPL has exited
-  await new Promise<void>((resolve) => {
+  await new Promise<void>(resolve => {
     const checkInterval = setInterval(() => {
       // Check if PromptsReplManager's shouldExit is true
       if (!replManager || (replManager as any).shouldExit === true) {
@@ -222,7 +222,10 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
     const { spawn } = await import('node:child_process');
 
     if (options.verbose) {
-      console.error('[Bun] Starting REPL mode with Node.js for better compatibility');
+      console.error('[Bun] Pipe input detected. Starting REPL with Node.js for TTY support');
+      console.error('[Bun] This is a known limitation when using pipes in Bun');
+    } else {
+      console.error('💡 Starting REPL with Node.js for better pipe compatibility...');
     }
 
     // 現在のスクリプトをnodeで実行
@@ -247,7 +250,7 @@ async function handleReplModeWithSubprocess(options: JsqOptions): Promise<void> 
       child.on('error', reject);
     });
   } else {
-    // それ以外の場合は直接REPLモードを起動（新しい実装を使用）
+    // それ以外の場合は直接REPLモードを起動
     await handleReplMode(options);
   }
 }

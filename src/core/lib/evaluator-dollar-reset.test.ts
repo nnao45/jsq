@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { ExpressionEvaluator } from './evaluator';
-import type { ApplicationContext } from '../application-context';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
+import type { ApplicationContext } from '../application-context';
+import { ExpressionEvaluator } from './evaluator';
 
 describe('Evaluator - $ evaluation after reset', () => {
   let evaluator: ExpressionEvaluator;
@@ -17,7 +17,7 @@ describe('Evaluator - $ evaluation after reset', () => {
       unsafe: false,
       memoryLimit: 128,
       cpuLimit: 30000,
-      prompts: true
+      prompts: true,
     } as JsqOptions;
 
     appContext = {
@@ -30,7 +30,7 @@ describe('Evaluator - $ evaluation after reset', () => {
       evaluator: null,
       replManager: null,
       exitHandler: null,
-      mode: 'pipe'
+      mode: 'pipe',
     } as unknown as ApplicationContext;
 
     evaluator = new ExpressionEvaluator(options, appContext);

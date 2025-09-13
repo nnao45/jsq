@@ -1,14 +1,14 @@
 import { dirname } from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { Worker } from 'node:worker_threads';
+import type { Worker } from 'node:worker_threads';
 import type { ApplicationContext } from '@/core/application-context';
 import type { JsqOptions } from '@/types/cli';
+import type { WorkerProvider } from '@/types/dependency-interfaces';
 import type { InputProvider, ReplIO, ReplOptions } from '@/types/repl';
+import { DefaultWorkerProvider } from '@/utils/default-providers';
 import { ReplFileCommunicator } from '@/utils/repl-file-communication';
 import { type EvaluationHandler, ReplManager } from './repl-manager';
-import type { WorkerProvider } from '@/types/dependency-interfaces';
-import { DefaultWorkerProvider } from '@/utils/default-providers';
 
 interface WorkerMessage {
   type: 'ready' | 'result';
