@@ -28,7 +28,25 @@ interface MethodCategory {
   imports: [CommonModule, JsqPlaygroundComponent],
   template: `
     <div class="container-with-sidebar">
-      <aside class="sidebar">
+      <button 
+        class="sidebar-toggle" 
+        (click)="toggleSidebar()"
+        [attr.aria-label]="isSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      
+      <div 
+        class="sidebar-backdrop" 
+        [class.visible]="isSidebarOpen"
+        (click)="closeSidebar()"
+      ></div>
+      
+      <aside class="sidebar" [class.sidebar-open]="isSidebarOpen">
         <nav class="sidebar-nav">
           <h2>Operations</h2>
           <div class="category-group" *ngFor="let category of categories">
@@ -158,47 +176,54 @@ $.users.map(u => u.name.toUpperCase())</code></pre>
       background: var(--surface);
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
-      transition: width 0.3s ease, transform 0.3s ease;
-      z-index: 10;
-      
-      &.sidebar-collapsed {
-        width: 50px;
-      }
+      transition: transform 0.3s ease;
+      z-index: 100;
       
       @media (max-width: 1024px) {
         position: fixed;
         transform: translateX(-100%);
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
         
-        &:not(.sidebar-collapsed) {
+        &.sidebar-open {
           transform: translateX(0);
         }
       }
     }
     
     .sidebar-toggle {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      padding: 0.5rem;
-      color: var(--text-color);
-      font-size: 1.25rem;
-      z-index: 1;
-      
-      &:hover {
-        color: var(--primary-color);
-      }
+      display: none;
       
       @media (max-width: 1024px) {
+        display: flex;
         position: fixed;
-        top: 1rem;
-        left: 1rem;
-        background: var(--surface);
-        border: 1px solid var(--border-color);
-        border-radius: 0.25rem;
-        z-index: 100;
+        bottom: 2rem;
+        right: 2rem;
+        width: 56px;
+        height: 56px;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-color);
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 999;
+        transition: all 0.3s ease;
+        
+        svg {
+          width: 24px;
+          height: 24px;
+          color: white;
+        }
+        
+        &:hover {
+          transform: scale(1.1);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        &:active {
+          transform: scale(0.95);
+        }
       }
     }
     
@@ -208,6 +233,29 @@ $.users.map(u => u.name.toUpperCase())</code></pre>
       height: 24px;
       line-height: 24px;
       text-align: center;
+    }
+    
+    .sidebar-backdrop {
+      display: none;
+      
+      @media (max-width: 1024px) {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        
+        &.visible {
+          display: block;
+          opacity: 1;
+          visibility: visible;
+        }
+      }
     }
     
     .sidebar-nav {
@@ -390,6 +438,7 @@ export class JsOperationsComponent implements OnInit {
   activeCategory: string = '';
   activeMethod: string = '';
   activeSection: string = '';
+  isSidebarOpen: boolean = false;
   
   categories: MethodCategory[] = [
     {
@@ -1132,6 +1181,23 @@ undefined ?? 'default'   // 'default'
     setTimeout(() => this.codeHighlight.highlightAll(), 0);
     this.setupScrollListener();
     this.expandedCategories.add(this.categories[0].name);
+    this.checkViewportSize();
+    window.addEventListener('resize', () => this.checkViewportSize());
+  }
+
+  private checkViewportSize(): void {
+    const isMobile = window.innerWidth <= 1024;
+    if (!isMobile && this.isSidebarOpen) {
+      this.isSidebarOpen = false;
+    }
+  }
+  
+  toggleSidebar(): void {
+    this.isSidebarOpen = !this.isSidebarOpen;
+  }
+  
+  closeSidebar(): void {
+    this.isSidebarOpen = false;
   }
 
   getCategoryId(categoryName: string): string {

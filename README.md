@@ -1,470 +1,92 @@
-# JavaScript-Powered JSON Query CLI Tool
+[![NPM](https://nodei.co/npm/@nnao45/jsq.png)](https://www.npmjs.com/package/@nnao45/jsq)
 
-[🇯🇵 日本語](README.ja.md) | 🇺🇸 **English**
 
-jsq is a security-first, innovative command-line tool that allows developers to process JSON data using familiar jQuery/Lodash-like syntax. Built with VM isolation by default, it combines a beautiful real-time REPL interface with powerful data processing capabilities, making JSON manipulation both safe and intuitive.
+[![npm](https://img.shields.io/npm/v/@nnao45/jsq.svg)](https://www.npmjs.com/package/@nnao45/jsq)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-nnao45.github.io%2Fjsq-blue)](https://nnao45.github.io/jsq)
+
+# jsq - JavaScript-Powered JSON Query CLI
+
+[🇯🇵 日本語](README.ja.md) | 🇺🇸 **English** | [📚 Documentation](https://nnao45.github.io/jsq)
+
+jsq is a secure, jQuery/Lodash-style JSON processor with 110+ built-in methods, multi-core parallel processing, and a beautiful interactive REPL. Process JSON with familiar JavaScript syntax - no external dependencies needed.
+
+## ✨ Why jsq?
+
+```bash
+# 🚀 20x faster with parallel processing
+cat huge.jsonl | jsq --parallel '$.filter(item => item.active)'
+
+# 🔗 jQuery-style chaining with 110+ built-in methods  
+cat data.json | jsq '$.users.filter(u => u.active).pluck("name").uniq()'
+
+# 🎨 Beautiful interactive REPL with real-time evaluation
+jsq --repl --file data.json
+
+# 🔒 Secure VM isolation by default
+cat sensitive.json | jsq '$.private' # Safe: No file/network access
+
+# 📝 Intuitive variable declarations
+jsq "const names = ['Alice', 'Bob'] | names.map(n => n.toUpperCase())"
+```
+
+## 🚀 Quick Start
+
+```bash
+# Install
+npm install -g @nnao45/jsq
+
+# Basic usage
+echo '{"users": [{"name": "Alice", "active": true}]}' | jsq '$.users.filter(u => u.active)'
+
+# Direct file processing
+jsq '$.length' --file data.json
+
+# Interactive REPL
+jsq 
+
+# Interactive REPL with pipe!
+echo '{"users": [{"name": "Alice", "active": true}]}' | jsq 
+```
 
 ## 🌟 Key Features
 
-### 1. 🔗 jQuery-style Chaining API with 80+ Built-in Methods
-Process JSON with intuitive syntax and comprehensive utility library including RxJS-style reactive operators - no external dependencies needed
+| Feature | Description                                          |
+|---------|------------------------------------------------------|
+| **jQuery-style API** | Familiar `$.filter()`, `$.map()`, `$.pluck()` syntax |
+| **110+ Built-in Methods** | Lodash utilities + RxJS reactive operators included  |
+| **Parallel Processing** | Use all CPU cores - 20x faster than jq               |
+| **Interactive REPL** | Beautiful real-time evaluation with tab completion   |
+| **Secure VM Isolation** | Safe execution by default                            |
+| **Multi-Runtime Support** | Works with Node.js, Bun, Deno and WASM               |
+
+## 📚 Documentation
+
+For comprehensive documentation, visit **[nnao45.github.io/jsq](https://nnao45.github.io/jsq)**:
+
+- [Getting Started Guide](https://nnao45.github.io/jsq/getting-started)
+- [Method Reference](https://nnao45.github.io/jsq/smart-dollar-methods)
+- [Interactive Playground](https://nnao45.github.io/jsq/repl)
+- [Examples & Tutorials](https://nnao45.github.io/jsq)
+
+## 💡 Common Use Cases
 
 ```bash
-# jq (requires learning complex syntax)
-cat users.json | jq '.users[] | select(.active == true) | .name'
-
-# jsq (intuitive with rich built-in methods)
-cat users.json | jsq '$.users.filter(u => u.active).pluck("name")'
-
-# Advanced data processing with built-in lodash-like methods
-cat data.json | jsq '$.items.compact().uniqBy(i => i.id).orderBy(["priority", "date"], ["desc", "asc"])'
-
-# Statistical analysis without external libraries
-cat sales.json | jsq '$.sales.groupBy(s => s.category).entries().map(([cat, sales]) => ({category: cat, avg: _.mean(sales.map(s => s.amount))}))'
-
-# RxJS-style reactive processing with time-based operations
-echo '[1,2,3,4,5]' | jsq '$.tap(x => console.log(`Processing: ${x}`)).delay(100).map(x => x * 2)'
-```
-
-### 2. ✨ Pipeline Variable Declarations
-Declare and use variables within expressions using intuitive pipeline syntax
-
-```bash
-# Simple variable declaration and usage
-jsq "const message = 'hello world' | message.toUpperCase()" # "HELLO WORLD"
-
-# Complex data transformations
-cat users.json | jsq "const names = $.users.map(u => u.name) | names.join(', ')"
-
-# Works with both const and let
-jsq "let numbers = [1,2,3,4,5] | numbers.filter(x => x > 3)" # [4, 5]
-```
-
-### 3. 📁 Direct File Reading and REPL
-Process files directly and explore data interactively
-
-```bash
-# Direct file reading
-jsq '$.users.length' --file data.json
-jsq '$.name' --file users.jsonl --stream
-
-# Interactive REPL mode
-jsq --repl --file data.json  # Real-time data exploration
-```
-
-### 4. 🔒 Secure VM Execution by Default - Security First Design
-jsq prioritizes security with mandatory VM isolation for all code execution. Unlike other JavaScript-based tools, jsq runs all expressions in a secure sandbox environment by default, preventing access to the file system, network, and shell commands unless explicitly enabled.
-
-```bash
-# All executions run in secure VM isolation by default
-cat data.json | jsq '$.users.filter(u => u.active)'
-# 🔒 VM isolation enabled: No filesystem/network/shell access
-
-# Configure resource limits for additional security
-cat data.json | jsq --memory-limit 256 --cpu-limit 60000 '$.map(x => x.value).uniq()'
-# 🔒 VM with custom resource limits: 256MB memory, 60s CPU time
-```
-
-### 5. ⚡ Multi-CPU Parallel Processing ✨ NEW
-Leverage all available CPU cores for blazingly fast JSON processing - an exclusive jsq advantage over jq
-
-```bash
-# Basic parallel processing - automatically uses CPU count - 1 workers
-cat large-data.jsonl | jsq --parallel '$.transform(x => x.value * 2)'
-
-# Specify exact number of workers for optimal performance  
-cat huge-dataset.jsonl | jsq --parallel 8 '$.filter(item => item.active).map(item => item.name)'
-
-# Combine with streaming for maximum throughput on massive files
-cat massive-logs.jsonl | jsq --stream --parallel '$.filter(log => log.level === "error")' 
-
-# 20x faster than jq on multi-core systems!
-time cat million-records.jsonl | jsq --parallel '$.process()'  # ~2 seconds
-time cat million-records.jsonl | jq '.process()'               # ~40 seconds
-```
-
-### 6. 🔗 Sequential Execution with Semicolon Operator ✨ NEW
-Execute multiple expressions sequentially, returning only the final result - perfect for side effects and complex data processing
-
-```bash
-# Basic sequential execution - log and return
-echo '{"value": 42}' | jsq 'console.log("Processing data..."); $.value * 2'
-# Output: Processing data...
-#         84
-
-# Multiple operations with side effects
-echo '{"users": [{"name": "Alice"}, {"name": "Bob"}]}' | jsq 'console.log("Found", $.users.length, "users"); $.users.map(u => u.name).join(", ")'
-# Output: Found 2 users
-#         "Alice, Bob"
-
-# Complex data transformation pipeline
-echo '[1,2,3,4,5]' | jsq 'const sum = _.sum($); const max = _.max($); console.log(`Sum: ${sum}, Max: ${max}`); $.length'
-# Output: Sum: 15, Max: 5
-#         5
-
-# Async operations with side effects
-echo '["https://jsonplaceholder.typicode.com/posts/1"]' | jsq 'console.log("Fetching data..."); const response = await fetch($[0]); const data = await response.json(); console.log("Received:", data.title.substring(0, 20) + "..."); data.id'
-# Output: Fetching data...
-#         Received: sunt aut facere rep...
-#         1
-```
-
-### 7. ⚡ Advanced Async Array Methods ✨ NEW  
-Powerful async array processing with both parallel and sequential execution modes - perfect for API calls and async operations
-
-```bash
-# Parallel async processing - fastest execution
-echo '["https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2"]' | jsq 'await $.forEachAsync(async url => { const res = await fetch(url); console.log("Processed:", url); })'
-
-# Sequential async processing - controlled execution, perfect for rate limiting
-echo '[1, 2, 3]' | jsq 'await $.forEachAsyncSeq(async id => { await new Promise(r => setTimeout(r, 100)); console.log("Processed ID:", id); })'
-
-# Parallel async mapping - transform data with async operations  
-echo '["posts/1", "posts/2", "posts/3"]' | jsq 'await $.mapAsync(async endpoint => { const res = await fetch(`https://jsonplaceholder.typicode.com/${endpoint}`); const data = await res.json(); return { id: data.id, title: data.title.substring(0, 30) + "..." }; })'
-
-# Sequential async mapping - for operations that must be ordered
-echo '[1, 2, 3]' | jsq 'await $.mapAsyncSeq(async id => { await new Promise(r => setTimeout(r, 50)); return { id, processed: true, timestamp: new Date().toISOString() }; })'
-
-# Combine with error handling
-echo '["valid-url", "invalid-url"]' | jsq 'await $.mapAsync(async url => { try { const res = await fetch(`https://jsonplaceholder.typicode.com/${url}`); return { url, status: "success", data: await res.json() }; } catch (error) { return { url, status: "error", message: error.message }; } })'
-```
-
-### 8. 👀 Watch Mode for Real-time Data Processing ✨ NEW
-Monitor file changes and automatically re-execute expressions for live data updates
-
-```bash
-# Watch JSON file and re-run expression on changes
-jsq '$.users.filter(u => u.active).length' --file users.json --watch
-
-# Monitor CSV data with real-time updates
-jsq '$.filter(row => row.status === "pending")' --file tasks.csv --file-format csv --watch
-
-# Live dashboard for YAML configuration
-jsq '$.servers.map(s => ({name: s.name, status: s.health}))' --file config.yaml --file-format yaml --watch
-```
-
-Watch mode features:
-- 🔄 Automatic re-execution on file changes
-- 🖥️ Clear console output for each update
-- ⚡ Debounced file watching (100ms) to prevent excessive updates
-- 🎯 Works with all supported file formats (JSON, CSV, YAML, etc.)
-- 🛑 Graceful exit with Ctrl+C
-
-## 📦 Installation
-
-### Node.js (npm) - Primary Installation
-```bash
-npm install -g @nnao45/jsq
-```
-
-### Cross-Runtime Compatibility
-**Only support with `--unsafe` options**
-jsq supports running with multiple JavaScript runtimes through subcommands:
-- **Node.js**: `jsq` (default)
-- **Bun**: `jsq bun` (faster startup, better performance)
-- **Deno**: `jsq deno` (secure by default, TypeScript native)
-
-## ✨ Beautiful Interactive REPL
-
-Experience real-time JSON processing with a stunning, colorful interface:
-
-```bash
-# Start the interactive REPL
-jsq --repl --file data.json
-```
-
-**REPL Features:**
-- 🎨 **Dynamic colorful prompt** - Each character changes color every second
-- ⚡ **Real-time evaluation** - See results as you type (300ms debounce)
-- 🔄 **Smart loading indicators** - Visual feedback for longer operations (500ms+)
-- 📊 **Live data exploration** - Toggle data view with Ctrl+R
-- 🚀 **Syntax highlighting** - Built-in expression validation
-- 💡 **Tab Completion** - IDE-like autocomplete for properties and methods
-
-The REPL provides a Claude Code-style interface with:
-- Multi-colored `❯❯❯` prompt that changes colors dynamically
-- Fixed-position input at the bottom
-- Scrollable result area that auto-truncates for optimal viewing
-- Instant feedback for syntax errors and partial expressions
-- Tab completion for object properties, array methods, and lodash/SmartDollar functions
-
-**Tab Completion:**
-```bash
-# Complete object properties
-> $.us[Tab]    # → $.users
-
-# Complete methods
-> _.fi[Tab]    # → Shows: _.filter, _.find, _.findIndex, etc.
-> $.map[Tab]   # → $.map
-
-# Navigate completions
-> $.users.f[Tab][Tab]  # Cycles through: filter, find, forEach, etc.
-> [Esc]                # Cancel completion
-```
-
-
-## 📚 Available Methods
-
-### Core Array Operations
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `filter(predicate)` | Filter elements matching condition | `$.users.filter(u => u.age > 18)` |
-| `map(transform)` | Transform each element | `$.numbers.map(n => n * 2)` |
-| `find(predicate)` | Get first element matching condition | `$.users.find(u => u.name === "Alice")` |
-| `where(key, value)` | Filter by key/value pair | `$.products.where("category", "electronics")` |
-| `pluck(key)` | Extract values for specified key | `$.users.pluck("email")` |
-| `sortBy(key)` | Sort by specified key | `$.items.sortBy("price")` |
-| `take(count)` | Take first N elements | `$.results.take(5)` |
-| `skip(count)` | Skip first N elements | `$.results.skip(10)` |
-
-### Advanced Array Manipulation
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `uniqBy(keyFn)` | Remove duplicates by key function | `$.users.uniqBy(u => u.email)` |
-| `flatten()` | Flatten nested arrays by one level | `$.nested.flatten()` |
-| `flattenDeep()` | Recursively flatten all nested arrays | `$.deepNested.flattenDeep()` |
-| `compact()` | Remove falsy values (null, undefined, false, 0, "") | `$.mixed.compact()` |
-| `chunk(size)` | Split array into chunks of specified size | `$.items.chunk(3)` |
-| `takeWhile(predicate)` | Take elements while condition is true | `$.scores.takeWhile(s => s > 80)` |
-| `dropWhile(predicate)` | Drop elements while condition is true | `$.scores.dropWhile(s => s < 60)` |
-| `reverse()` | Reverse array order | `$.items.reverse()` |
-| `shuffle()` | Randomly shuffle array elements | `$.cards.shuffle()` |
-| `sample()` | Get random element from array | `$.options.sample()` |
-| `sampleSize(count)` | Get N random elements from array | `$.items.sampleSize(3)` |
-
-### Async Array Processing ✨ NEW
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `forEachAsync(asyncFn)` | Execute async function for each element in parallel | `await $.urls.forEachAsync(async url => await fetch(url))` |
-| `forEachAsyncSeq(asyncFn)` | Execute async function for each element sequentially | `await $.ids.forEachAsyncSeq(async id => await process(id))` |
-| `mapAsync(asyncTransform)` | Transform each element with async function in parallel | `await $.endpoints.mapAsync(async url => await fetch(url).then(r => r.json()))` |
-| `mapAsyncSeq(asyncTransform)` | Transform each element with async function sequentially | `await $.items.mapAsyncSeq(async item => await processInOrder(item))` |
-
-### Advanced Sorting & Grouping
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `orderBy(keys, orders)` | Multi-key sorting with direction control | `$.users.orderBy(['age', 'name'], ['desc', 'asc'])` |
-| `groupBy(keyFn)` | Group elements by key function | `$.sales.groupBy(s => s.category)` |
-| `countBy(keyFn)` | Count elements by key function | `$.events.countBy(e => e.type)` |
-| `keyBy(keyFn)` | Create object indexed by key function | `$.users.keyBy(u => u.id)` |
-
-### Object Manipulation
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `pick(keys)` | Select only specified object keys | `$.user.pick(['name', 'email'])` |
-| `omit(keys)` | Exclude specified object keys | `$.user.omit(['password', 'secret'])` |
-| `invert()` | Swap object keys and values | `$.mapping.invert()` |
-| `keys()` | Get object keys as array | `$.config.keys()` |
-| `values()` | Get object values as array | `$.settings.values()` |
-| `entries()` | Get object entries as [key, value] pairs | `$.data.entries()` |
-
-### Collection Methods (Arrays & Objects)
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `size()` | Get collection size (length for arrays, key count for objects) | `$.collection.size()` |
-| `isEmpty()` | Check if collection is empty | `$.data.isEmpty()` |
-| `includes(value)` | Check if collection contains value | `$.tags.includes('javascript')` |
-
-### Statistical & Mathematical
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `sum(key?)` | Calculate sum of numbers or by key | `$.orders.sum('amount')` |
-| `mean()` | Calculate average of numeric array | `$.scores.mean()` |
-| `min()` | Find minimum value in numeric array | `$.prices.min()` |
-| `max()` | Find maximum value in numeric array | `$.prices.max()` |
-| `minBy(keyFn)` | Find element with minimum key value | `$.products.minBy(p => p.price)` |
-| `maxBy(keyFn)` | Find element with maximum key value | `$.products.maxBy(p => p.rating)` |
-
-### Utility Methods (via `_` namespace)
-
-#### Array Utilities
-```bash
-# Get unique values by property
-echo '{"users": [{"id": 1, "name": "Alice"}, {"id": 1, "name": "Alice Clone"}]}' | jsq '_.uniqBy($.users, u => u.id)'
-
-# Remove falsy values and flatten
-echo '{"data": [1, null, [2, 3], undefined, [4, [5]]]}' | jsq '_.compact(_.flattenDeep($.data))'
-
-# Random sampling
-echo '{"items": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}' | jsq '_.sampleSize($.items, 3)'
-```
-
-#### Object Utilities
-```bash
-# Merge objects with defaults
-echo '{"user": {"name": "Alice"}}' | jsq '_.defaults($.user, {name: "Anonymous", role: "guest"})'
-
-# Pick/omit properties
-echo '{"user": {"name": "Alice", "email": "alice@example.com", "password": "secret"}}' | jsq '_.pick($.user, ["name", "email"])'
-
-# Convert between arrays and objects
-echo '{"pairs": [["a", 1], ["b", 2], ["c", 3]]}' | jsq '_.fromPairs($.pairs)'
-```
-
-#### String Manipulation
-```bash
-# Case transformations
-echo '{"text": "hello-world_test case"}' | jsq '_.camelCase($.text)'  # "helloWorldTestCase"
-echo '{"text": "HelloWorldTest"}' | jsq '_.kebabCase($.text)'      # "hello-world-test"
-echo '{"text": "hello world"}' | jsq '_.startCase($.text)'        # "Hello World"
-```
-
-#### Regular Expression Support 🎯
-
-jsq provides full regular expression support in VM mode (default) with convenient helper functions:
-
-```bash
-# Basic regex matching
-echo '["test123", "hello", "world456"]' | jsq '$.filter(s => /\d+/.test(s))'  # ["test123", "world456"]
-
-# Global replacement
-echo '"hello world hello"' | jsq '$.replace(/hello/g, "hi")'  # "hi world hi"
-
-# Extract all matches
-echo '"abc123def456"' | jsq '$.match(/\d+/g)'  # ["123", "456"]
-
-# Split by regex
-echo '"hello123world456test"' | jsq '$.split(/\d+/)'  # ["hello", "world", "test"]
-
-# Complex patterns with flags
-echo '["Test", "TEST", "test"]' | jsq '$.filter(s => /test/i.test(s))'  # All match with case-insensitive flag
-```
-
-**Note**: Regular expressions are fully supported in the default VM mode. The `--unsafe` mode is not required for regex operations.
-
-#### Mathematical Functions
-```bash
-# Statistical operations
-echo '{"scores": [85, 92, 78, 95, 88]}' | jsq '_.mean($.scores)'  # Average
-echo '{"values": [1, 5, 3, 9, 2]}' | jsq '_.max($.values)'       # Maximum
-
-# Clamp values to range
-echo '{"value": 15}' | jsq '_.clamp($.value, 5, 10)'  # 10 (clamped to max)
-
-# Generate ranges and sequences
-jsq '_.range(5)'           # [0, 1, 2, 3, 4]
-jsq '_.range(2, 8, 2)'     # [2, 4, 6]
-jsq '_.times(3, i => i * 2)'  # [0, 2, 4]
-```
-
-### RxJS-style Reactive Methods ✨ NEW
-
-jsq now includes 20+ reactive programming methods inspired by RxJS for advanced data streaming and transformation:
-
-#### Time-based Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `delay(ms)` | Delay emission by specified milliseconds | `$.data.delay(1000)` |
-| `debounceTime(ms)` | Emit after specified quiet time | `$.stream.debounceTime(300)` |
-| `throttleTime(ms)` | Emit at most once per time period | `$.events.throttleTime(1000)` |
-| `timeout(ms)` | Error if no emission within time | `$.request.timeout(5000)` |
-| `interval(ms)` | Emit array items at intervals | `$.items.interval(100)` |
-| `timer(ms)` | Emit after delay then complete | `$.data.timer(500)` |
-
-#### Advanced Transformation Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `concatMap(fn)` | Map and concat in order | `$.urls.concatMap(fetchData)` |
-| `mergeMap(fn)` | Map and merge concurrently | `$.requests.mergeMap(process)` |
-| `switchMap(fn)` | Map and switch to latest | `$.search.switchMap(query)` |
-| `exhaustMap(fn)` | Map and ignore while active | `$.clicks.exhaustMap(save)` |
-
-#### Enhanced Filtering Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `distinctUntilChanged(keyFn?)` | Emit only when value changes | `$.stream.distinctUntilChanged()` |
-| `skipLast(count)` | Skip last N emissions | `$.data.skipLast(2)` |
-| `takeLast(count)` | Take only last N emissions | `$.items.takeLast(5)` |
-
-#### Stream Combination Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `combineLatest(other)` | Combine with latest from another stream | `$.stream1.combineLatest($.stream2)` |
-| `zip(other)` | Zip with another stream pairwise | `$.names.zip($.ages)` |
-| `merge(other)` | Merge with another stream | `$.events.merge($.logs)` |
-
-#### Error Handling Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `retry(count?)` | Retry on error with exponential backoff | `$.request.retry(3)` |
-| `catchError(handler)` | Handle errors gracefully | `$.data.catchError(err => [])` |
-
-#### Utility Operators
-| Method | Description | Example |
-|--------|-------------|---------|
-| `tap(fn)` | Perform side effects without changing stream | `$.data.tap(console.log)` |
-| `startWith(value)` | Start stream with initial value | `$.stream.startWith('init')` |
-
-#### Practical Examples
-
-```bash
-# Real-time data processing with delays
-echo '[1,2,3,4,5]' | jsq '$.interval(200).map(x => x * 2)'
-
-# Side effects for logging without changing data
-echo '{"users": [{"name": "Alice"}, {"name": "Bob"}]}' | jsq '$.users.tap(console.log).pluck("name")'
-
-# Debounced search simulation
-echo '["a", "ab", "abc"]' | jsq '$.debounceTime(100).map(q => `Searching: ${q}`)'
-
-# Error handling with retry
-echo '{"requests": ["url1", "url2"]}' | jsq '$.requests.map(url => fetch(url)).retry(2)'
-
-# Stream combination
-echo '{"names": ["Alice", "Bob"], "ages": [25, 30]}' | jsq '$.names.zip($.ages).map(([name, age]) => ({name, age}))'
-```
-
-### Aggregation Operations
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `length()` | Get element count | `$.items.length()` |
-
-## 🎛️ Command Line Options
-
-```bash
-jsq [options] <expression>          # Node.js (default)
-jsq bun [options] <expression>      # Bun runtime
-jsq deno [options] <expression>     # Deno runtime
-
-Options:
-  -v, --verbose           Display detailed execution information
-  -d, --debug            Enable debug mode
-  -s, --stream           Enable streaming mode for large datasets
-  -b, --batch <size>     Process in batches of specified size (implies --stream)
-  -p, --parallel [workers] Enable parallel processing (optionally specify worker count) ✨ NEW
-  --json-lines           Input/output in JSON Lines format
-  -f, --file <path>      Read from file instead of stdin
-  --file-format <format> Specify input file format (json, jsonl, csv, tsv, parquet, auto)
-  -w, --watch            Watch input file for changes and re-execute expression ✨ NEW
-  --repl                 Start interactive REPL mode
-  
-  Output Formatting:
-  --oneline              Output JSON in a single line (no pretty-printing) ✨ NEW
-  --color                Enable colored output ✨ NEW
-  --no-color             Disable colored output ✨ NEW
-  --indent <spaces>      Number of spaces for indentation (default: 2) ✨ NEW
-  --compact              Compact output (no spaces after separators) ✨ NEW
-  --sort-keys            Sort object keys alphabetically ✨ NEW
-  
-  Legacy/Advanced:
-  --no-network           Legacy option (deprecated, no effect in VM mode)
-  --no-shell             Legacy option (deprecated, no effect in VM mode)
-  --no-fs                Legacy option (deprecated, no effect in VM mode)
-  --sandbox              Legacy option (deprecated, VM isolation is now default)
-  --memory-limit <mb>    Memory limit in MB (default: 128)
-  --cpu-limit <ms>       CPU time limit in milliseconds (default: 30000)
-  --safe                 Legacy option (deprecated, shows warning)
-  --unsafe               Run in unsafe mode without VM isolation (dangerous!)
-  --help                 Display help
-  --version              Display version
+# Data Analysis
+cat sales.json | jsq '$.groupBy(s => s.category).entries().map(([cat, items]) => ({
+  category: cat,
+  total: _.sum(items.map(i => i.amount)),
+  average: _.mean(items.map(i => i.amount))
+}))'
+
+# Log Processing (with parallel execution)
+cat logs.jsonl | jsq --parallel --stream '$.filter(log => log.level === "error")'
+
+# API Response Transformation
+curl api.example.com/users | jsq '$.data.users.map(u => _.pick(u, ["id", "name", "email"]))'
+
+# Real-time Monitoring
+jsq '$.servers.filter(s => s.status === "down").length' --file status.json --watch
 ```
 
 ## 🔄 Migration from jq
@@ -475,331 +97,10 @@ Options:
 | `.users[] \| .name` | `$.users.pluck("name")` |
 | `.users \| length` | `$.users.length()` |
 | `.products \| sort_by(.price)` | `$.products.sortBy("price")` |
-| `.items[] \| select(.price > 100)` | `$.items.filter(i => i.price > 100)` |
 
-## 💡 Practical Examples
+## 🤝 Contributing
 
-### Advanced Data Processing
-
-```bash
-# Complex user analytics with new methods
-cat users.json | jsq '
-  $.users
-    .filter(u => u.active)
-    .groupBy(u => u.department)
-    .entries()
-    .map(([dept, users]) => ({
-      department: dept,
-      count: users.length,
-      avgSalary: _.mean(users.map(u => u.salary)),
-      topPerformer: _.maxBy(users, u => u.performance)
-    }))
-    .orderBy(["avgSalary"], ["desc"])
-'
-
-# Parallel processing for massive datasets (20x faster than jq!)
-cat huge-logs.jsonl | jsq --parallel 8 '
-  $.filter(log => log.level === "error" && log.timestamp > "2024-01-01")
-    .map(log => ({
-      service: log.service,
-      error: log.message,
-      timestamp: new Date(log.timestamp).toISOString()
-    }))
-    .groupBy(log => log.service)
-'
-
-# Remove duplicates and clean data
-cat messy-data.json | jsq '
-  $.records
-    .compact()                    # Remove null/undefined entries
-    .uniqBy(r => r.email)        # Remove duplicate emails
-    .map(r => _.pick(r, ["id", "name", "email", "department"]))
-    .orderBy(["department", "name"])
-'
-
-# Statistical analysis with confidence
-cat sales.json | jsq '
-  $.sales
-    .groupBy(s => s.quarter)
-    .entries()
-    .map(([quarter, sales]) => ({
-      quarter,
-      revenue: _.sum(sales.map(s => s.amount)),
-      avgDeal: _.mean(sales.map(s => s.amount)),
-      topDeal: _.max(sales.map(s => s.amount)),
-      deals: sales.length
-    }))
-'
-```
-
-### Log Analysis
-
-```bash
-# Advanced error analysis
-cat server.log | jsq '
-  $.logs
-    .filter(log => log.level === "error")
-    .countBy(log => log.component)
-    .entries()
-    .map(([component, count]) => ({component, errorCount: count}))
-    .orderBy(["errorCount"], ["desc"])
-    .take(5)
-'
-
-# Performance monitoring
-cat access.log | jsq '
-  $.requests
-    .filter(r => r.responseTime > 1000)
-    .groupBy(r => r.endpoint)
-    .entries()
-    .map(([endpoint, reqs]) => ({
-      endpoint,
-      slowRequests: reqs.length,
-      avgResponseTime: _.mean(reqs.map(r => r.responseTime)),
-      maxResponseTime: _.max(reqs.map(r => r.responseTime))
-    }))
-'
-```
-
-### Data Transformation & Cleaning
-
-```bash
-# API response normalization with advanced methods
-cat api-response.json | jsq '
-  $.results
-    .compact()                                    # Remove empty results
-    .map(item => ({
-      id: item._id,
-      name: _.startCase(item.displayName),        # Format names properly
-      email: item.contact?.email,
-      active: item.status === "active",
-      tags: _.uniq(item.tags || [])              # Remove duplicate tags
-    }))
-    .filter(item => item.email)                  # Only items with email
-    .orderBy(["name"])
-'
-
-# Generate reports with grouping and statistics
-cat transactions.json | jsq '
-  $.transactions
-    .filter(t => t.status === "completed")
-    .groupBy(t => t.category)
-    .entries()
-    .map(([category, txns]) => ({
-      category: _.startCase(category),
-      totalAmount: _.sum(txns.map(t => t.amount)),
-      avgAmount: _.mean(txns.map(t => t.amount)),
-      transactionCount: txns.length,
-      dateRange: {
-        earliest: _.minBy(txns, t => t.date)?.date,
-        latest: _.maxBy(txns, t => t.date)?.date
-      }
-    }))
-    .orderBy(["totalAmount"], ["desc"])
-'
-```
-
-### Advanced String Processing
-
-```bash
-# Clean and standardize text data
-cat user-input.json | jsq '
-  $.responses
-    .map(r => ({
-      id: r.id,
-      name: _.startCase(_.camelCase(r.raw_name)),     # "john_doe" → "John Doe"
-      slug: _.kebabCase(r.title),                     # "My Title" → "my-title"
-      category: _.upperFirst(_.camelCase(r.category)) # "USER_TYPE" → "UserType"
-    }))
-'
-
-# Generate configuration files
-cat config-data.json | jsq '
-  $.settings
-    .entries()
-    .map(([key, value]) => `${_.snakeCase(key).toUpperCase()}=${value}`)
-    .join("\n")
-'
-```
-
-### Complex Chaining Examples
-
-```bash
-# E-commerce analytics pipeline
-cat orders.json | jsq '
-  $.orders
-    .filter(o => o.status === "delivered")
-    .flattenDeep()                               # Flatten nested order items
-    .groupBy(item => item.category)
-    .entries()
-    .map(([category, items]) => ({
-      category,
-      revenue: _.sum(items.map(i => i.price * i.quantity)),
-      unitsSold: _.sum(items.map(i => i.quantity)),
-      avgPrice: _.mean(items.map(i => i.price)),
-      topProduct: _.maxBy(items, i => i.quantity)?.name
-    }))
-    .orderBy(["revenue"], ["desc"])
-    .take(10)
-'
-
-# Customer segmentation
-cat customers.json | jsq '
-  $.customers
-    .filter(c => c.lastPurchase)
-    .map(c => ({
-      ...c,
-      segment: c.totalSpent > 1000 ? "premium" : 
-               c.totalSpent > 500 ? "standard" : "basic",
-      daysSinceLastPurchase: Math.floor((Date.now() - new Date(c.lastPurchase)) / 86400000)
-    }))
-    .groupBy(c => c.segment)
-    .entries()
-    .map(([segment, customers]) => ({
-      segment,
-      count: customers.length,
-      avgSpent: _.mean(customers.map(c => c.totalSpent)),
-      retention: customers.filter(c => c.daysSinceLastPurchase < 30).length / customers.length
-    }))
-'
-```
-
-### Advanced Async Processing & System Integration ✨ NEW
-
-```bash
-# Multi-endpoint API aggregation with parallel processing
-cat endpoints.json | jsq '
-  console.log("Fetching data from", $.endpoints.length, "endpoints...");
-  const results = await $.endpoints.mapAsync(async endpoint => {
-    const response = await fetch(endpoint.url);
-    const data = await response.json();
-    return { source: endpoint.name, data: data.slice(0, 5) }; # Take first 5 items
-  });
-  console.log("Aggregated", results.length, "sources");
-  results
-'
-
-# Sequential API processing with rate limiting
-cat api-keys.json | jsq '
-  console.log("Processing", $.keys.length, "API calls with rate limiting...");
-  await $.keys.forEachAsyncSeq(async (key, index) => {
-    console.log(`Processing ${index + 1}/${$.keys.length}: ${key.name}`);
-    const response = await fetch(`https://api.example.com/data?key=${key.value}`);
-    await new Promise(r => setTimeout(r, 100)); # Rate limit: 100ms between calls
-  });
-  "All API calls completed"
-'
-
-```
-
-## 🔧 Development & Contributing
-
-### Node.js Development
-```bash
-# Development environment setup
-git clone https://github.com/nnao45/jsq.git
-cd jsq
-npm install
-
-# Build
-npm run build
-
-# Run tests
-npm test
-
-# Development mode
-npm run dev
-
-# Start REPL with test data
-jsq --repl --file test-repl-data.json
-```
-
-### Bun Development
-```bash
-# Setup for Bun
-bun install
-
-# Build with Bun
-bun run build:bun
-
-# Run tests with Bun
-bun run test:bun
-
-# Development mode with Bun
-bun run dev:bun
-
-# Start with Bun
-bun run start:bun
-```
-
-### Deno Development
-```bash
-# No installation needed, works directly
-
-# Check TypeScript
-deno check src/**/*.ts
-
-# Run tests
-deno test --allow-all
-
-# Development mode
-deno run --allow-all --watch src/simple-cli.ts
-
-# Format code
-deno fmt
-
-# Lint code
-deno lint
-```
-
-## ✅ Implemented Features
-
-### Core Features
-- [x] **Beautiful Interactive REPL** - Real-time evaluation with colorful UI
-- [x] **Dynamic Color Prompt** - Multi-colored ❯❯❯ that changes every second
-- [x] **Smart Loading Indicators** - Visual feedback for processing time
-- [x] **Pipeline Variable Declarations** ✨ NEW - Declare and use variables in expressions (`const x = value | x.method()`)
-- [x] **Sequential Execution with Semicolon Operator** ✨ NEW - Execute multiple expressions sequentially with side effects (`console.log("debug"); $.data`)
-- [x] **Advanced Async Array Methods** ✨ NEW - Parallel and sequential async processing (`forEachAsync`, `mapAsync`, `forEachAsyncSeq`, `mapAsyncSeq`)
-- [x] **Built-in Fetch & Async/Await Support** ✨ NEW - Native fetch API and async/await for HTTP requests and asynchronous operations
-- [x] **Multi-CPU Parallel Processing** ✨ NEW - Leverage all CPU cores for blazingly fast processing (10-20x faster than jq)
-- [x] **Streaming processing** - Large file support with real-time output
-- [x] **JSON Lines format support** - Handle JSONL data efficiently  
-- [x] **CSV/TSV/Parquet file support** - Multiple data format compatibility
-- [x] **Batch processing mode** - Process large datasets in chunks
-- [x] **Direct file reading** - Built-in file input support
-- [x] **Secure execution with VM isolation** - Safe code execution environment
-- [x] **Full TypeScript support** - Type-safe development experience
-
-### 🚀 Multi-Runtime Support
-- [x] **Node.js Compatible** - Full support for Node.js 16+ with npm ecosystem (`jsq`)
-- [x] **Bun Ready** - Native Bun support with faster execution via subcommand (`jsq bun`)
-- [x] **Deno Compatible** - Works with Deno's secure-by-default runtime via subcommand (`jsq deno`)
-- [x] **Cross-Runtime Library Loading** - Automatic runtime detection and package management
-- [x] **Unified Subcommand Interface** - Single binary with runtime-specific execution
-
-### Comprehensive Method Library (85+ Methods)
-- [x] **60+ Built-in Utility Methods** - Extensive lodash-like method collection without external dependencies
-- [x] **Array Manipulation** - uniqBy, flatten, compact, chunk, shuffle, sample, takeWhile, dropWhile
-- [x] **Advanced Sorting** - orderBy with multi-key support, groupBy, countBy, keyBy
-- [x] **Object Operations** - pick, omit, invert, merge, defaults, entries transformation
-- [x] **Statistical Functions** - mean, min/max, minBy/maxBy for data analysis
-- [x] **String Utilities** - camelCase, kebabCase, snakeCase, startCase, capitalize
-- [x] **Mathematical Tools** - clamp, random, range generation, times iteration
-- [x] **Collection Methods** - size, isEmpty, includes for arrays and objects
-- [x] **Function Utilities** - debounce, throttle, identity, constant, noop
-- [x] **4+ Async Array Methods** ✨ NEW - forEachAsync, forEachAsyncSeq, mapAsync, mapAsyncSeq for parallel and sequential async processing
-- [x] **20+ RxJS-style Reactive Methods** ✨ NEW - Time-based operators (delay, debounce, throttle, interval), transformation operators (concatMap, mergeMap, switchMap), filtering (distinctUntilChanged), stream combination (zip, merge), error handling (retry, catchError), and utilities (tap, startWith)
-- [x] **Sequential Execution Support** ✨ NEW - Semicolon operator for multi-expression execution with side effects
-- [x] **Chainable API** - All methods work seamlessly with jQuery-style chaining
-
-## 🚧 Future Plans
-
-- [ ] Plugin system
-- [ ] Advanced type checking
-- [ ] GraphQL support
-- [ ] WebAssembly integration
-- [ ] Distributed processing support
+Contributions are welcome! See our [Contributing Guide](https://github.com/nnao45/jsq/blob/main/CONTRIBUTING.md).
 
 ## 📄 License
 
