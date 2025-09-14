@@ -28,95 +28,286 @@ interface MethodCategory {
   standalone: true,
   imports: [CommonModule, JsqPlaygroundComponent],
   template: `
-    <div class="container">
-      <div class="prose">
-        <h1>Smart Dollar ($) Methods</h1>
-        <p>The Smart Dollar (<code>$</code>) API provides a jQuery-like chainable interface for data manipulation with 115+ built-in methods.</p>
-        
-        <div class="toc">
-          <h2>Table of Contents</h2>
-          <ul>
-            <li *ngFor="let category of categories">
-              <a [href]="'#' + getCategoryId(category.name)">{{ category.name }}</a>
-            </li>
-          </ul>
-        </div>
-
-        <div *ngFor="let category of categories" class="method-category">
-          <h2 [id]="getCategoryId(category.name)">{{ category.name }}</h2>
-          <p>{{ category.description }}</p>
-          
-          <div *ngFor="let method of category.methods" class="method-block">
-            <h3>{{ method.name }}</h3>
-            <p>{{ method.description }}</p>
-            
-            <div class="syntax">
-              <strong>Syntax:</strong>
-              <code>{{ method.syntax }}</code>
-            </div>
-            
-            <pre><code class="language-javascript">{{ method.example }}</code></pre>
-            
-            <app-jsq-playground 
-              *ngIf="method.playground"
-              [initialData]="method.playground.data"
-              [initialExpression]="method.playground.expression"
-            ></app-jsq-playground>
+    <div class="container-with-sidebar">
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <h2>Methods</h2>
+          <div class="category-group" *ngFor="let category of categories">
+            <button 
+              class="category-header" 
+              (click)="toggleCategory(category.name)"
+              [class.expanded]="isCategoryExpanded(category.name)"
+            >
+              <span class="category-arrow">{{ isCategoryExpanded(category.name) ? '▼' : '▶' }}</span>
+              {{ category.name }}
+              <span class="method-count">({{ category.methods.length }})</span>
+            </button>
+            <ul class="method-list" *ngIf="isCategoryExpanded(category.name)">
+              <li *ngFor="let method of category.methods">
+                <a 
+                  [href]="'#' + getMethodId(category.name, method.name)" 
+                  (click)="scrollToMethod($event, category.name, method.name)"
+                  [class.active]="isMethodActive(category.name, method.name)"
+                >
+                  {{ method.name }}
+                </a>
+              </li>
+            </ul>
           </div>
-        </div>
-        
-        <div class="method-chaining-section">
-          <h2>Method Chaining</h2>
-          <p>All methods that return collections return new SmartDollar instances, enabling fluent chaining:</p>
+          <div class="category-group">
+            <a 
+              href="#method-chaining" 
+              (click)="scrollToSection($event, 'method-chaining')"
+              class="special-section"
+              [class.active]="activeSection === 'method-chaining'"
+            >
+              Method Chaining
+            </a>
+          </div>
+        </nav>
+      </aside>
+      
+      <div class="main-content">
+        <div class="prose">
+          <h1>Smart Dollar ($) Methods</h1>
+          <p>The Smart Dollar (<code>$</code>) API provides a jQuery-like chainable interface for data manipulation with 115+ built-in methods.</p>
+
+          <div *ngFor="let category of categories" class="method-category">
+            <h2 [id]="getCategoryId(category.name)">{{ category.name }}</h2>
+            <p>{{ category.description }}</p>
+            
+            <div *ngFor="let method of category.methods" class="method-block" [id]="getMethodId(category.name, method.name)">
+              <h3>{{ method.name }}</h3>
+              <p>{{ method.description }}</p>
+              
+              <div class="syntax">
+                <strong>Syntax:</strong>
+                <code>{{ method.syntax }}</code>
+              </div>
+              
+              <pre><code class="language-javascript">{{ method.example }}</code></pre>
+              
+              <app-jsq-playground 
+                *ngIf="method.playground"
+                [initialData]="method.playground.data"
+                [initialExpression]="method.playground.expression"
+              ></app-jsq-playground>
+            </div>
+          </div>
           
-          <pre><code class="language-javascript">$.users
+          <div class="method-chaining-section" id="method-chaining">
+            <h2>Method Chaining</h2>
+            <p>All methods that return collections return new SmartDollar instances, enabling fluent chaining:</p>
+            
+            <pre><code class="language-javascript">$.users
   .filter(u => u.active)
   .sortBy("joinDate")
   .take(10)
   .pluck("email")
   .join(", ")</code></pre>
-          
-          <app-jsq-playground 
-            [initialData]='[{"name": "Alice", "score": 85, "active": true}, {"name": "Bob", "score": 92, "active": false}, {"name": "Charlie", "score": 78, "active": true}, {"name": "David", "score": 95, "active": true}]'
-            [initialExpression]="methodChainingExpression"
-          ></app-jsq-playground>
+            
+            <app-jsq-playground 
+              [initialData]='[{"name": "Alice", "score": 85, "active": true}, {"name": "Bob", "score": 92, "active": false}, {"name": "Charlie", "score": 78, "active": true}, {"name": "David", "score": 95, "active": true}]'
+              [initialExpression]="methodChainingExpression"
+            ></app-jsq-playground>
+          </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .toc {
+    .container-with-sidebar {
+      display: flex;
+      gap: 0;
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+    }
+    
+    .sidebar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
       background: var(--surface);
-      padding: 1.5rem;
-      border-radius: 0.5rem;
-      margin: 2rem 0;
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+      transition: width 0.3s ease, transform 0.3s ease;
+      z-index: 10;
       
-      h2 {
-        margin-top: 0;
-        font-size: 1.25rem;
+      &.sidebar-collapsed {
+        width: 50px;
       }
       
-      ul {
-        list-style: none;
-        padding-left: 0;
+      @media (max-width: 1024px) {
+        position: fixed;
+        transform: translateX(-100%);
         
-        li {
-          margin-bottom: 0.5rem;
+        &:not(.sidebar-collapsed) {
+          transform: translateX(0);
+        }
+      }
+    }
+    
+    .sidebar-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      color: var(--text-color);
+      font-size: 1.25rem;
+      z-index: 1;
+      
+      &:hover {
+        color: var(--primary-color);
+      }
+      
+      @media (max-width: 1024px) {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 0.25rem;
+        z-index: 100;
+      }
+    }
+    
+    .toggle-icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+    }
+    
+    .sidebar-nav {
+      padding: 3rem 1.5rem 2rem;
+      
+      h2 {
+        margin: 0 0 1rem;
+        font-size: 1.25rem;
+        color: var(--text-color);
+      }
+    }
+    
+    .category-group {
+      margin-bottom: 1rem;
+    }
+    
+    .category-header {
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 0.5rem 0.75rem;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-color);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: left;
+      border-radius: 0.25rem;
+      transition: background-color 0.2s;
+      
+      &:hover {
+        background: var(--code-bg);
+      }
+      
+      &.expanded {
+        color: var(--primary-color);
+      }
+    }
+    
+    .category-arrow {
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+    
+    .method-count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+    
+    .method-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.25rem 0 0 1.5rem;
+      
+      li {
+        margin: 0;
+        
+        a {
+          display: block;
+          padding: 0.375rem 0.75rem;
+          color: var(--text-color);
+          text-decoration: none;
+          font-size: 0.875rem;
+          border-radius: 0.25rem;
+          transition: all 0.2s;
+          opacity: 0.8;
           
-          a {
-            color: var(--primary-color);
-            text-decoration: none;
-            
-            &:hover {
-              text-decoration: underline;
-            }
+          &:hover {
+            background: var(--code-bg);
+            opacity: 1;
+          }
+          
+          &.active {
+            background: var(--primary-color);
+            color: white;
+            opacity: 1;
           }
         }
       }
     }
     
+    .special-section {
+      display: block;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 0.25rem;
+      transition: all 0.2s;
+      
+      &:hover {
+        background: var(--code-bg);
+      }
+      
+      &.active {
+        background: var(--primary-color);
+        color: white;
+      }
+    }
+    
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 2rem;
+      transition: margin-left 0.3s ease;
+      
+      &.sidebar-collapsed {
+        @media (min-width: 1025px) {
+          margin-left: -230px;
+        }
+      }
+      
+      @media (max-width: 1024px) {
+        margin-left: 0;
+      }
+    }
+    
     .method-category {
       margin-top: 3rem;
+      scroll-margin-top: 2rem;
     }
     
     .method-block {
@@ -124,6 +315,7 @@ interface MethodCategory {
       padding: 1.5rem;
       background: var(--surface);
       border-radius: 0.5rem;
+      scroll-margin-top: 2rem;
       
       h3 {
         margin-top: 0;
@@ -147,11 +339,33 @@ interface MethodCategory {
       margin-top: 3rem;
       padding-top: 2rem;
       border-top: 1px solid var(--border-color);
+      scroll-margin-top: 2rem;
+    }
+    
+    @media (max-width: 1024px) {
+      .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9;
+        display: none;
+        
+        &.visible {
+          display: block;
+        }
+      }
     }
   `]
 })
 export class SmartDollarMethodsComponent implements OnInit {
   methodChainingExpression = '$.filter(u => u.active).sortBy("score").reverse().pluck("name")';
+  expandedCategories: Set<string> = new Set();
+  activeCategory: string = '';
+  activeMethod: string = '';
+  activeSection: string = '';
   
   categories: MethodCategory[] = [
     {
@@ -1438,9 +1652,123 @@ await $.steps.forEachAsyncSeq(async step => {
 
   ngOnInit() {
     setTimeout(() => this.codeHighlight.highlightAll(), 0);
+    this.setupScrollListener();
+    this.expandedCategories.add(this.categories[0].name);
   }
 
   getCategoryId(name: string): string {
     return name.toLowerCase().replace(/\s+/g, '-');
+  }
+  
+  getMethodId(categoryName: string, methodName: string): string {
+    const cleanMethodName = methodName.replace(/[^a-zA-Z0-9]/g, '');
+    return `${this.getCategoryId(categoryName)}-${cleanMethodName.toLowerCase()}`;
+  }
+
+  toggleCategory(categoryName: string): void {
+    if (this.expandedCategories.has(categoryName)) {
+      this.expandedCategories.delete(categoryName);
+    } else {
+      this.expandedCategories.add(categoryName);
+    }
+  }
+  
+  isCategoryExpanded(categoryName: string): boolean {
+    return this.expandedCategories.has(categoryName);
+  }
+  
+  scrollToMethod(event: Event, categoryName: string, methodName: string): void {
+    event.preventDefault();
+    const elementId = this.getMethodId(categoryName, methodName);
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.activeCategory = categoryName;
+      this.activeMethod = methodName;
+      this.activeSection = '';
+    }
+  }
+  
+  scrollToSection(event: Event, sectionId: string): void {
+    event.preventDefault();
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.activeSection = sectionId;
+      this.activeCategory = '';
+      this.activeMethod = '';
+    }
+  }
+  
+  isMethodActive(categoryName: string, methodName: string): boolean {
+    return this.activeCategory === categoryName && this.activeMethod === methodName;
+  }
+  
+  private setupScrollListener(): void {
+    let ticking = false;
+    
+    const updateActiveMethod = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const viewportHeight = window.innerHeight;
+      const triggerPoint = scrollTop + viewportHeight * 0.3;
+      
+      let closestElement: { category: string; method: string; section: string; distance: number } | null = null;
+      
+      this.categories.forEach(category => {
+        category.methods.forEach(method => {
+          const elementId = this.getMethodId(category.name, method.name);
+          const element = document.getElementById(elementId);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            const elementTop = rect.top + scrollTop;
+            const distance = Math.abs(elementTop - triggerPoint);
+            
+            if (!closestElement || distance < closestElement.distance) {
+              closestElement = {
+                category: category.name,
+                method: method.name,
+                section: '',
+                distance: distance
+              };
+            }
+          }
+        });
+      });
+      
+      const chainingSection = document.getElementById('method-chaining');
+      if (chainingSection) {
+        const rect = chainingSection.getBoundingClientRect();
+        const elementTop = rect.top + scrollTop;
+        const distance = Math.abs(elementTop - triggerPoint);
+        
+        if (closestElement && distance < (closestElement as { category: string; method: string; section: string; distance: number }).distance) {
+          closestElement = {
+            category: '',
+            method: '',
+            section: 'method-chaining',
+            distance: distance
+          };
+        }
+      }
+      
+      if (closestElement) {
+        this.activeCategory = closestElement.category;
+        this.activeMethod = closestElement.method;
+        this.activeSection = closestElement.section;
+        
+        if (closestElement.category && !this.expandedCategories.has(closestElement.category)) {
+          this.expandedCategories.add(closestElement.category);
+        }
+      }
+      
+      ticking = false;
+    };
+    
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateActiveMethod);
+        ticking = true;
+      }
+    });
   }
 }

@@ -27,78 +27,309 @@ interface MethodCategory {
   standalone: true,
   imports: [CommonModule, JsqPlaygroundComponent],
   template: `
-    <div class="container">
-      <div class="prose">
-        <h1>Lodash Methods</h1>
-        <p>jsq includes the complete lodash utility library, accessible through the underscore (<code>_</code>) namespace. This provides 120+ additional methods for data manipulation.</p>
-        
-        <div class="usage-note">
-          <h2>Static vs Chained Usage</h2>
-          <p>Most lodash methods can be used in two ways:</p>
+    <div class="container-with-sidebar">
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <h2>Methods</h2>
+          <div class="category-group" *ngFor="let category of categories">
+            <button 
+              class="category-header" 
+              (click)="toggleCategory(category.name)"
+              [class.expanded]="isCategoryExpanded(category.name)"
+            >
+              <span class="category-arrow">{{ isCategoryExpanded(category.name) ? '▼' : '▶' }}</span>
+              {{ category.name }}
+              <span class="method-count">({{ category.methods.length }})</span>
+            </button>
+            <ul class="method-list" *ngIf="isCategoryExpanded(category.name)">
+              <li *ngFor="let method of category.methods">
+                <a 
+                  [href]="'#' + getMethodId(category.name, method.name)" 
+                  (click)="scrollToMethod($event, category.name, method.name)"
+                  [class.active]="isMethodActive(category.name, method.name)"
+                >
+                  {{ method.name.split('(')[0] }}
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="category-group">
+            <a 
+              href="#usage-note" 
+              (click)="scrollToSection($event, 'usage-note')"
+              class="special-section"
+              [class.active]="activeSection === 'usage-note'"
+            >
+              Static vs Chained Usage
+            </a>
+          </div>
+          <div class="category-group">
+            <a 
+              href="#combining" 
+              (click)="scrollToSection($event, 'combining')"
+              class="special-section"
+              [class.active]="activeSection === 'combining'"
+            >
+              Combining with Smart Dollar
+            </a>
+          </div>
+        </nav>
+      </aside>
+      
+      <div class="main-content">
+        <div class="prose">
+          <h1>Lodash Methods</h1>
+          <p>jsq includes the complete lodash utility library, accessible through the underscore (<code>_</code>) namespace. This provides 120+ additional methods for data manipulation.</p>
           
-          <h3>Static Usage</h3>
-          <pre><code class="language-javascript">// Direct function calls
+          <div class="usage-note" id="usage-note">
+            <h2>Static vs Chained Usage</h2>
+            <p>Most lodash methods can be used in two ways:</p>
+            
+            <h3>Static Usage</h3>
+            <pre><code class="language-javascript">// Direct function calls
 _.map([1, 2, 3], n => n * 2)
 _.filter(users, u => u.active)</code></pre>
-          
-          <h3>Chained Usage</h3>
-          <pre><code class="language-javascript">// Using the wrapper
+            
+            <h3>Chained Usage</h3>
+            <pre><code class="language-javascript">// Using the wrapper
 _([1, 2, 3]).map(n => n * 2).filter(n => n > 2).value()
 _(users).filter(u => u.active).sortBy('age').value()</code></pre>
-        </div>
+          </div>
 
-        <div class="toc">
-          <h2>Table of Contents</h2>
-          <ul>
-            <li *ngFor="let category of categories">
-              <a [href]="'#' + getCategoryId(category.name)">{{ category.name }}</a>
-            </li>
-          </ul>
-        </div>
-
-        <div *ngFor="let category of categories" class="method-category">
-          <h2 [id]="getCategoryId(category.name)">{{ category.name }}</h2>
-          <p>{{ category.description }}</p>
-          
-          <div *ngFor="let method of category.methods" class="method-block">
-            <h3>{{ method.name }}</h3>
-            <p>{{ method.description }}</p>
+          <div *ngFor="let category of categories" class="method-category">
+            <h2 [id]="getCategoryId(category.name)">{{ category.name }}</h2>
+            <p>{{ category.description }}</p>
             
-            <div class="syntax">
-              <strong>Syntax:</strong>
-              <code>{{ method.syntax }}</code>
+            <div *ngFor="let method of category.methods" class="method-block" [id]="getMethodId(category.name, method.name)">
+              <h3>{{ method.name }}</h3>
+              <p>{{ method.description }}</p>
+              
+              <div class="syntax">
+                <strong>Syntax:</strong>
+                <code>{{ method.syntax }}</code>
+              </div>
+              
+              <pre><code class="language-javascript">{{ method.example }}</code></pre>
+              
+              <app-jsq-playground 
+                *ngIf="method.playground"
+                [initialData]="method.playground.data"
+                [initialExpression]="method.playground.expression"
+              ></app-jsq-playground>
             </div>
+          </div>
+
+          <div class="combining-section" id="combining">
+            <h2>Combining with Smart Dollar</h2>
+            <p>You can seamlessly combine lodash methods with Smart Dollar:</p>
             
-            <pre><code class="language-javascript">{{ method.example }}</code></pre>
+            <pre><code class="language-javascript">{{ getCombiningExample() }}</code></pre>
             
             <app-jsq-playground 
-              *ngIf="method.playground"
-              [initialData]="method.playground.data"
-              [initialExpression]="method.playground.expression"
+              [initialData]='[{"name": "Alice", "dept": "Engineering", "salary": 80000}, {"name": "Bob", "dept": "Sales", "salary": 60000}, {"name": "Charlie", "dept": "Engineering", "salary": 90000}]'
+              [initialExpression]="getGroupByExpression()"
             ></app-jsq-playground>
           </div>
-        </div>
-
-        <div class="combining-section">
-          <h2>Combining with Smart Dollar</h2>
-          <p>You can seamlessly combine lodash methods with Smart Dollar:</p>
-          
-          <pre><code class="language-javascript">{{ getCombiningExample() }}</code></pre>
-          
-          <app-jsq-playground 
-            [initialData]='[{"name": "Alice", "dept": "Engineering", "salary": 80000}, {"name": "Bob", "dept": "Sales", "salary": 60000}, {"name": "Charlie", "dept": "Engineering", "salary": 90000}]'
-            [initialExpression]="getGroupByExpression()"
-          ></app-jsq-playground>
         </div>
       </div>
     </div>
   `,
   styles: [`
+    .container-with-sidebar {
+      display: flex;
+      gap: 0;
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+    }
+    
+    .sidebar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+      transition: width 0.3s ease, transform 0.3s ease;
+      z-index: 10;
+      
+      &.sidebar-collapsed {
+        width: 50px;
+      }
+      
+      @media (max-width: 1024px) {
+        position: fixed;
+        transform: translateX(-100%);
+        
+        &:not(.sidebar-collapsed) {
+          transform: translateX(0);
+        }
+      }
+    }
+    
+    .sidebar-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      color: var(--text-color);
+      font-size: 1.25rem;
+      z-index: 1;
+      
+      &:hover {
+        color: var(--primary-color);
+      }
+      
+      @media (max-width: 1024px) {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 0.25rem;
+        z-index: 100;
+      }
+    }
+    
+    .toggle-icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+    }
+    
+    .sidebar-nav {
+      padding: 3rem 1.5rem 2rem;
+      
+      h2 {
+        margin: 0 0 1rem;
+        font-size: 1.25rem;
+        color: var(--text-color);
+      }
+    }
+    
+    .category-group {
+      margin-bottom: 1rem;
+    }
+    
+    .category-header {
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 0.5rem 0.75rem;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-color);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: left;
+      border-radius: 0.25rem;
+      transition: background-color 0.2s;
+      
+      &:hover {
+        background: var(--code-bg);
+      }
+      
+      &.expanded {
+        color: var(--primary-color);
+      }
+    }
+    
+    .category-arrow {
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+    
+    .method-count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+    
+    .method-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.25rem 0 0 1.5rem;
+      
+      li {
+        margin: 0;
+        
+        a {
+          display: block;
+          padding: 0.375rem 0.75rem;
+          color: var(--text-color);
+          text-decoration: none;
+          font-size: 0.875rem;
+          border-radius: 0.25rem;
+          transition: all 0.2s;
+          opacity: 0.8;
+          
+          &:hover {
+            background: var(--code-bg);
+            opacity: 1;
+          }
+          
+          &.active {
+            background: var(--primary-color);
+            color: white;
+            opacity: 1;
+          }
+        }
+      }
+    }
+    
+    .special-section {
+      display: block;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 0.25rem;
+      transition: all 0.2s;
+      
+      &:hover {
+        background: var(--code-bg);
+      }
+      
+      &.active {
+        background: var(--primary-color);
+        color: white;
+      }
+    }
+    
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 2rem;
+      transition: margin-left 0.3s ease;
+      
+      &.sidebar-collapsed {
+        @media (min-width: 1025px) {
+          margin-left: -230px;
+        }
+      }
+      
+      @media (max-width: 1024px) {
+        margin-left: 0;
+      }
+    }
+    
     .usage-note {
       background: var(--surface);
       padding: 2rem;
       border-radius: 0.5rem;
       margin: 2rem 0;
+      scroll-margin-top: 2rem;
       
       h2 {
         margin-top: 0;
@@ -110,38 +341,9 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       }
     }
     
-    .toc {
-      background: var(--surface);
-      padding: 1.5rem;
-      border-radius: 0.5rem;
-      margin: 2rem 0;
-      
-      h2 {
-        margin-top: 0;
-        font-size: 1.25rem;
-      }
-      
-      ul {
-        list-style: none;
-        padding-left: 0;
-        
-        li {
-          margin-bottom: 0.5rem;
-          
-          a {
-            color: var(--primary-color);
-            text-decoration: none;
-            
-            &:hover {
-              text-decoration: underline;
-            }
-          }
-        }
-      }
-    }
-    
     .method-category {
       margin-top: 3rem;
+      scroll-margin-top: 2rem;
     }
     
     .method-block {
@@ -149,6 +351,7 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       padding: 1.5rem;
       background: var(--surface);
       border-radius: 0.5rem;
+      scroll-margin-top: 2rem;
       
       h3 {
         margin-top: 0;
@@ -172,10 +375,16 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       margin-top: 3rem;
       padding-top: 2rem;
       border-top: 1px solid var(--border-color);
+      scroll-margin-top: 2rem;
     }
   `]
 })
 export class LodashMethodsComponent implements OnInit {
+  expandedCategories: Set<string> = new Set();
+  activeCategory: string = '';
+  activeMethod: string = '';
+  activeSection: string = '';
+  
   categories: MethodCategory[] = [
     {
       name: 'Array Methods',
@@ -1656,10 +1865,128 @@ squareAdd(3)  // 10`,
 
   ngOnInit() {
     setTimeout(() => this.codeHighlight.highlightAll(), 0);
+    this.setupScrollListener();
+    this.expandedCategories.add(this.categories[0].name);
   }
 
   getCategoryId(categoryName: string): string {
     return categoryName.toLowerCase().replace(/\s+/g, '-');
+  }
+  
+  getMethodId(categoryName: string, methodName: string): string {
+    const cleanMethodName = methodName.replace(/[^a-zA-Z0-9]/g, '');
+    return `${this.getCategoryId(categoryName)}-${cleanMethodName.toLowerCase()}`;
+  }
+
+  toggleCategory(categoryName: string): void {
+    if (this.expandedCategories.has(categoryName)) {
+      this.expandedCategories.delete(categoryName);
+    } else {
+      this.expandedCategories.add(categoryName);
+    }
+  }
+  
+  isCategoryExpanded(categoryName: string): boolean {
+    return this.expandedCategories.has(categoryName);
+  }
+  
+  scrollToMethod(event: Event, categoryName: string, methodName: string): void {
+    event.preventDefault();
+    const elementId = this.getMethodId(categoryName, methodName);
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.activeCategory = categoryName;
+      this.activeMethod = methodName;
+      this.activeSection = '';
+    }
+  }
+  
+  scrollToSection(event: Event, sectionId: string): void {
+    event.preventDefault();
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.activeSection = sectionId;
+      this.activeCategory = '';
+      this.activeMethod = '';
+    }
+  }
+  
+  isMethodActive(categoryName: string, methodName: string): boolean {
+    return this.activeCategory === categoryName && this.activeMethod === methodName;
+  }
+  
+  private setupScrollListener(): void {
+    let ticking = false;
+    
+    const updateActiveMethod = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const viewportHeight = window.innerHeight;
+      const triggerPoint = scrollTop + viewportHeight * 0.3;
+      
+      let closestElement: { category: string; method: string; section: string; distance: number } | null = null;
+      
+      this.categories.forEach(category => {
+        category.methods.forEach(method => {
+          const elementId = this.getMethodId(category.name, method.name);
+          const element = document.getElementById(elementId);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            const elementTop = rect.top + scrollTop;
+            const distance = Math.abs(elementTop - triggerPoint);
+            
+            if (!closestElement || distance < closestElement.distance) {
+              closestElement = {
+                category: category.name,
+                method: method.name,
+                section: '',
+                distance: distance
+              };
+            }
+          }
+        });
+      });
+      
+      const specialSections = ['usage-note', 'combining'];
+      specialSections.forEach(sectionId => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const elementTop = rect.top + scrollTop;
+          const distance = Math.abs(elementTop - triggerPoint);
+          
+          if (!closestElement || distance < closestElement.distance) {
+            closestElement = {
+              category: '',
+              method: '',
+              section: sectionId,
+              distance: distance
+            };
+          }
+        }
+      });
+      
+      if (closestElement != null) {
+        const castClosestElement = closestElement as { category: string; method: string; section: string; distance: number }
+        this.activeCategory = castClosestElement.category;
+        this.activeMethod = castClosestElement.method;
+        this.activeSection = castClosestElement.section;
+        
+        if (castClosestElement.category && !this.expandedCategories.has(castClosestElement.category)) {
+          this.expandedCategories.add(castClosestElement.category);
+        }
+      }
+      
+      ticking = false;
+    };
+    
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateActiveMethod);
+        ticking = true;
+      }
+    });
   }
 
   getCombiningExample(): string {

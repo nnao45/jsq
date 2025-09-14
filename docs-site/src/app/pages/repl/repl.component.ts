@@ -37,7 +37,7 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
         </z-card>
       </div>
 
-      <div class="grid gap-8 mb-12">
+      <div class="gap-8 mb-12">
         <z-card>
           <div class="p-8">
             <h2 class="text-2xl font-bold mb-6">🚀 Launch Methods</h2>
@@ -49,8 +49,7 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
                   Pipe JSON data from any source directly into the REPL for immediate interactive exploration:
                 </p>
                 <div class="space-y-4">
-                  <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>
-{{ code }}</code></pre>
+                  <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>{{ code }}</code></pre>
                 </div>
               </div>
 
@@ -59,8 +58,7 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
                 <p class="mb-4 text-muted-foreground">
                   Load a JSON file and explore it interactively:
                 </p>
-                <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>
-jsq --repl --file data.json</code></pre>
+                <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>jsq --file data.json</code></pre>
               </div>
 
               <div>
@@ -68,11 +66,7 @@ jsq --repl --file data.json</code></pre>
                 <p class="mb-4 text-muted-foreground">
                   Launch jsq REPL without any data to start fresh:
                 </p>
-                <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>
-jsq --repl
-
-# Or simply
-jsq</code></pre>
+                <pre class="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto"><code>jsq</code></pre>
               </div>
             </div>
           </div>
@@ -144,18 +138,18 @@ jsq</code></pre>
             
             <div class="bg-muted/50 p-6 rounded-lg font-mono text-sm">
               <div class="space-y-3">
-                <div class="text-green-500">$ curl https://api.github.com/users/nnao45 | jsq --repl</div>
+                <div class="text-green-500">$ curl https://api.github.com/users/nnao45 | jsq</div>
                 <div class="text-muted-foreground"># JSON data loaded into REPL...</div>
                 <div>
-                  <span class="text-cyan-500">jsq&gt;</span> <span class="text-yellow-500">$</span>.<span class="text-blue-400">login</span>
+                  <span class="text-cyan-500">&gt; </span> <span class="text-yellow-500">$</span>.<span class="text-blue-400">login</span>
                 </div>
                 <div class="text-gray-300">"nnao45"</div>
                 <div>
-                  <span class="text-cyan-500">jsq&gt;</span> <span class="text-yellow-500">$</span>.<span class="text-blue-400">pick</span>(<span class="text-green-400">["login", "name", "company"]</span>)
+                  <span class="text-cyan-500">&gt; </span> <span class="text-yellow-500">$</span>.<span class="text-blue-400">pick</span>(<span class="text-green-400">["login", "name", "company"]</span>)
                 </div>
-                <div class="text-gray-300">{{ '{' }}"login": "nnao45", "name": "Nao Minami", "company": "&#64;ntt-communications"{{ '}' }}</div>
+                <div class="text-gray-300">{{ '{' }}"login": "nnao45", "name": "Nao Minami", "company": "&#64;nnao45-labs"{{ '}' }}</div>
                 <div>
-                  <span class="text-cyan-500">jsq&gt;</span> <span class="text-purple-500">exit</span>
+                  <span class="text-cyan-500">&gt; </span> <span class="text-purple-500">.exit</span>
                 </div>
               </div>
             </div>
@@ -234,15 +228,14 @@ jsq</code></pre>
   `]
 })
 export class ReplComponent {
-  code = `
-# From curl
-curl https://api.example.com/data | jsq --repl
+  code = `# From curl
+curl https://api.example.com/data | jsq
 
 # From file
-cat data.json | jsq --repl
+cat data.json | jsq
 
 # From another command
-echo '{"users": [1, 2, 3]}' | jsq --repl
+echo '{"users": [1, 2, 3]}' | jsq
 `
   inputJson = JSON.stringify({
     "login": "nnao45",

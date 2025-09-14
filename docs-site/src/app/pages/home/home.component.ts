@@ -15,15 +15,10 @@ import { ZardCardComponent } from '@shared/components/card/card.component';
           <h1 class="text-6xl font-bold font-mono text-primary mb-4 tracking-tight">jsq</h1>
           <p class="text-2xl font-semibold text-foreground mb-4">JavaScript-Powered JSON Query CLI Tool</p>
           <p class="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Process JSON with jQuery-style chaining and 80+ built-in methods, secure by default
+            Process JSON with chaining and 110+ built-in methods, secure by default
           </p>
           <div class="flex gap-4 justify-center">
-            <a routerLink="/getting-started">
-              <z-button zType="default" zSize="lg">Get Started</z-button>
-            </a>
-            <a href="https://github.com/nnao45/jsq" target="_blank">
-              <z-button zType="secondary" zSize="lg">View on GitHub</z-button>
-            </a>
+            <pre class="inline-block mb-8"><code class="language-bash">npm install -g &#64;nnao45/jsq</code></pre>
           </div>
         </div>
       </div>
@@ -65,7 +60,7 @@ import { ZardCardComponent } from '@shared/components/card/card.component';
           <h2>Quick Example</h2>
           <p>Transform complex JSON with intuitive JavaScript:</p>
           
-          <div class="grid md:grid-cols-2 gap-6 mt-6">
+          <div class="gap-6 mt-6">
             <h4 class="text-base font-semibold mb-2 text-muted-foreground">Traditional jq syntax</h4>
             <pre><code class="language-bash">cat users.json | jq '.users[] | select(.active == true) | .name'</code></pre>
 
@@ -106,14 +101,11 @@ cat data.json | jsq '
           <h3>🔥 Superior to Other Tools</h3>
           <p>jsq combines the best of all JSON processors:</p>
           <ul>
-            <li><strong>vs jq</strong> - Familiar JavaScript syntax instead of custom DSL, 20x faster with parallel processing</li>
+            <li><strong>vs jq</strong> - Familiar JavaScript syntax instead of custom DSL, with javascript primitive object (e.g. Date, Object, Math...)</li>
             <li><strong>vs fx</strong> - 85+ built-in methods vs basic JS operations, streaming support for large files</li>
             <li><strong>vs jello</strong> - No Python runtime required, VM isolation for security, real-time REPL</li>
             <li><strong>vs gojq/jaq</strong> - Cross-platform (Node.js/Deno/Bun), interactive development experience</li>
           </ul>
-          <pre><code class="language-bash"># jsq: Parallel processing for massive performance
-cat million-records.jsonl | jsq --parallel 8 '$.filter(r => r.active)'
-# 2 seconds vs jq's 40 seconds!</code></pre>
         </div>
       </div>
     </section>
@@ -133,6 +125,10 @@ cat million-records.jsonl | jsq --parallel 8 '$.filter(r => r.active)'
       </div>
     </section>
   `,
-  styles: []
+  styles: [`
+  .text-white {
+    color: white;
+  }  
+`]
 })
 export class HomeComponent {}

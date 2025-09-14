@@ -46,10 +46,8 @@ jsq --version
 jsq supports multiple JavaScript runtimes through subcommands:
 
 - **Node.js**: \`jsq\` (default)
-- **Bun**: \`jsq bun\` (faster startup, better performance)
-- **Deno**: \`jsq deno\` (secure by default, TypeScript native)
-
-> **Warning**: Cross-runtime support only works with the \`--unsafe\` option
+- **Bun**: \`jsq-bun\` (faster startup, better performance)
+- **Deno**: \`jsq-deno\` (secure by default, TypeScript native)
 
 ## Basic Usage
 
