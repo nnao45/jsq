@@ -157,7 +157,7 @@ def test_resource_exhaustion_prevention():
         
         # タイムアウトまたはエラーを確認
         try:
-            child.expect_exact('jsq> ', timeout=2)
+            child.expect_exact('> ', timeout=2)
             output = child.before.decode('utf-8')
             # メモリエラーまたは制限エラーが期待される
             assert 'Error' in output or len(output) < 100000  # 出力が制限されている
@@ -236,7 +236,7 @@ def test_json_dos_prevention():
         
         # 処理が適切に制限されることを確認
         try:
-            child.expect_exact('jsq> ', timeout=1)
+            child.expect_exact('> ', timeout=1)
             # 正常に処理されるか、エラーが出ることを確認
         except pexpect.TIMEOUT:
             # タイムアウトした場合は中断

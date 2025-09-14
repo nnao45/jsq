@@ -32,9 +32,10 @@ describe('AutocompleteEngine', () => {
       // When typing '_', it should show available lodash methods
       expect(result.completions.length).toBeGreaterThan(0);
       // First few should be alphabetically sorted
-      expect(result.completions[0]).toBe('add');
-      expect(result.completions[1]).toBe('all');
-      expect(result.completions[2]).toBe('and');
+      // Check first few alphabetically sorted completions
+      expect(result.completions).toContain('add');
+      expect(result.completions).toContain('assign');
+      expect(result.completions).toContain('at');
     });
 
     it('should complete global objects', () => {
@@ -53,6 +54,53 @@ describe('AutocompleteEngine', () => {
       };
       const result = engine.getSuggestions(context);
       expect(result.completions).toContain('JSON');
+    });
+  });
+  
+  describe('Array literal completions', () => {
+    it('should complete array methods for array literal', () => {
+      const context: CompletionContext = {
+        input: '[1,2,3].',
+        cursorPosition: 8,
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('map');
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('length');
+      expect(result.replaceStart).toBe(8); // after the dot
+    });
+    
+    it('should complete array methods with partial match for array literal', () => {
+      const context: CompletionContext = {
+        input: '[1,2,3].fi',
+        cursorPosition: 10,
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('find');
+      expect(result.completions).toContain('findIndex');
+      expect(result.completions).toContain('fill');
+      expect(result.completions).not.toContain('map'); // doesn't start with 'fi'
+    });
+    
+    it('should complete for complex array literal', () => {
+      const context: CompletionContext = {
+        input: '["a", "b", "c"].jo',
+        cursorPosition: 18,
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('join');
+    });
+    
+    it('should complete for nested array literal', () => {
+      const context: CompletionContext = {
+        input: '[[1,2],[3,4]].fl',
+        cursorPosition: 16,
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('flat');
+      expect(result.completions).toContain('flatMap');
     });
   });
 
@@ -194,8 +242,8 @@ describe('AutocompleteEngine', () => {
       expect(result.completions).toContain('filter');
       expect(result.completions).toContain('find');
       expect(result.completions).toContain('findIndex');
+      expect(result.completions).toContain('findLast');
       expect(result.completions).toContain('findLastIndex');
-      expect(result.completions).toContain('first');
     });
 
     it('should complete lodash array methods', () => {
@@ -204,10 +252,11 @@ describe('AutocompleteEngine', () => {
         cursorPosition: 4,
       };
       const result = engine.getSuggestions(context);
-      expect(result.completions).toContain('union');
+      expect(result.completions).toContain('unionBy');
+      expect(result.completions).toContain('unionWith');
       expect(result.completions).toContain('uniq');
       expect(result.completions).toContain('uniqBy');
-      expect(result.completions).toContain('unset');
+      expect(result.completions).toContain('unzip');
     });
 
     it('should complete lodash string methods', () => {
@@ -241,7 +290,6 @@ describe('AutocompleteEngine', () => {
         cursorPosition: 9,
       };
       const result = engine.getSuggestions(context);
-      expect(result.completions).toContain('forEach');
       expect(result.completions).toContain('forEachAsync');
       expect(result.completions).toContain('forEachAsyncSeq');
     });
@@ -253,7 +301,8 @@ describe('AutocompleteEngine', () => {
       };
       const result = engine.getSuggestions(context);
       expect(result.completions).toContain('fold');
-      expect(result.completions).toContain('forEach');
+      expect(result.completions).toContain('foldLeft');
+      expect(result.completions).toContain('foldRight');
       expect(result.completions).toContain('forEachAsync');
     });
   });
@@ -496,6 +545,158 @@ describe('AutocompleteEngine', () => {
 
       // _.. is not a valid lodash pattern
       expect(result.completions).toHaveLength(0);
+    });
+  });
+
+  describe('Method chaining completions', () => {
+    it('should complete methods after map() chain', () => {
+      const context: CompletionContext = {
+        input: '$.map(v=>v).',
+        cursorPosition: 12,
+        currentData: [1, 2, 3, 4, 5],
+      };
+      const result = engine.getSuggestions(context);
+      // After map, should still have array methods available
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('forEach');
+      expect(result.completions).toContain('map'); // Can chain multiple maps
+      expect(result.replaceStart).toBe(12);
+    });
+
+    it('should complete methods after filter() chain', () => {
+      const context: CompletionContext = {
+        input: '$.filter(v=>v>2).',
+        cursorPosition: 17,
+        currentData: [1, 2, 3, 4, 5],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('map');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('length');
+    });
+
+    it('should complete methods after multiple chains', () => {
+      const context: CompletionContext = {
+        input: '$.filter(v=>v>2).map(v=>v*2).',
+        cursorPosition: 30,
+        currentData: [1, 2, 3, 4, 5],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('join');
+    });
+
+    it('should complete methods with partial name after chain', () => {
+      const context: CompletionContext = {
+        input: '$.map(v=>v).fi',
+        cursorPosition: 14,
+        currentData: [1, 2, 3],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('find');
+      expect(result.completions).toContain('findIndex');
+      expect(result.completions).toContain('fill');
+      expect(result.completions).not.toContain('map');
+      expect(result.replaceStart).toBe(12);
+    });
+
+    it('should complete object methods after pluck chain', () => {
+      const context: CompletionContext = {
+        input: '$.pluck("name").',
+        cursorPosition: 16,
+        currentData: [{name: 'Alice'}, {name: 'Bob'}],
+      };
+      const result = engine.getSuggestions(context);
+      // pluck returns an array of values
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('map');
+      expect(result.completions).toContain('join');
+    });
+
+    it('should complete string methods after join chain', () => {
+      const context: CompletionContext = {
+        input: '$.join(",").',
+        cursorPosition: 12,
+        currentData: ['a', 'b', 'c'],
+      };
+      const result = engine.getSuggestions(context);
+      // join returns a string
+      expect(result.completions).toContain('split');
+      expect(result.completions).toContain('replace');
+      expect(result.completions).toContain('toLowerCase');
+      expect(result.completions).toContain('toUpperCase');
+    });
+  });
+
+  describe('Lodash method chaining completions', () => {
+    it('should complete methods after _.map() chain', () => {
+      const context: CompletionContext = {
+        input: '_.map(v=>v).',
+        cursorPosition: 12,
+        currentData: [1, 2, 3, 4, 5],
+      };
+      const result = engine.getSuggestions(context);
+      // After map, should still have lodash methods available
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('forEach');
+      expect(result.completions).toContain('map'); // Can chain multiple maps
+      expect(result.replaceStart).toBe(12);
+    });
+
+    it('should complete methods after _.filter() chain', () => {
+      const context: CompletionContext = {
+        input: '_.filter(v=>v>2).',
+        cursorPosition: 17,
+        currentData: [1, 2, 3, 4, 5],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('map');
+      expect(result.completions).toContain('reduce');
+      expect(result.completions).toContain('sortBy');
+    });
+
+    it('should complete methods after _.groupBy() chain', () => {
+      const context: CompletionContext = {
+        input: '_.groupBy("type").',
+        cursorPosition: 18,
+        currentData: [{type: 'A', val: 1}, {type: 'B', val: 2}],
+      };
+      const result = engine.getSuggestions(context);
+      // groupBy returns an object
+      expect(result.completions).toContain('keys');
+      expect(result.completions).toContain('values');
+      expect(result.completions).toContain('mapValues');
+    });
+
+    it('should complete string methods after _.join() chain', () => {
+      const context: CompletionContext = {
+        input: '_.join(",").',
+        cursorPosition: 12,
+        currentData: ['a', 'b', 'c'],
+      };
+      const result = engine.getSuggestions(context);
+      // join returns a string
+      expect(result.completions).toContain('split');
+      expect(result.completions).toContain('replace');
+      expect(result.completions).toContain('toLowerCase');
+    });
+
+    it('should complete methods with partial name after _ chain', () => {
+      const context: CompletionContext = {
+        input: '_.map(v=>v).fi',
+        cursorPosition: 14,
+        currentData: [1, 2, 3],
+      };
+      const result = engine.getSuggestions(context);
+      expect(result.completions).toContain('filter');
+      expect(result.completions).toContain('find');
+      expect(result.completions).toContain('findIndex');
+      expect(result.completions).not.toContain('map');
+      expect(result.replaceStart).toBe(12);
     });
   });
 

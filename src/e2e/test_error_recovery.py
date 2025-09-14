@@ -17,9 +17,9 @@ def spawn_jsq_repl():
     child = pexpect.spawn('node dist/index.js', env=env, encoding='utf-8', timeout=TIMEOUT)
     
     # REPLヘッダーをスキップしてプロンプトを待つ
-    index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+    index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
     if index == 1:
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
     elif index == 2:
         raise Exception("Timeout waiting for prompt")
     
@@ -34,7 +34,7 @@ def test_syntax_error_recovery():
     try:
         # 構文エラーを発生させる
         child.sendline('[1, 2, 3].map(x => x * )')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # エラーメッセージが表示されることを確認
         output = child.before
@@ -42,7 +42,7 @@ def test_syntax_error_recovery():
         
         # 正常な入力が受け付けられることを確認
         child.sendline('[1, 2, 3].map(x => x * 2)')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '[2, 4, 6]' in output or '2, 4, 6' in output
         
@@ -61,7 +61,7 @@ def test_runtime_error_recovery():
     try:
         # 実行時エラーを発生させる（存在しないプロパティへのアクセス）
         child.sendline('null.foo.bar')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # エラーメッセージが表示されることを確認
         output = child.before
@@ -69,7 +69,7 @@ def test_runtime_error_recovery():
         
         # 正常な入力が受け付けられることを確認
         child.sendline('"recovered from error"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '"recovered from error"' in output or 'recovered from error' in output
         
@@ -88,7 +88,7 @@ def test_invalid_json_recovery():
     try:
         # 無効なJSONを入力
         child.sendline('{"invalid": json,}')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # エラーが表示されることを確認
         output = child.before
@@ -96,7 +96,7 @@ def test_invalid_json_recovery():
         
         # 有効なJSONが処理できることを確認
         child.sendline('{"valid": "json"}')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '"valid"' in output and '"json"' in output
         
@@ -122,7 +122,7 @@ def test_infinite_loop_interruption():
         
         # プロンプトが戻ることを確認（タイムアウトするかもしれない）
         try:
-            child.expect_exact('jsq>', timeout=2)
+            child.expect_exact('> ', timeout=2)
             print("✓ Infinite loop interruption test passed")
         except pexpect.TIMEOUT:
             print("⚠ Infinite loop interruption test skipped (not supported)")
@@ -130,7 +130,7 @@ def test_infinite_loop_interruption():
         # 正常な入力を試す
         child.sendline('"after interruption"')
         try:
-            child.expect_exact('jsq>', timeout=1)
+            child.expect_exact('> ', timeout=1)
         except:
             pass
         
@@ -150,7 +150,7 @@ def test_memory_intensive_operation_recovery():
     try:
         # 大きな配列を作成（メモリ使用量をテスト）
         child.sendline('Array(1000000).fill(0).length')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # 結果が返ってくることを確認
         output = child.before
@@ -158,13 +158,13 @@ def test_memory_intensive_operation_recovery():
         
         # さらに大きな操作を試みる
         child.sendline('Array(10000).fill(0).map((_, i) => ({ index: i, data: "x".repeat(10) })).length')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '10000' in output
         
         # まだ応答があることを確認
         child.sendline('"still responsive"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '"still responsive"' in output or 'still responsive' in output
         
@@ -183,7 +183,7 @@ def test_error_in_chained_operations():
     try:
         # チェーン操作の途中でエラーを発生させる
         child.sendline('[{a: 1}, {b: 2}, {c: 3}].map(x => x.a).filter(x => x.foo.bar)')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # エラーが表示されることを確認
         output = child.before
@@ -191,7 +191,7 @@ def test_error_in_chained_operations():
         
         # 正しいチェーン操作が動作することを確認
         child.sendline('[{a: 1}, {b: 2}, {c: 3}].map(x => x.a || x.b || x.c).filter(x => x > 1)')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '[2, 3]' in output or '2, 3' in output
         
@@ -210,19 +210,19 @@ def test_special_character_handling():
     try:
         # 特殊文字を含む入力（null文字などは避ける）
         child.sendline('"special\\ncharacters\\ttab"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert 'special' in output and 'characters' in output
         
         # Unicode文字
         child.sendline('"日本語 😀 🎉"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert '日本語' in output or '\\u65e5\\u672c\\u8a9e' in output
         
         # エスケープシーケンス
         child.sendline('"line1\\nline2\\ttab"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert 'line1' in output and 'line2' in output
         

@@ -257,6 +257,10 @@ export class ReplManager {
         case 'escape':
           this.cancelCompletionMenu();
           return;
+        case 'tab':
+          // メニューモードでタブが押されたら、選択して次の補完を開始
+          this.selectCompletionFromMenu();
+          return;
         default:
           // その他のキーはメニューをキャンセル
           this.cancelCompletionMenu();
@@ -702,13 +706,8 @@ export class ReplManager {
     this.state.completionEnd = result.replaceEnd;
     this.state.originalInput = undefined; // 新しい補完セッションの開始時にリセット
 
-    if (result.completions.length === 1) {
-      // 単一の補完候補の場合は直接適用
-      this.applyCompletion();
-    } else {
-      // 複数の補完候補がある場合はメニューを表示
-      this.showCompletionMenu();
-    }
+    // 常に直接適用モードを使用（メニューモードは使わない）
+    this.applyCompletion();
   }
 
   private cycleCompletion(): void {

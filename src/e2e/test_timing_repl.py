@@ -24,9 +24,9 @@ def spawn_jsq_repl_with_data(data=None):
         child = pexpect.spawn('node dist/index.js', encoding='utf-8', timeout=TIMEOUT, env=env)
     
     # REPLヘッダーをスキップしてプロンプトを待つ
-    index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+    index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
     if index == 1:
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
     elif index == 2:
         raise Exception("Timeout waiting for prompt")
     
@@ -52,7 +52,7 @@ def test_basic_response_time():
         for expr in expressions:
             start = time.time()
             child.sendline(expr)
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
             end = time.time()
             
             response_time = (end - start) * 1000  # ミリ秒
@@ -98,7 +98,7 @@ def test_large_data_processing():
         for expr, expected, max_ms in operations:
             start = time.time()
             child.sendline(expr)
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
             end = time.time()
             
             output = child.before
@@ -148,7 +148,7 @@ def test_realtime_evaluation_disabled():
         # Enterを押して初めて評価される
         start = time.time()
         child.send('\r')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         end = time.time()
         
         output = child.before
@@ -183,7 +183,7 @@ def test_concurrent_operations():
         
         for op in operations:
             child.sendline(op)
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         
         end = time.time()
         total_time = (end - start) * 1000
@@ -215,7 +215,7 @@ def test_memory_stability():
         for i in range(10):
             start = time.time()
             child.sendline(f'Array({i * 1000}).fill(0).length')
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
             end = time.time()
             
             response_time = (end - start) * 1000

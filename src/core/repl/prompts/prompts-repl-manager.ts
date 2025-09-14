@@ -659,11 +659,11 @@ export class PromptsReplManager implements ReplManagerInterface {
         process.stdout.write('\x1b[0G');
 
         // Rewrite prompt and input
-        const promptText = chalk.cyan('? ') + chalk.bold('> ');
+        const promptText = chalk.bold('> ');
         process.stdout.write(promptText + currentLine);
 
         // Restore cursor position
-        process.stdout.write(`\x1b[${4 + cursorPos + 1}G`);
+        process.stdout.write(`\x1b[${2 + cursorPos + 1}G`);
       }
 
       this.hasPreviewLine = false;
@@ -682,11 +682,11 @@ export class PromptsReplManager implements ReplManagerInterface {
     process.stdout.write('\x1b[0G'); // Move to beginning of line
 
     // Rewrite prompt and current input
-    const promptText = chalk.cyan('? ') + chalk.bold('> ');
+    const promptText = chalk.bold('> ');
     process.stdout.write(promptText + currentLine);
 
     // Return cursor to its original position
-    process.stdout.write(`\x1b[${4 + savedCursorPos + 1}G`);
+    process.stdout.write(`\x1b[${2 + savedCursorPos + 1}G`);
   }
 
   private clearCompletionStatus(): void {
@@ -744,9 +744,9 @@ export class PromptsReplManager implements ReplManagerInterface {
       // Rewrite the input line
       const savedCursorPos = (this.rl as any).cursor || 0;
       const currentLine = (this.rl as any).line || '';
-      const promptText = chalk.cyan('? ') + chalk.bold('> ');
+      const promptText = chalk.bold('> ');
       process.stdout.write(promptText + currentLine);
-      process.stdout.write('\x1b[' + (4 + savedCursorPos + 1) + 'G');
+      process.stdout.write('\x1b[' + (2 + savedCursorPos + 1) + 'G');
       
       this.hasCompletionStatus = true;
       
@@ -783,9 +783,9 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G'); // Move to beginning of line
       
       // Rewrite the input line
-      const promptText = chalk.cyan('? ') + chalk.bold('> ');
+      const promptText = chalk.bold('> ');
       process.stdout.write(promptText + currentLine);
-      process.stdout.write('\x1b[' + (4 + savedCursorPos + 1) + 'G');
+      process.stdout.write('\x1b[' + (2 + savedCursorPos + 1) + 'G');
       
       this.hasCompletionStatus = true;
       
@@ -854,7 +854,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         // Move cursor back to the original position
         process.stdout.write('\x1b[A'); // Move up one line
         process.stdout.write('\x1b[0G'); // Move to beginning of line
-        process.stdout.write(chalk.cyan('? ') + chalk.bold('> ') + currentLine); // Rewrite prompt and current input
+        process.stdout.write(chalk.bold('> ') + currentLine); // Rewrite prompt and current input
         // ANSIエスケープシーケンスは1ベース、カーソル位置は0ベースなので+1
         process.stdout.write(`\x1b[${promptLength + savedCursorPos + 1}G`); // Position cursor correctly
 

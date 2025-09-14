@@ -88,7 +88,7 @@ def test_my_feature():
     child = spawn_jsq_repl()
     try:
         child.sendline('my command')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         assert 'expected output' in output
     finally:
@@ -104,7 +104,7 @@ def test_my_feature():
 
 ### プロンプトが見つからない
 - REPLヘッダーの処理を確認
-- `jsq>`プロンプトの正確な文字列を確認
+- `> `プロンプトの正確な文字列を確認
 
 ### 文字エンコーディングの問題
 - `encoding='utf-8'`パラメータを使用

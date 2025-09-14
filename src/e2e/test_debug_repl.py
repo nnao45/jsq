@@ -22,16 +22,16 @@ def test_basic_pipe_input():
                               encoding='utf-8', timeout=TIMEOUT, env=env)
         
         # REPLヘッダーをスキップ
-        index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+        index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
         if index == 1:
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         elif index == 2:
             print("✗ Timeout waiting for prompt")
             return False
         
         # 基本的な式の評価
         child.sendline('_.test')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         
         if '123' in output:
@@ -64,20 +64,20 @@ def test_interactive_input():
         child = pexpect.spawn('node dist/index.js', encoding='utf-8', timeout=TIMEOUT, env=env)
         
         # REPLヘッダーをスキップ
-        index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+        index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
         if index == 1:
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         elif index == 2:
             print("✗ Timeout waiting for prompt")
             return False
         
         # 手動でデータを入力
         child.sendline('{"manual": "data", "value": 42}')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # データにアクセス
         child.sendline('_.value')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         
         if '42' in output:
@@ -109,9 +109,9 @@ def test_multiline_input_debug():
         child = pexpect.spawn('node dist/index.js', encoding='utf-8', timeout=TIMEOUT, env=env)
         
         # REPLヘッダーをスキップ
-        index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+        index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
         if index == 1:
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         elif index == 2:
             print("✗ Timeout waiting for prompt")
             return False
@@ -122,11 +122,11 @@ def test_multiline_input_debug():
         child.sendline('  return a + b;')
         time.sleep(0.1)
         child.sendline('}')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         
         # 関数を使用
         child.sendline('add(10, 20)')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         
         if '30' in output:
@@ -158,9 +158,9 @@ def test_special_characters_debug():
         child = pexpect.spawn('node dist/index.js', encoding='utf-8', timeout=TIMEOUT, env=env)
         
         # REPLヘッダーをスキップ
-        index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+        index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
         if index == 1:
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         elif index == 2:
             print("✗ Timeout waiting for prompt")
             return False
@@ -175,7 +175,7 @@ def test_special_characters_debug():
         all_passed = True
         for input_str, expected_parts in test_cases:
             child.sendline(input_str)
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
             output = child.before
             
             passed = all(part in output for part in expected_parts)
@@ -210,9 +210,9 @@ def test_error_output_debug():
         child = pexpect.spawn('node dist/index.js', encoding='utf-8', timeout=TIMEOUT, env=env)
         
         # REPLヘッダーをスキップ
-        index = child.expect(['jsq>', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
+        index = child.expect(['> ', 'jsq REPL', pexpect.TIMEOUT], timeout=TIMEOUT)
         if index == 1:
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
         elif index == 2:
             print("✗ Timeout waiting for prompt")
             return False
@@ -227,7 +227,7 @@ def test_error_output_debug():
         all_passed = True
         for expr, expected_error in error_cases:
             child.sendline(expr)
-            child.expect_exact('jsq>')
+            child.expect_exact('> ')
             output = child.before
             
             if expected_error in output or 'Error' in output:
@@ -238,7 +238,7 @@ def test_error_output_debug():
         
         # エラー後も正常に動作することを確認
         child.sendline('"after errors"')
-        child.expect_exact('jsq>')
+        child.expect_exact('> ')
         output = child.before
         
         if 'after errors' in output:
