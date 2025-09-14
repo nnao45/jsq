@@ -78,19 +78,14 @@ export class Lodash {
 
 // Apply all methods to Lodash prototype
 Object.entries(methods).forEach(([name, fn]) => {
-  const prototypeMethod = function (
-    this: Lodash,
-    ...args: unknown[]
-  ) {
+  const prototypeMethod = function (this: Lodash, ...args: unknown[]) {
     // Use 'this' context with the method
     return (fn as (...args: unknown[]) => unknown).apply(this, args);
   };
-  
+
   // Override toString to display [native code] like built-in functions
-  prototypeMethod.toString = function() {
-    return 'function bound ' + name + '() {[native code]}';
-  };
-  
+  prototypeMethod.toString = () => `function bound ${name}() {[native code]}`;
+
   (Lodash.prototype as unknown as Record<string, unknown>)[name] = prototypeMethod;
 });
 
@@ -182,13 +177,22 @@ function _(...args: unknown[]): Lodash | undefined {
   return createLodashInstance(args[0]);
 }
 
+// Override toString to display [native code]
+_.toString = () => 'function() {[native code]}';
+
 // Add static methods to _ (like _.chunk, _.filter, etc)
 Object.entries(methods).forEach(([name, fn]) => {
   const staticMethod = (...args: unknown[]) => {
     // Type checking functions - operate directly on first argument
-    if (name === 'isArray' || name === 'isObject' || name === 'isString' || 
-        name === 'isNumber' || name === 'isFunction' || name === 'isNull' || 
-        name === 'isUndefined') {
+    if (
+      name === 'isArray' ||
+      name === 'isObject' ||
+      name === 'isString' ||
+      name === 'isNumber' ||
+      name === 'isFunction' ||
+      name === 'isNull' ||
+      name === 'isUndefined'
+    ) {
       if (args.length === 0) return false;
       let value = args[0];
       // Auto-unwrap SmartDollar/ChainableWrapper instances
@@ -202,7 +206,7 @@ Object.entries(methods).forEach(([name, fn]) => {
       const method = wrapped[name as keyof Lodash] as () => boolean;
       return method.call(wrapped);
     }
-    
+
     // For static methods, wrap the first argument
     if (args.length > 0) {
       const dataToWrap = args[0];
@@ -228,12 +232,10 @@ Object.entries(methods).forEach(([name, fn]) => {
     // For methods that don't need arguments
     return (fn as (...args: unknown[]) => unknown).call({ _value: undefined, constructor: Lodash });
   };
-  
+
   // Override toString to display [native code] like built-in functions
-  staticMethod.toString = function() {
-    return 'function bound ' + name + '() {[native code]}';
-  };
-  
+  staticMethod.toString = () => `function bound ${name}() {[native code]}`;
+
   (_ as unknown as Record<string, unknown>)[name] = staticMethod;
 });
 
@@ -319,7 +321,7 @@ export interface LodashStatic {
   isObject(value: unknown): value is object;
   isString(value: unknown): value is string;
   isNumber(value: unknown): value is number;
-  isFunction(value: unknown): value is Function;
+  isFunction(value: unknown): value is (...args: unknown[]) => unknown;
   isNull(value: unknown): value is null;
   isUndefined(value: unknown): value is undefined;
   size(collection: unknown[] | object | string): number;

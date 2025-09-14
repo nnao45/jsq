@@ -1,4 +1,4 @@
-import type { Worker } from 'node:worker_threads';
+import type { Worker, WorkerOptions } from 'node:worker_threads';
 
 export interface FileSystemProvider {
   readFile(path: string): Promise<string>;
@@ -7,16 +7,16 @@ export interface FileSystemProvider {
 }
 
 export interface WorkerProvider {
-  createWorker(scriptPath: string, options?: any): Worker;
+  createWorker(scriptPath: string, options?: WorkerOptions): Worker;
 }
 
 export interface PromptsProvider {
-  prompt(config: any): Promise<any>;
+  prompt(config: unknown): Promise<unknown>;
 }
 
 export interface ConsoleProvider {
-  log(...args: any[]): void;
-  error(...args: any[]): void;
+  log(...args: unknown[]): void;
+  error(...args: unknown[]): void;
   clear(): void;
 }
 

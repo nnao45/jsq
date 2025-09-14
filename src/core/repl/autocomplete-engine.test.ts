@@ -56,7 +56,7 @@ describe('AutocompleteEngine', () => {
       expect(result.completions).toContain('JSON');
     });
   });
-  
+
   describe('Array literal completions', () => {
     it('should complete array methods for array literal', () => {
       const context: CompletionContext = {
@@ -70,7 +70,7 @@ describe('AutocompleteEngine', () => {
       expect(result.completions).toContain('length');
       expect(result.replaceStart).toBe(8); // after the dot
     });
-    
+
     it('should complete array methods with partial match for array literal', () => {
       const context: CompletionContext = {
         input: '[1,2,3].fi',
@@ -83,7 +83,7 @@ describe('AutocompleteEngine', () => {
       expect(result.completions).toContain('fill');
       expect(result.completions).not.toContain('map'); // doesn't start with 'fi'
     });
-    
+
     it('should complete for complex array literal', () => {
       const context: CompletionContext = {
         input: '["a", "b", "c"].jo',
@@ -92,7 +92,7 @@ describe('AutocompleteEngine', () => {
       const result = engine.getSuggestions(context);
       expect(result.completions).toContain('join');
     });
-    
+
     it('should complete for nested array literal', () => {
       const context: CompletionContext = {
         input: '[[1,2],[3,4]].fl',
@@ -607,7 +607,7 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '$.pluck("name").',
         cursorPosition: 16,
-        currentData: [{name: 'Alice'}, {name: 'Bob'}],
+        currentData: [{ name: 'Alice' }, { name: 'Bob' }],
       };
       const result = engine.getSuggestions(context);
       // pluck returns an array of values
@@ -663,7 +663,10 @@ describe('AutocompleteEngine', () => {
       const context: CompletionContext = {
         input: '_.groupBy("type").',
         cursorPosition: 18,
-        currentData: [{type: 'A', val: 1}, {type: 'B', val: 2}],
+        currentData: [
+          { type: 'A', val: 1 },
+          { type: 'B', val: 2 },
+        ],
       };
       const result = engine.getSuggestions(context);
       // groupBy returns an object

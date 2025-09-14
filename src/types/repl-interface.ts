@@ -11,6 +11,6 @@ export interface ReplEvaluationResult {
 export type ReplEvaluationHandler = (
   expression: string,
   data: unknown,
-  opts: any,
+  opts: unknown,
   lastResult?: unknown
 ) => Promise<ReplEvaluationResult>;

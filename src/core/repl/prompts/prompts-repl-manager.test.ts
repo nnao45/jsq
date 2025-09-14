@@ -344,7 +344,7 @@ describe.skip('PromptsReplManager', () => {
       expect(configOutput.length).toBeGreaterThan(0);
 
       const replModeOutput = mockConsole.logs.some(log =>
-        log.some(arg => String(arg).includes('Prompts Edition'))
+        log.some(arg => String(arg).includes('experimental'))
       );
       expect(replModeOutput).toBe(true);
     });

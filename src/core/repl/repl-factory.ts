@@ -295,7 +295,7 @@ export async function createAndStartRepl(
     // Use Prompts-based REPL (default)
     const { PromptsReplManager } = await import('./prompts/prompts-repl-manager');
     const expressionEvaluator = {
-      evaluate: async (expression: string, currentData: any, lastResult?: any) => {
+      evaluate: async (expression: string, currentData: unknown, lastResult?: unknown) => {
         const result = await evaluator(expression, currentData, {}, lastResult);
         return {
           value: result.result,

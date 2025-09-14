@@ -1289,7 +1289,7 @@ describe('ReplManager', () => {
 
     it.skip('should handle multiline input correctly', async () => {
       // SKIP: Current ReplManager implementation doesn't support multiline input
-      const { replManager, mockInput, mockOutput, mockEvaluator } = createTestSetup();
+      const { replManager, mockInput, mockEvaluator } = createTestSetup();
       replManager.start();
 
       // Test multiline function definition
@@ -1350,7 +1350,7 @@ describe('ReplManager', () => {
 
     it.skip('should handle multiline array/object literals', async () => {
       // SKIP: Current ReplManager implementation doesn't support multiline input
-      const { replManager, mockInput, mockOutput, mockEvaluator } = createTestSetup();
+      const { replManager, mockInput, mockEvaluator } = createTestSetup();
       replManager.start();
 
       // Test multiline array
@@ -1389,7 +1389,7 @@ describe('ReplManager', () => {
 
     it.skip('should handle interrupted multiline input with Ctrl+C', async () => {
       // SKIP: Current ReplManager implementation doesn't support multiline input
-      const { replManager, mockInput, mockOutput, mockEvaluator } = createTestSetup();
+      const { replManager, mockInput, mockEvaluator } = createTestSetup();
       replManager.start();
 
       // Start multiline object
@@ -1660,7 +1660,7 @@ describe('ReplManager', () => {
 
   describe('Display management edge cases', () => {
     it('should handle very long lines that wrap', async () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { replManager, mockInput } = createTestSetup();
       replManager.start();
 
       const longString = 'a'.repeat(200);
@@ -1683,7 +1683,7 @@ describe('ReplManager', () => {
     });
 
     it('should handle unicode characters properly', async () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { replManager, mockInput } = createTestSetup();
       replManager.start();
 
       // Test various unicode characters
@@ -1783,7 +1783,7 @@ describe('ReplManager', () => {
     });
 
     it('should handle mixed width characters in same line', async () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { replManager, mockInput } = createTestSetup();
       replManager.start();
 
       // Mix of ASCII, emojis, and CJK characters
@@ -1809,7 +1809,7 @@ describe('ReplManager', () => {
     });
 
     it('should maintain display consistency during rapid updates', async () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { replManager, mockInput } = createTestSetup();
       replManager.start();
 
       // Simulate rapid typing and deletion
@@ -1835,7 +1835,7 @@ describe('ReplManager', () => {
     });
 
     it('should handle StringBuffer edge cases properly', () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { replManager } = createTestSetup();
 
       // Test empty buffer operations
       expect(replManager.getCurrentInput()).toBe('');
@@ -1883,7 +1883,7 @@ describe('ReplManager', () => {
     });
 
     it('should maintain original input when cycling through multiple completions', async () => {
-      const { replManager, mockInput, mockOutput } = createTestSetup();
+      const { mockInput, mockOutput } = createTestSetup();
 
       // Set up test data with multiple properties starting with 'val'
       const testData = {

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { Worker } from 'node:worker_threads';
-import prompts from 'prompts';
+import { Worker, type WorkerOptions } from 'node:worker_threads';
+import prompts, { type PromptObject } from 'prompts';
 import type {
   ConsoleProvider,
   ErrorHandler,
@@ -32,24 +32,24 @@ export class DefaultFileSystemProvider implements FileSystemProvider {
 export class DefaultWorkerProvider implements WorkerProvider {
   constructor(private basePath: string = __dirname) {}
 
-  createWorker(scriptName: string, options?: any): Worker {
+  createWorker(scriptName: string, options?: WorkerOptions): Worker {
     const scriptPath = join(this.basePath, scriptName);
     return new Worker(scriptPath, options);
   }
 }
 
 export class DefaultPromptsProvider implements PromptsProvider {
-  async prompt(config: any): Promise<any> {
-    return prompts(config);
+  async prompt(config: unknown): Promise<unknown> {
+    return prompts(config as PromptObject | PromptObject[]);
   }
 }
 
 export class DefaultConsoleProvider implements ConsoleProvider {
-  log(...args: any[]): void {
+  log(...args: unknown[]): void {
     console.log(...args);
   }
 
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     console.error(...args);
   }
 

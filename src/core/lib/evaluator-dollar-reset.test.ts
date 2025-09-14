@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
-import { ApplicationContext, createApplicationContext } from '../application-context';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from './evaluator';
 
 describe('Evaluator - $ evaluation after reset', () => {

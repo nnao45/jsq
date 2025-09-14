@@ -17,12 +17,12 @@ export interface CompletionResult {
 // Helper function to extract method names from shared method definitions
 function extractMethodNamesFromSource(source: string): string[] {
   // Look for patterns like:
-  // methodName: function(...) 
+  // methodName: function(...)
   // within the methods object
   const methodRegex = /^\s*(\w+):\s*function\s*\(/gm;
   const asyncMethodRegex = /^\s*(\w+):\s*async\s*function\s*\(/gm;
   const methods: string[] = [];
-  
+
   // Extract regular functions
   let match: RegExpExecArray | null = methodRegex.exec(source);
   while (match !== null) {
@@ -32,7 +32,7 @@ function extractMethodNamesFromSource(source: string): string[] {
     }
     match = methodRegex.exec(source);
   }
-  
+
   // Extract async functions
   match = asyncMethodRegex.exec(source);
   while (match !== null) {
@@ -42,7 +42,7 @@ function extractMethodNamesFromSource(source: string): string[] {
     }
     match = asyncMethodRegex.exec(source);
   }
-  
+
   return methods.sort();
 }
 
@@ -50,7 +50,7 @@ export class AutocompleteEngine {
   private readonly maxCompletions = 100;
   private readonly maxDepth = 3;
   private readonly cache = new Map<string, CompletionResult>();
-  
+
   // JavaScript built-in methods (these remain hardcoded as they're not from our source files)
   private readonly jsArrayMethods = [
     'concat',
@@ -125,11 +125,11 @@ export class AutocompleteEngine {
     'localeCompare',
     'normalize',
   ];
-  
+
   // Dynamically extracted method names from shared sources
   private readonly lodashMethodNames: string[];
   private readonly smartDollarMethodNames: string[];
-  
+
   constructor() {
     // Extract method names dynamically from the source files
     this.lodashMethodNames = extractMethodNamesFromSource(LODASH_METHODS);
@@ -178,7 +178,7 @@ export class AutocompleteEngine {
         replaceStart: adjustedReplaceStart,
         replaceEnd,
       };
-      
+
       // console.error('[DEBUG] Returning result:', JSON.stringify(result));
 
       // Don't cache empty results
@@ -204,30 +204,30 @@ export class AutocompleteEngine {
     // Start from cursor and go back to find the beginning of the expression
     let start = cursorPosition;
     let parenDepth = 0;
-    
+
     while (start > 0) {
       const char = input[start - 1];
-      
+
       // Count parentheses depth
       if (char === ')') {
         parenDepth++;
       } else if (char === '(') {
         parenDepth--;
       }
-      
+
       // If we're inside parentheses, continue
       if (parenDepth > 0) {
         start--;
         continue;
       }
-      
+
       // Track bracket depth for array literals
       if (char === ']') {
         parenDepth++;
       } else if (char === '[') {
         parenDepth--;
       }
-      
+
       // If parentheses/brackets are balanced and we hit a non-expression character, stop
       if (parenDepth === 0 && !/[a-zA-Z0-9_.$[\]()=>,\s"']/.test(char)) {
         // Special case: If we hit an operator like +, -, *, /, check if the next expression starts with _ or $
@@ -241,7 +241,7 @@ export class AutocompleteEngine {
         }
         break;
       }
-      
+
       start--;
     }
 
@@ -276,7 +276,7 @@ export class AutocompleteEngine {
     const propertyMatch = expression.match(/^(.+)\.([^.]*)$/);
     if (propertyMatch) {
       const [, objPath, prefix] = propertyMatch;
-      
+
       // console.error('[DEBUG generateCompletions] propertyMatch:', objPath, prefix);
 
       // Special case: if objPath ends with ., it might be $.., which should be treated as $
@@ -288,7 +288,7 @@ export class AutocompleteEngine {
       if (objPath === '_') {
         return this.getMethodCompletions(prefix);
       }
-      
+
       // Check if it's lodash method chain (e.g., _.map(...))
       if (objPath.startsWith('_')) {
         // Special case: _. is treated as _.., which is invalid
@@ -297,13 +297,13 @@ export class AutocompleteEngine {
         }
         return this.getLodashChainCompletions(objPath, prefix, context);
       }
-      
+
       // Check if it's an array literal (e.g., [1,2,3])
       if (objPath.match(/^\[.*\]$/)) {
         // console.error('[DEBUG] Array literal detected:', objPath, 'prefix:', prefix);
         return this.getArrayLiteralCompletions(prefix);
       }
-      
+
       return this.getPropertyCompletions(objPath, prefix, context);
     }
 
@@ -437,26 +437,24 @@ export class AutocompleteEngine {
 
     return [...new Set(completions)].sort();
   }
-  
+
   private getArrayLiteralCompletions(prefix: string): string[] {
     const prefixLower = prefix.toLowerCase();
     const completions: string[] = [];
-    
+
     // Add array methods
     completions.push(
-      ...this.jsArrayMethods
-        .filter(method => method.toLowerCase().startsWith(prefixLower))
+      ...this.jsArrayMethods.filter(method => method.toLowerCase().startsWith(prefixLower))
     );
-    
+
     // Add object methods
     completions.push(
-      ...this.jsObjectMethods
-        .filter(method => method.toLowerCase().startsWith(prefixLower))
+      ...this.jsObjectMethods.filter(method => method.toLowerCase().startsWith(prefixLower))
     );
-    
+
     return [...new Set(completions)].sort();
   }
-  
+
   private getLodashChainCompletions(
     objPath: string,
     prefix: string,
@@ -464,14 +462,14 @@ export class AutocompleteEngine {
   ): string[] {
     // Parse the lodash chain to infer the return type
     const segments = this.parsePathSegments(objPath.slice(1)); // Remove the '_'
-    
+
     let currentType: 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' = 'unknown';
-    
+
     // Start with the data type
     if (context.currentData) {
       currentType = this.getDataType(context.currentData);
     }
-    
+
     // Process each method in the chain to infer the final type
     for (const segment of segments) {
       if (segment.type === 'method' && segment.name) {
@@ -481,62 +479,166 @@ export class AutocompleteEngine {
         }
       }
     }
-    
+
     // Based on the final type, return appropriate methods
     const completions: string[] = [];
     const prefixLower = prefix.toLowerCase();
-    
+
     // For lodash chains, return methods based on the current type
     // This prevents the list from being too long and missing important methods
-    
+
     // Always include common lodash methods
     const commonLodashMethods = [
-      'chain', 'value', 'tap', 'thru', 'each', 'forEach', 'map', 'filter', 
-      'reduce', 'find', 'some', 'every', 'includes', 'sortBy', 'groupBy',
-      'uniq', 'flatten', 'compact', 'keys', 'values', 'pick', 'omit',
-      'merge', 'clone', 'isEmpty', 'isArray', 'isObject', 'get', 'set'
+      'chain',
+      'value',
+      'tap',
+      'thru',
+      'each',
+      'forEach',
+      'map',
+      'filter',
+      'reduce',
+      'find',
+      'some',
+      'every',
+      'includes',
+      'sortBy',
+      'groupBy',
+      'uniq',
+      'flatten',
+      'compact',
+      'keys',
+      'values',
+      'pick',
+      'omit',
+      'merge',
+      'clone',
+      'isEmpty',
+      'isArray',
+      'isObject',
+      'get',
+      'set',
     ];
-    
+
     // Add type-specific methods based on inferred type
     let typeSpecificMethods: string[] = [];
-    
+
     if (currentType === 'array') {
       typeSpecificMethods = [
-        'concat', 'slice', 'join', 'reverse', 'sort', 'indexOf', 'lastIndexOf',
-        'first', 'last', 'nth', 'take', 'drop', 'chunk', 'zip', 'unzip',
-        'difference', 'intersection', 'union', 'without', 'pluck', 'where',
-        'findIndex', 'pull', 'remove', 'sample', 'shuffle', 'size',
-        'countBy', 'partition', 'reject', 'takeWhile', 'dropWhile'
+        'concat',
+        'slice',
+        'join',
+        'reverse',
+        'sort',
+        'indexOf',
+        'lastIndexOf',
+        'first',
+        'last',
+        'nth',
+        'take',
+        'drop',
+        'chunk',
+        'zip',
+        'unzip',
+        'difference',
+        'intersection',
+        'union',
+        'without',
+        'pluck',
+        'where',
+        'findIndex',
+        'pull',
+        'remove',
+        'sample',
+        'shuffle',
+        'size',
+        'countBy',
+        'partition',
+        'reject',
+        'takeWhile',
+        'dropWhile',
       ];
     } else if (currentType === 'object') {
       typeSpecificMethods = [
-        'has', 'hasIn', 'keys', 'values', 'entries', 'pairs', 'toPairs',
-        'fromPairs', 'invert', 'invertBy', 'mapKeys', 'mapValues', 'extend',
-        'assign', 'defaults', 'defaultsDeep', 'forOwn', 'forOwnRight',
-        'functions', 'result', 'transform', 'update', 'updateWith'
+        'has',
+        'hasIn',
+        'keys',
+        'values',
+        'entries',
+        'pairs',
+        'toPairs',
+        'fromPairs',
+        'invert',
+        'invertBy',
+        'mapKeys',
+        'mapValues',
+        'extend',
+        'assign',
+        'defaults',
+        'defaultsDeep',
+        'forOwn',
+        'forOwnRight',
+        'functions',
+        'result',
+        'transform',
+        'update',
+        'updateWith',
       ];
     } else if (currentType === 'string') {
       typeSpecificMethods = [
-        'split', 'replace', 'trim', 'trimStart', 'trimEnd', 'pad', 'padStart',
-        'padEnd', 'repeat', 'toLower', 'toLowerCase', 'toUpper', 'toUpperCase', 'camelCase', 'kebabCase',
-        'snakeCase', 'startCase', 'capitalize', 'deburr', 'escape', 'unescape',
-        'truncate', 'words', 'parseInt', 'template'
+        'split',
+        'replace',
+        'trim',
+        'trimStart',
+        'trimEnd',
+        'pad',
+        'padStart',
+        'padEnd',
+        'repeat',
+        'toLower',
+        'toLowerCase',
+        'toUpper',
+        'toUpperCase',
+        'camelCase',
+        'kebabCase',
+        'snakeCase',
+        'startCase',
+        'capitalize',
+        'deburr',
+        'escape',
+        'unescape',
+        'truncate',
+        'words',
+        'parseInt',
+        'template',
       ];
     } else if (currentType === 'number') {
       typeSpecificMethods = [
-        'add', 'subtract', 'multiply', 'divide', 'sum', 'sumBy', 'mean',
-        'meanBy', 'min', 'minBy', 'max', 'maxBy', 'round', 'floor', 'ceil',
-        'inRange', 'random', 'clamp'
+        'add',
+        'subtract',
+        'multiply',
+        'divide',
+        'sum',
+        'sumBy',
+        'mean',
+        'meanBy',
+        'min',
+        'minBy',
+        'max',
+        'maxBy',
+        'round',
+        'floor',
+        'ceil',
+        'inRange',
+        'random',
+        'clamp',
       ];
     }
-    
+
     // Combine and filter by prefix
     const allMethods = [...new Set([...commonLodashMethods, ...typeSpecificMethods])];
-    completions.push(
-      ...allMethods
-        .filter(method => method.toLowerCase().startsWith(prefixLower))
-    );
-    
+    completions.push(...allMethods.filter(method => method.toLowerCase().startsWith(prefixLower)));
+
     return [...new Set(completions)].sort();
   }
 
@@ -575,9 +677,10 @@ export class AutocompleteEngine {
 
         // Parse the path to handle method calls and property access
         const segments = this.parsePathSegments(subPath);
-        
+
         let current: unknown = context.currentData;
-        let currentType: 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' = this.getDataType(current);
+        let currentType: 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' =
+          this.getDataType(current);
 
         for (const segment of segments) {
           if (!segment) continue;
@@ -623,8 +726,10 @@ export class AutocompleteEngine {
 
     return undefined;
   }
-  
-  private getDataType(data: unknown): 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' {
+
+  private getDataType(
+    data: unknown
+  ): 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' {
     if (Array.isArray(data)) return 'array';
     if (typeof data === 'string') return 'string';
     if (typeof data === 'number') return 'number';
@@ -632,14 +737,25 @@ export class AutocompleteEngine {
     if (data && typeof data === 'object') return 'object';
     return 'unknown';
   }
-  
+
   private inferMethodReturnType(
-    methodName: string, 
+    methodName: string,
     currentType: 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown'
   ): 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown' | null {
     // Array methods that return arrays
-    const arrayReturningMethods = ['map', 'filter', 'slice', 'concat', 'flat', 'flatMap', 
-      'reverse', 'sort', 'splice', 'fill', 'copyWithin'];
+    const arrayReturningMethods = [
+      'map',
+      'filter',
+      'slice',
+      'concat',
+      'flat',
+      'flatMap',
+      'reverse',
+      'sort',
+      'splice',
+      'fill',
+      'copyWithin',
+    ];
     // Array methods that return strings
     const stringReturningMethods = ['join', 'toString', 'toLocaleString'];
     // Array methods that return numbers
@@ -648,18 +764,39 @@ export class AutocompleteEngine {
     const booleanReturningMethods = ['every', 'some', 'includes'];
     // Methods that return single values
     const singleValueMethods = ['find', 'at', 'pop', 'shift'];
-    
+
     // String methods that return strings
-    const stringToStringMethods = ['slice', 'substring', 'substr', 'toLowerCase', 'toUpperCase',
-      'trim', 'trimStart', 'trimEnd', 'padStart', 'padEnd', 'repeat', 'replace', 'concat',
-      'normalize', 'toString', 'valueOf'];
+    const stringToStringMethods = [
+      'slice',
+      'substring',
+      'substr',
+      'toLowerCase',
+      'toUpperCase',
+      'trim',
+      'trimStart',
+      'trimEnd',
+      'padStart',
+      'padEnd',
+      'repeat',
+      'replace',
+      'concat',
+      'normalize',
+      'toString',
+      'valueOf',
+    ];
     // String methods that return arrays
     const stringToArrayMethods = ['split', 'match'];
     // String methods that return numbers
-    const stringToNumberMethods = ['indexOf', 'lastIndexOf', 'search', 'charCodeAt', 'localeCompare'];
+    const stringToNumberMethods = [
+      'indexOf',
+      'lastIndexOf',
+      'search',
+      'charCodeAt',
+      'localeCompare',
+    ];
     // String methods that return booleans
     const stringToBooleanMethods = ['startsWith', 'endsWith', 'includes'];
-    
+
     if (currentType === 'array') {
       if (arrayReturningMethods.includes(methodName)) return 'array';
       if (stringReturningMethods.includes(methodName)) return 'string';
@@ -669,7 +806,7 @@ export class AutocompleteEngine {
       // Handle reduce/reduceRight specially - they can return any type
       if (methodName === 'reduce' || methodName === 'reduceRight') return 'unknown';
     }
-    
+
     if (currentType === 'string') {
       if (stringToStringMethods.includes(methodName)) return 'string';
       if (stringToArrayMethods.includes(methodName)) return 'array';
@@ -677,7 +814,7 @@ export class AutocompleteEngine {
       if (stringToBooleanMethods.includes(methodName)) return 'boolean';
       if (methodName === 'charAt') return 'string';
     }
-    
+
     // Lodash/SmartDollar specific methods
     if (methodName === 'pluck') return 'array';
     if (methodName === 'where') return 'array';
@@ -708,7 +845,7 @@ export class AutocompleteEngine {
     if (methodName === 'invert') return 'object';
     if (methodName === 'invertBy') return 'object';
     if (methodName === 'value') return 'unknown';
-    
+
     // Lodash string returning methods (work on various types)
     if (methodName === 'join') return 'string';
     if (methodName === 'toString') return 'string';
@@ -722,7 +859,7 @@ export class AutocompleteEngine {
     if (methodName === 'escape') return 'string';
     if (methodName === 'unescape') return 'string';
     if (methodName === 'template') return 'string';
-    
+
     // Lodash number returning methods
     if (methodName === 'size') return 'number';
     if (methodName === 'sum') return 'number';
@@ -732,7 +869,7 @@ export class AutocompleteEngine {
     if (methodName === 'round') return 'number';
     if (methodName === 'floor') return 'number';
     if (methodName === 'ceil') return 'number';
-    
+
     // Lodash boolean returning methods
     if (methodName === 'isEmpty') return 'boolean';
     if (methodName === 'isArray') return 'boolean';
@@ -749,10 +886,10 @@ export class AutocompleteEngine {
     if (methodName === 'isMatch') return 'boolean';
     if (methodName === 'has') return 'boolean';
     if (methodName === 'hasIn') return 'boolean';
-    
+
     return null;
   }
-  
+
   private createMockDataForType(
     type: 'array' | 'object' | 'string' | 'number' | 'boolean' | 'unknown',
     originalData?: unknown
@@ -778,14 +915,20 @@ export class AutocompleteEngine {
     }
   }
 
-  private parsePathSegments(path: string): Array<{ type: 'property' | 'method' | 'index'; name?: string; index?: number }> {
-    const segments: Array<{ type: 'property' | 'method' | 'index'; name?: string; index?: number }> = [];
+  private parsePathSegments(
+    path: string
+  ): Array<{ type: 'property' | 'method' | 'index'; name?: string; index?: number }> {
+    const segments: Array<{
+      type: 'property' | 'method' | 'index';
+      name?: string;
+      index?: number;
+    }> = [];
     let current = '';
     let i = 0;
-    
+
     while (i < path.length) {
       const char = path[i];
-      
+
       if (char === '.') {
         // Process accumulated segment
         if (current) {
@@ -823,7 +966,7 @@ export class AutocompleteEngine {
         if (path[i] === ']') {
           i++;
           const index = parseInt(indexStr, 10);
-          if (!isNaN(index)) {
+          if (!Number.isNaN(index)) {
             segments.push({ type: 'index', index });
           }
         }
@@ -832,23 +975,27 @@ export class AutocompleteEngine {
         i++;
       }
     }
-    
+
     // Process final segment
     if (current) {
       segments.push(this.createSegment(current));
     }
-    
+
     return segments;
   }
-  
-  private createSegment(name: string): { type: 'property' | 'method' | 'index'; name?: string; index?: number } {
+
+  private createSegment(name: string): {
+    type: 'property' | 'method' | 'index';
+    name?: string;
+    index?: number;
+  } {
     // Check if it ends with array access pattern
     const arrayMatch = name.match(/^(\w+)\[(\d+)\]$/);
     if (arrayMatch) {
       const [, prop] = arrayMatch;
       return { type: 'property', name: prop };
     }
-    
+
     return { type: 'property', name };
   }
 

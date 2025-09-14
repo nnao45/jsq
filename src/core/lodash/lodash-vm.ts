@@ -131,6 +131,11 @@ globalThis._ = function(value) {
   return globalThis.createLodash(value);
 };
 
+// Override toString to display [native code]
+globalThis._.toString = function() {
+  return 'function() {[native code]}';
+};
+
 // Add static methods to _ (like _.chunk, _.filter, etc)
 Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
   const staticMethod = function(...args) {

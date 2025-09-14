@@ -804,25 +804,6 @@ export class ReplManager {
     }
   }
 
-  private showCompletionMenu(): void {
-    if (this.state.completions.length === 0) {
-      return;
-    }
-
-    // 保存する情報
-    const savedInput = this.state.currentInput.toString();
-    const savedCursor = this.state.cursorPosition;
-    this.state.originalInput = savedInput;
-    this.state.originalCursorPosition = savedCursor;
-
-    // メニューモードを開始
-    this.state.isInCompletionMenu = true;
-    this.state.menuSelectedIndex = 0;
-
-    // メニューを描画
-    this.drawCompletionMenu();
-  }
-
   private drawCompletionMenu(): void {
     // 補完候補が存在しない場合は何もしない
     if (!this.state.completions || this.state.completions.length === 0) {
@@ -949,7 +930,7 @@ export class ReplManager {
     this.clearCompletionMenu();
 
     // 元の入力を復元
-    this.state.currentInput.set(this.state.originalInput!);
+    this.state.currentInput.set(this.state.originalInput || '');
     this.state.cursorPosition = this.state.originalCursorPosition;
 
     // メニューモードを終了

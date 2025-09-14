@@ -13,7 +13,7 @@ export class MockFileSystemProvider implements FileSystemProvider {
   async readFile(path: string): Promise<string> {
     const content = this.files.get(path);
     if (!content) {
-      const error: any = new Error('ENOENT: no such file or directory');
+      const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       throw error;
     }
@@ -43,9 +43,9 @@ export class MockFileSystemProvider implements FileSystemProvider {
 }
 
 export class MockWorkerProvider implements WorkerProvider {
-  public createdWorkers: Array<{ scriptPath: string; options?: any }> = [];
+  public createdWorkers: Array<{ scriptPath: string; options?: unknown }> = [];
 
-  createWorker(scriptPath: string, options?: any): Worker {
+  createWorker(scriptPath: string, options?: unknown): Worker {
     this.createdWorkers.push({ scriptPath, options });
     // Return a mock worker for testing
     return {} as Worker;
@@ -53,16 +53,16 @@ export class MockWorkerProvider implements WorkerProvider {
 }
 
 export class MockPromptsProvider implements PromptsProvider {
-  private responses: any[] = [];
+  private responses: unknown[] = [];
   private currentIndex = 0;
-  public promptCalls: any[] = [];
+  public promptCalls: unknown[] = [];
 
-  setResponses(...responses: any[]): void {
+  setResponses(...responses: unknown[]): void {
     this.responses = responses;
     this.currentIndex = 0;
   }
 
-  async prompt(config: any): Promise<any> {
+  async prompt(config: unknown): Promise<unknown> {
     this.promptCalls.push(config);
     if (this.currentIndex < this.responses.length) {
       return this.responses[this.currentIndex++];
@@ -78,15 +78,15 @@ export class MockPromptsProvider implements PromptsProvider {
 }
 
 export class MockConsoleProvider implements ConsoleProvider {
-  public logs: any[][] = [];
-  public errors: any[][] = [];
+  public logs: unknown[][] = [];
+  public errors: unknown[][] = [];
   public clearCalls = 0;
 
-  log(...args: any[]): void {
+  log(...args: unknown[]): void {
     this.logs.push(args);
   }
 
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     this.errors.push(args);
   }
 
@@ -122,11 +122,10 @@ export class MockErrorHandler implements ErrorHandler {
 }
 
 export class MockInputProvider {
-  private events: Map<string, Function[]> = new Map();
-  // @ts-expect-error - used in pause/resume methods
-  private isPaused = false;
+  private events: Map<string, Array<(...args: unknown[]) => void>> = new Map();
+  public isPaused = false;
 
-  on(event: string, callback: Function): this {
+  on(event: string, callback: (...args: unknown[]) => void): this {
     if (!this.events.has(event)) {
       this.events.set(event, []);
     }
@@ -134,7 +133,7 @@ export class MockInputProvider {
     return this;
   }
 
-  off(event: string, callback: Function): this {
+  off(event: string, callback: (...args: unknown[]) => void): this {
     const callbacks = this.events.get(event);
     if (callbacks) {
       const index = callbacks.indexOf(callback);
@@ -145,7 +144,7 @@ export class MockInputProvider {
     return this;
   }
 
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: unknown[]): void {
     const callbacks = this.events.get(event);
     if (callbacks) {
       callbacks.forEach(cb => {

@@ -203,6 +203,7 @@ async function handleReplMode(options: JsqOptions): Promise<void> {
   await new Promise<void>(resolve => {
     const checkInterval = setInterval(() => {
       // Check if PromptsReplManager's shouldExit is true
+      // biome-ignore lint/suspicious/noExplicitAny: PromptsReplManager has private shouldExit property
       if (!replManager || (replManager as any).shouldExit === true) {
         clearInterval(checkInterval);
         resolve();

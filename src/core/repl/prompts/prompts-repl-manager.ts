@@ -1,12 +1,35 @@
 import * as readline from 'node:readline';
 import chalk from 'chalk';
+
+// Extended interface for readline with internal properties
+interface ExtendedReadlineInterface extends readline.Interface {
+  line: string;
+  cursor: number;
+}
+
+// Key interface for keypress events
+interface Key {
+  name?: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+}
+
+// Extended NodeJS.ReadStream with keypress event
+interface ExtendedReadStream extends NodeJS.ReadStream {
+  // Add keypress event support while maintaining compatibility
+  on(event: 'keypress', listener: (char: string, key: Key) => void): this;
+  // biome-ignore lint/suspicious/noExplicitAny: Base ReadStream interface requires any[]
+  on(event: string, listener: (...args: any[]) => void): this;
+}
+
 // Define the interface expected by PromptsReplManager
 export interface ExpressionEvaluator {
   evaluate(
     expression: string,
-    currentData: any,
-    lastResult?: any
-  ): Promise<{ value?: any; error?: any }>;
+    currentData: unknown,
+    lastResult?: unknown
+  ): Promise<{ value?: unknown; error?: unknown }>;
 }
 
 import type {
@@ -26,8 +49,8 @@ import { AutocompleteEngine } from '../autocomplete-engine.js';
 interface PromptsReplOptions {
   evaluator: ExpressionEvaluator;
   historyFile?: string;
-  initialData?: any;
-  inputStream?: NodeJS.ReadStream;
+  initialData?: unknown;
+  inputStream?: ExtendedReadStream;
   fileSystem?: FileSystemProvider;
   promptsProvider?: PromptsProvider;
   console?: ConsoleProvider;
@@ -40,15 +63,15 @@ export class PromptsReplManager implements ReplManagerInterface {
   private history: string[] = [];
   // private _historyIndex = 0; // will be used in future updates
   private shouldExit = false;
-  private currentData: any = null;
-  private lastResult: any;
+  private currentData: unknown = null;
+  private lastResult: unknown;
   private historyFile?: string;
-  private inputStream?: NodeJS.ReadStream;
+  private inputStream?: ExtendedReadStream;
   private fileSystem: FileSystemProvider;
   private promptsProvider: PromptsProvider;
   private console: ConsoleProvider;
   private realTimeEvaluation: boolean;
-  private rl?: readline.Interface;
+  private rl?: ExtendedReadlineInterface;
   // private _evaluationTimer?: NodeJS.Timeout; // will be used in future updates
   private hasPreviewLine = false;
   private isEvaluating = false;
@@ -90,7 +113,7 @@ export class PromptsReplManager implements ReplManagerInterface {
   }
 
   async start(): Promise<void> {
-    this.console.log(chalk.cyan('Welcome to jsq REPL (Prompts Edition) 🚀'));
+    this.console.log(chalk.cyan('Welcome to jsq REPL (experimental) 🚀'));
     this.console.log(chalk.gray('Type .help for commands, .exit to quit\n'));
 
     // For non-TTY environments with real-time evaluation, disable it
@@ -206,7 +229,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       message: '>',
     });
 
-    const input = response.command;
+    const input = (response as { command: string }).command;
 
     if (input?.trim()) {
       this.history.push(input);
@@ -411,7 +434,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     });
 
     this.rl.on('SIGINT', () => {
-      const currentLine = (this.rl as any).line || '';
+      const currentLine = this.rl.line || '';
       const now = Date.now();
 
       if (currentLine.trim() === '') {
@@ -433,8 +456,8 @@ export class PromptsReplManager implements ReplManagerInterface {
         this.lastSigintTime = 0;
         // Clear the readline internal buffer
         if (this.rl) {
-          (this.rl as any).line = '';
-          (this.rl as any).cursor = 0;
+          this.rl.line = '';
+          this.rl.cursor = 0;
           this.rl.prompt();
         }
       }
@@ -451,18 +474,18 @@ export class PromptsReplManager implements ReplManagerInterface {
 
     // Real-time evaluation on keypress
     if (this.inputStream && typeof this.inputStream.on === 'function') {
-      (this.inputStream as any).on('keypress', async (char: string, key: any) => {
+      this.inputStream.on('keypress', async (char: string, key: Key) => {
         // Handle Tab key explicitly for autocomplete
         if (key && key.name === 'tab' && !key.ctrl && !key.meta) {
           // Prevent default tab behavior by removing any tab character that was inserted
-          let currentLine = (this.rl as any).line || '';
-          const currentCursor = (this.rl as any).cursor || 0;
+          let currentLine = this.rl.line || '';
+          const currentCursor = this.rl.cursor || 0;
 
           // If a tab character was inserted, remove it
           if (currentLine.includes('\t')) {
             currentLine = currentLine.replace(/\t/g, '');
-            (this.rl as any).line = currentLine;
-            (this.rl as any).cursor = Math.min(currentCursor, currentLine.length);
+            this.rl.line = currentLine;
+            this.rl.cursor = Math.min(currentCursor, currentLine.length);
           }
 
           // Check if we should use cached completions (for cycling)
@@ -481,8 +504,8 @@ export class PromptsReplManager implements ReplManagerInterface {
               this.completionState.lastPrefix,
               selectedCompletion
             );
-            (this.rl as any).line = applied;
-            (this.rl as any).cursor = applied.length;
+            this.rl.line = applied;
+            this.rl.cursor = applied.length;
             this.completionState.lastLine = applied;
 
             // Show which completion we're on (on the same line)
@@ -510,8 +533,8 @@ export class PromptsReplManager implements ReplManagerInterface {
           if (completions.length === 1) {
             // Single completion - apply it directly
             const applied = this.applyCompletion(currentLine, completions[0]);
-            (this.rl as any).line = applied;
-            (this.rl as any).cursor = applied.length;
+            this.rl.line = applied;
+            this.rl.cursor = applied.length;
             // We need to manually refresh the line without causing a newline
             this.refreshCurrentLine();
             this.completionState = null;
@@ -536,8 +559,8 @@ export class PromptsReplManager implements ReplManagerInterface {
             // Apply first completion immediately
             const firstCompletion = completions[0];
             const applied = this.applyCompletion(currentLine, firstCompletion);
-            (this.rl as any).line = applied;
-            (this.rl as any).cursor = applied.length;
+            this.rl.line = applied;
+            this.rl.cursor = applied.length;
             this.completionState.lastLine = applied;
 
             // Show status message (on the same line)
@@ -576,7 +599,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         }
 
         // Update current input
-        currentInput = (this.rl as any).line || '';
+        currentInput = this.rl.line || '';
 
         // Debounce immediate evaluation
         if (evaluationTimer) {
@@ -586,7 +609,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         if (this.realTimeEvaluation && currentInput.trim()) {
           evaluationTimer = setTimeout(async () => {
             // Ensure we're still on the same line and the input hasn't changed
-            const currentLineNow = (this.rl as any).line || '';
+            const currentLineNow = this.rl.line || '';
             if (currentLineNow === currentInput && currentInput.trim()) {
               await this.performImmediateEvaluation(currentInput);
             }
@@ -641,8 +664,8 @@ export class PromptsReplManager implements ReplManagerInterface {
   private clearPreviewLine(): void {
     if (this.hasPreviewLine) {
       // Save current cursor position and line content
-      const currentLine = this.rl ? (this.rl as any).line || '' : '';
-      const cursorPos = this.rl ? (this.rl as any).cursor || 0 : 0;
+      const currentLine = this.rl ? this.rl.line || '' : '';
+      const cursorPos = this.rl ? this.rl.cursor || 0 : 0;
 
       // Move to the line below
       process.stdout.write('\n');
@@ -674,8 +697,8 @@ export class PromptsReplManager implements ReplManagerInterface {
     if (!this.rl) return;
 
     // Save current cursor position and line
-    const savedCursorPos = (this.rl as any).cursor || 0;
-    const currentLine = (this.rl as any).line || '';
+    const savedCursorPos = this.rl.cursor || 0;
+    const currentLine = this.rl.line || '';
 
     // Clear the current line
     process.stdout.write('\x1b[2K'); // Clear entire line
@@ -742,8 +765,8 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G'); // Move to beginning of line
       
       // Rewrite the input line
-      const savedCursorPos = (this.rl as any).cursor || 0;
-      const currentLine = (this.rl as any).line || '';
+      const savedCursorPos = this.rl.cursor || 0;
+      const currentLine = this.rl.line || '';
       const promptText = chalk.bold('> ');
       process.stdout.write(promptText + currentLine);
       process.stdout.write('\x1b[' + (2 + savedCursorPos + 1) + 'G');
@@ -760,8 +783,8 @@ export class PromptsReplManager implements ReplManagerInterface {
       }, 1000);
     } else {
       // No preview line, show status on the next line
-      const savedCursorPos = (this.rl as any).cursor || 0;
-      const currentLine = (this.rl as any).line || '';
+      const savedCursorPos = this.rl.cursor || 0;
+      const currentLine = this.rl.line || '';
       
       // Move to next line and show completion status
       process.stdout.write('\n');
@@ -809,7 +832,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.clearPreviewLine();
 
     // Double-check current line is still the same
-    const currentLineNow = (this.rl as any).line || '';
+    const currentLineNow = this.rl.line || '';
     if (currentLineNow !== input) {
       return;
     }
@@ -845,8 +868,8 @@ export class PromptsReplManager implements ReplManagerInterface {
         }
 
         // Show result on next line
-        const savedCursorPos = (this.rl as any).cursor || 0;
-        const currentLine = (this.rl as any).line || '';
+        const savedCursorPos = this.rl.cursor || 0;
+        const currentLine = this.rl.line || '';
 
         process.stdout.write('\n');
         process.stdout.write(chalk.gray(prefix) + chalk.dim(output));
@@ -879,7 +902,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     }
   }
 
-  private displayError(error: any): void {
+  private displayError(error: unknown): void {
     const errorString = error?.toString?.() || 'Unknown error';
 
     if (errorString.includes('SyntaxError')) {
@@ -894,7 +917,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       this.console.error(chalk.red('❌ Error:'), errorString);
     }
 
-    if (error?.stack) {
+    if (error && typeof error === 'object' && 'stack' in error && typeof error.stack === 'string') {
       this.console.error(chalk.gray('\nStack trace:'));
       this.console.error(chalk.gray(error.stack));
     }
@@ -1003,8 +1026,8 @@ export class PromptsReplManager implements ReplManagerInterface {
       } else {
         this.console.error(chalk.yellow('⚠️  No data found in session file'));
       }
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
         this.console.error(chalk.red(`❌ File not found: ${filename}`));
       } else if (error instanceof SyntaxError) {
         this.console.error(chalk.red('❌ Invalid JSON file'));
@@ -1033,7 +1056,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     const wasRawMode = process.stdin.isRaw;
     
     // Pause readline temporarily
-    (this.rl as any).pause();
+    this.rl.pause();
     
     if (wasRawMode) {
       process.stdin.setRawMode(false);
@@ -1073,14 +1096,13 @@ export class PromptsReplManager implements ReplManagerInterface {
       }
       
       // Resume readline
-      (this.rl as any).resume();
+      this.rl.resume();
     }
   }
   */
 
   private showConfig(): void {
     this.console.log(chalk.cyan('\nCurrent configuration:'));
-    this.console.log(chalk.gray('  REPL Mode:'), 'Prompts Edition');
     this.console.log(chalk.gray('  History file:'), this.historyFile || '.jsq_history');
     this.console.log(chalk.gray('  Autocomplete:'), 'Enabled');
 
