@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ZardButtonComponent } from '@shared/components/button/button.component';
 import { ZardCardComponent } from '@shared/components/card/card.component';
+import { CodeBlockComponent } from '@shared/components/code-block/code-block.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, ZardButtonComponent, ZardCardComponent],
+  imports: [CommonModule, RouterLink, ZardButtonComponent, ZardCardComponent, CodeBlockComponent],
   template: `
     <div class="bg-gradient-to-br from-muted to-background py-16 border-b border-border">
       <div class="container mx-auto px-6">
@@ -18,7 +19,11 @@ import { ZardCardComponent } from '@shared/components/card/card.component';
             Process JSON with chaining and 110+ built-in methods, secure by default
           </p>
           <div class="flex gap-4 justify-center">
-            <pre class="inline-block mb-8"><code class="language-bash">npm install -g &#64;nnao45/jsq</code></pre>
+            <app-code-block 
+              class="inline-block mb-8"
+              [code]="installCommandHtml"
+              [rawCode]="installCommand"
+            ></app-code-block>
           </div>
         </div>
       </div>
@@ -115,7 +120,11 @@ cat data.json | jsq '
         <div class="text-center">
           <h2 class="text-3xl font-semibold mb-4">Ready to Get Started?</h2>
           <p class="text-muted-foreground mb-6">Install jsq and start transforming your JSON data with the power of JavaScript:</p>
-          <pre class="inline-block mb-8"><code class="language-bash">npm install -g &#64;nnao45/jsq</code></pre>
+          <app-code-block 
+            class="inline-block mb-8"
+            [code]="installCommandHtml"
+            [rawCode]="installCommand"
+          ></app-code-block>
           <div>
             <a routerLink="/getting-started">
               <z-button zType="default" zSize="lg">Continue to Getting Started →</z-button>
@@ -131,4 +140,7 @@ cat data.json | jsq '
   }  
 `]
 })
-export class HomeComponent {}
+export class HomeComponent {
+  installCommand = 'npm install -g @nnao45/jsq';
+  installCommandHtml = '<code class="language-bash">npm install -g @nnao45/jsq</code>';
+}
