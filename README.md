@@ -14,20 +14,20 @@ jsq is a secure, jQuery/Lodash-style JSON processor with 110+ built-in methods, 
 ## ✨ Why jsq?
 
 ```bash
-# 🚀 20x faster with parallel processing
-cat huge.jsonl | jsq --parallel '$.filter(item => item.active)'
-
 # 🔗 jQuery-style chaining with 110+ built-in methods  
 cat data.json | jsq '$.users.filter(u => u.active).pluck("name").uniq()'
 
 # 🎨 Beautiful interactive REPL with real-time evaluation
-jsq --repl --file data.json
+curl -H "Accept: application/json" https://api.example.com/data | jsq
 
 # 🔒 Secure VM isolation by default
 cat sensitive.json | jsq '$.private' # Safe: No file/network access
 
 # 📝 Intuitive variable declarations
 jsq "const names = ['Alice', 'Bob'] | names.map(n => n.toUpperCase())"
+
+# 🚀 parallel processing
+cat huge.jsonl | jsq --parallel '$.filter(item => item.active)'
 ```
 
 ## 🚀 Quick Start

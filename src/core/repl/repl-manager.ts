@@ -3,6 +3,7 @@ import type { JsqOptions } from '@/types/cli';
 import type { ReplIO, ReplOptions } from '@/types/repl';
 import { type DebouncedFunction, debounce } from '@/utils/debounce';
 import { OutputFormatter } from '@/utils/output-formatter';
+import { Pager } from '@/utils/pager';
 import { AutocompleteEngine, type CompletionContext } from './autocomplete-engine';
 import { StringBuffer } from './string-buffer';
 
@@ -237,6 +238,9 @@ export class ReplManager {
         break;
       case 'w':
         this.deleteWord();
+        break;
+      case 'r':
+        await this.showLastResultInPager();
         break;
     }
   }
@@ -966,5 +970,36 @@ export class ReplManager {
     for (let i = 0; i < menuLines; i++) {
       this.io.output.write('\x1b[A');
     }
+  }
+
+  private async showLastResultInPager(): Promise<void> {
+    // 最後の評価結果がない場合は何もしない
+    if (this.state.lastResult === undefined) {
+      return;
+    }
+
+    // 現在の入力を保存
+    const savedInput = this.state.currentInput.toString();
+    const savedCursorPosition = this.state.cursorPosition;
+
+    // 評価結果をフォーマット
+    const formattedResult = OutputFormatter.format(this.state.lastResult, {
+      ...this.state.options,
+      isReplMode: false,
+      oneline: false,
+    });
+
+    // 画面をクリア
+    this.io.output.write('\x1b[2J\x1b[H');
+
+    // Pagerで表示
+    const pager = new Pager(formattedResult);
+    await pager.show();
+
+    // REPLの画面を再描画
+    this.io.output.clearLine(0);
+    this.io.output.cursorTo(0);
+    this.io.output.write(this.prompt + savedInput);
+    this.io.output.cursorTo(this.prompt.length + savedCursorPosition);
   }
 }

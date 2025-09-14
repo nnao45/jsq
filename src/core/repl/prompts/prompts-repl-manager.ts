@@ -44,6 +44,7 @@ import {
   DefaultPromptsProvider,
 } from '../../../utils/default-providers.js';
 import { OutputFormatter } from '../../../utils/output-formatter.js';
+import { Pager } from '../../../utils/pager.js';
 import { AutocompleteEngine } from '../autocomplete-engine.js';
 
 interface PromptsReplOptions {
@@ -587,6 +588,12 @@ export class PromptsReplManager implements ReplManagerInterface {
             clearTimeout(this.completionStatusTimer);
             this.completionStatusTimer = undefined;
           }
+        }
+
+        // Handle Ctrl+R for showing last result in pager
+        if (key && key.ctrl && key.name === 'r') {
+          await this.showLastResultInPager();
+          return;
         }
 
         if (!key || key.name === 'return' || key.name === 'tab' || key.ctrl || key.meta) {
@@ -1134,6 +1141,47 @@ export class PromptsReplManager implements ReplManagerInterface {
       await this.fileSystem.writeFile(this.historyFile, content);
     } catch (_error) {
       // 保存に失敗しても続行
+    }
+  }
+
+  private async showLastResultInPager(): Promise<void> {
+    // 最後の評価結果がない場合は何もしない
+    if (this.lastResult === undefined) {
+      return;
+    }
+
+    // 現在の入力を保存
+    const savedLine = this.rl?.line || '';
+    const savedCursor = this.rl?.cursor || 0;
+
+    // 評価結果をフォーマット
+    const formattedResult = OutputFormatter.format(this.lastResult, {
+      isReplMode: false,
+      oneline: false,
+      noColor: false,
+    });
+
+    // 画面をクリア
+    this.console.log('\x1b[2J\x1b[H');
+
+    // Pagerで表示
+    const pager = new Pager(formattedResult);
+    await pager.show();
+
+    // REPLの画面を再描画
+    if (this.rl) {
+      // Clear screen and redraw
+      this.rl.write(null, { ctrl: true, name: 'l' });
+      this.rl.prompt();
+      // Restore the saved line
+      if (savedLine) {
+        this.rl.write(savedLine);
+        // Move cursor to the saved position
+        const moveBack = savedLine.length - savedCursor;
+        if (moveBack > 0) {
+          this.rl.write(null, { ctrl: true, name: 'b', sequence: '\x1b[D'.repeat(moveBack) });
+        }
+      }
     }
   }
 }
