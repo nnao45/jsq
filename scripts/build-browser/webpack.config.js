@@ -1,4 +1,5 @@
 const path = require('path');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
   mode: 'production',
@@ -70,5 +71,12 @@ module.exports = {
   },
   performance: {
     hints: false // WASMファイルサイズ警告を無効化
-  }
+  },
+  plugins: [
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      openAnalyzer: false,
+      reportFilename: 'bundle-report.html'
+    })
+  ]
 };

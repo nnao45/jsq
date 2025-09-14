@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import pc from 'picocolors';
 
 export interface ErrorPosition {
   line: number;
@@ -22,7 +22,7 @@ export class ErrorFormatter {
     const position = error.position
       ? ` at line ${error.position.line}:${error.position.column}`
       : '';
-    return chalk.bold.red(`${typeLabel}: ${error.message}${detail}${position}`);
+    return pc.bold(pc.red(`${typeLabel}: ${error.message}${detail}${position}`));
   }
 
   private static getTypeLabel(type: FormattedError['type']): string {

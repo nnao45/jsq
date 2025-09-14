@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import pc from 'picocolors';
 import type { JsqOptions } from '../types/cli.js';
 
 interface FormatterOptions {
@@ -165,7 +165,7 @@ export class OutputFormatter {
         if (keyMatch && !inString) {
           // Extract just the key part (without the colon)
           const keyPart = keyMatch[0].substring(0, keyMatch[0].lastIndexOf(':'));
-          result += chalk.blueBright(keyPart);
+          result += pc.blue(keyPart);
           i += keyPart.length - 1;
           continue;
         }
@@ -173,7 +173,7 @@ export class OutputFormatter {
         // Otherwise, it's a string value
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
         if (stringMatch) {
-          result += chalk.green(stringMatch[0]);
+          result += pc.green(stringMatch[0]);
           i += stringMatch[0].length - 1;
           continue;
         }
@@ -183,7 +183,7 @@ export class OutputFormatter {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
         if (numberMatch) {
-          result += chalk.magenta(numberMatch[0]);
+          result += pc.magenta(numberMatch[0]);
           i += numberMatch[0].length - 1;
           continue;
         }
@@ -191,7 +191,7 @@ export class OutputFormatter {
         // Booleans
         const boolMatch = remainingText.match(/^(true|false)/);
         if (boolMatch) {
-          result += chalk.yellow(boolMatch[0]);
+          result += pc.yellow(boolMatch[0]);
           i += boolMatch[0].length - 1;
           continue;
         }
@@ -199,14 +199,14 @@ export class OutputFormatter {
         // Null
         const nullMatch = remainingText.match(/^null/);
         if (nullMatch) {
-          result += chalk.gray(nullMatch[0]);
+          result += pc.gray(nullMatch[0]);
           i += nullMatch[0].length - 1;
           continue;
         }
 
         // Punctuation
         if (/[{}[\]:,]/.test(char)) {
-          result += chalk.dim(char);
+          result += pc.dim(char);
           continue;
         }
       }

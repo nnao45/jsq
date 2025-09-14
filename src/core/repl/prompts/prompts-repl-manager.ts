@@ -1,5 +1,5 @@
 import * as readline from 'node:readline';
-import chalk from 'chalk';
+import pc from 'picocolors';
 
 // Extended interface for readline with internal properties
 interface ExtendedReadlineInterface extends readline.Interface {
@@ -113,8 +113,8 @@ export class PromptsReplManager implements ReplManagerInterface {
   }
 
   async start(): Promise<void> {
-    this.console.log(chalk.cyan('Welcome to jsq REPL (experimental) 🚀'));
-    this.console.log(chalk.gray('Type .help for commands, .exit to quit\n'));
+    this.console.log(pc.cyan('Welcome to jsq REPL (experimental) 🚀'));
+    this.console.log(pc.gray('Type .help for commands, .exit to quit\n'));
 
     // For non-TTY environments with real-time evaluation, disable it
     // const _shouldUseRealTime = this.realTimeEvaluation &&
@@ -145,12 +145,12 @@ export class PromptsReplManager implements ReplManagerInterface {
             this.console.log('\nUse .exit to quit');
             continue;
           }
-          this.console.error(chalk.red('Error:'), error);
+          this.console.error(pc.red('Error:'), error);
         }
       }
     }
 
-    this.console.log(chalk.yellow('\nBye! 👋'));
+    this.console.log(pc.yellow('\nBye! 👋'));
   }
 
   private async promptUser(): Promise<string> {
@@ -275,7 +275,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       } else {
         // Use OutputFormatter for colorized compact output
         const formattedValue = this.outputFormatter.format(result.value);
-        this.console.log(chalk.green('→'), formattedValue);
+        this.console.log(pc.green('→'), formattedValue);
         this.lastResult = result.value;
         // Don't update currentData when evaluating - only update it when new JSON data is piped in
         // This prevents showing stale evaluation results on new lines
@@ -326,14 +326,14 @@ export class PromptsReplManager implements ReplManagerInterface {
         } else if (cmd.startsWith('.load ')) {
           await this.loadSession(command);
         } else {
-          this.console.log(chalk.yellow(`Unknown command: ${command}`));
-          this.console.log(chalk.gray('Type .help for available commands'));
+          this.console.log(pc.yellow(`Unknown command: ${command}`));
+          this.console.log(pc.gray('Type .help for available commands'));
         }
     }
   }
 
   private showHelp(): void {
-    this.console.log(chalk.cyan('\nAvailable commands:'));
+    this.console.log(pc.cyan('\nAvailable commands:'));
     this.console.log('  .exit           - Exit the REPL');
     this.console.log('  .help           - Show this help message');
     this.console.log('  .clear          - Clear the screen');
@@ -342,20 +342,20 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.console.log('  .load [file]    - Load data from file');
     this.console.log('  .config         - Show current configuration');
     this.console.log('');
-    this.console.log(chalk.gray('Start typing to see autocomplete suggestions'));
+    this.console.log(pc.gray('Start typing to see autocomplete suggestions'));
   }
 
   private showHistory(): void {
     const realHistory = this.history.filter(cmd => cmd !== '.history');
 
     if (realHistory.length === 0) {
-      this.console.log(chalk.gray('No history yet'));
+      this.console.log(pc.gray('No history yet'));
       return;
     }
 
-    this.console.log(chalk.cyan('\nCommand history:'));
+    this.console.log(pc.cyan('\nCommand history:'));
     realHistory.forEach((cmd, index) => {
-      this.console.log(chalk.gray(`${index + 1}:`), cmd);
+      this.console.log(pc.gray(`${index + 1}:`), cmd);
     });
   }
 
@@ -371,7 +371,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     this.rl = readline.createInterface({
       input: this.inputStream,
       output: process.stdout,
-      prompt: chalk.bold('> '),
+      prompt: pc.bold('> '),
       terminal: this.inputStream.isTTY || false,
       // Remove completer option to prevent readline from interfering with our tab handling
     });
@@ -421,7 +421,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         try {
           await this.processInput(line);
         } catch (error) {
-          this.console.error(chalk.red('Error:'), error);
+          this.console.error(pc.red('Error:'), error);
         }
       } else {
         // Empty line - reset current data to prevent showing previous results
@@ -682,7 +682,7 @@ export class PromptsReplManager implements ReplManagerInterface {
         process.stdout.write('\x1b[0G');
 
         // Rewrite prompt and input
-        const promptText = chalk.bold('> ');
+        const promptText = pc.bold('> ');
         process.stdout.write(promptText + currentLine);
 
         // Restore cursor position
@@ -705,7 +705,7 @@ export class PromptsReplManager implements ReplManagerInterface {
     process.stdout.write('\x1b[0G'); // Move to beginning of line
 
     // Rewrite prompt and current input
-    const promptText = chalk.bold('> ');
+    const promptText = pc.bold('> ');
     process.stdout.write(promptText + currentLine);
 
     // Return cursor to its original position
@@ -751,14 +751,14 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G');
       
       // Show completion status on the preview line
-      const completionText = chalk.green(_completion);
+      const completionText = pc.green(_completion);
       let statusMessage = completionText;
       
       if (_showHint && _current === 1) {
-        statusMessage += chalk.gray(' (Tab to cycle)');
+        statusMessage += pc.gray(' (Tab to cycle)');
       }
       
-      process.stdout.write(chalk.gray('→ ') + statusMessage);
+      process.stdout.write(pc.gray('→ ') + statusMessage);
       
       // Move cursor back to the input line
       process.stdout.write('\x1b[A'); // Move up one line
@@ -767,7 +767,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       // Rewrite the input line
       const savedCursorPos = this.rl.cursor || 0;
       const currentLine = this.rl.line || '';
-      const promptText = chalk.bold('> ');
+      const promptText = pc.bold('> ');
       process.stdout.write(promptText + currentLine);
       process.stdout.write('\x1b[' + (2 + savedCursorPos + 1) + 'G');
       
@@ -792,11 +792,11 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G'); // Move to beginning of line
       
       // Show completion status
-      const completionText = chalk.green(_completion);
+      const completionText = pc.green(_completion);
       let statusMessage = completionText;
       
       if (_showHint && _current === 1) {
-        statusMessage += chalk.gray(' (Tab to cycle)');
+        statusMessage += pc.gray(' (Tab to cycle)');
       }
       
       process.stdout.write(statusMessage);
@@ -806,7 +806,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       process.stdout.write('\x1b[0G'); // Move to beginning of line
       
       // Rewrite the input line
-      const promptText = chalk.bold('> ');
+      const promptText = pc.bold('> ');
       process.stdout.write(promptText + currentLine);
       process.stdout.write('\x1b[' + (2 + savedCursorPos + 1) + 'G');
       
@@ -872,12 +872,12 @@ export class PromptsReplManager implements ReplManagerInterface {
         const currentLine = this.rl.line || '';
 
         process.stdout.write('\n');
-        process.stdout.write(chalk.gray(prefix) + chalk.dim(output));
+        process.stdout.write(pc.gray(prefix) + pc.dim(output));
 
         // Move cursor back to the original position
         process.stdout.write('\x1b[A'); // Move up one line
         process.stdout.write('\x1b[0G'); // Move to beginning of line
-        process.stdout.write(chalk.bold('> ') + currentLine); // Rewrite prompt and current input
+        process.stdout.write(pc.bold('> ') + currentLine); // Rewrite prompt and current input
         // ANSIエスケープシーケンスは1ベース、カーソル位置は0ベースなので+1
         process.stdout.write(`\x1b[${promptLength + savedCursorPos + 1}G`); // Position cursor correctly
 
@@ -914,69 +914,69 @@ export class PromptsReplManager implements ReplManagerInterface {
     } else if (errorString.includes('RangeError')) {
       this.displayRangeError(errorString);
     } else {
-      this.console.error(chalk.red('❌ Error:'), errorString);
+      this.console.error(pc.red('❌ Error:'), errorString);
     }
 
     if (error && typeof error === 'object' && 'stack' in error && typeof error.stack === 'string') {
-      this.console.error(chalk.gray('\nStack trace:'));
-      this.console.error(chalk.gray(error.stack));
+      this.console.error(pc.gray('\nStack trace:'));
+      this.console.error(pc.gray(error.stack));
     }
   }
 
   private displaySyntaxError(error: string): void {
-    this.console.error(chalk.red('❌ Syntax Error:'));
+    this.console.error(pc.red('❌ Syntax Error:'));
 
     if (error.includes('Unexpected token')) {
-      this.console.error(chalk.yellow('  → Check for missing brackets, quotes, or semicolons'));
+      this.console.error(pc.yellow('  → Check for missing brackets, quotes, or semicolons'));
     } else if (error.includes('Unexpected end of input')) {
       this.console.error(
-        chalk.yellow('  → Expression seems incomplete. Did you forget to close a bracket?')
+        pc.yellow('  → Expression seems incomplete. Did you forget to close a bracket?')
       );
     }
 
-    this.console.error(chalk.gray(`  ${error}`));
+    this.console.error(pc.gray(`  ${error}`));
   }
 
   private displayReferenceError(error: string): void {
-    this.console.error(chalk.red('❌ Reference Error:'));
+    this.console.error(pc.red('❌ Reference Error:'));
 
     const match = error.match(/(\w+) is not defined/);
     if (match) {
       const varName = match[1];
-      this.console.error(chalk.yellow(`  → "${varName}" is not defined`));
+      this.console.error(pc.yellow(`  → "${varName}" is not defined`));
       this.console.error(
-        chalk.gray(`  Did you mean to reference a property? Try: $.${varName} or _.${varName}`)
+        pc.gray(`  Did you mean to reference a property? Try: $.${varName} or _.${varName}`)
       );
     } else {
-      this.console.error(chalk.gray(`  ${error}`));
+      this.console.error(pc.gray(`  ${error}`));
     }
   }
 
   private displayTypeError(error: string): void {
-    this.console.error(chalk.red('❌ Type Error:'));
+    this.console.error(pc.red('❌ Type Error:'));
 
     if (error.includes('Cannot read property')) {
-      this.console.error(chalk.yellow('  → Trying to access a property of null or undefined'));
+      this.console.error(pc.yellow('  → Trying to access a property of null or undefined'));
       this.console.error(
-        chalk.gray('  Use optional chaining (?.) to safely access nested properties')
+        pc.gray('  Use optional chaining (?.) to safely access nested properties')
       );
     } else if (error.includes('is not a function')) {
-      this.console.error(chalk.yellow('  → Trying to call something that is not a function'));
+      this.console.error(pc.yellow('  → Trying to call something that is not a function'));
     }
 
-    this.console.error(chalk.gray(`  ${error}`));
+    this.console.error(pc.gray(`  ${error}`));
   }
 
   private displayRangeError(error: string): void {
-    this.console.error(chalk.red('❌ Range Error:'));
+    this.console.error(pc.red('❌ Range Error:'));
 
     if (error.includes('Maximum call stack')) {
-      this.console.error(chalk.yellow('  → Infinite recursion detected'));
+      this.console.error(pc.yellow('  → Infinite recursion detected'));
     } else if (error.includes('Invalid array length')) {
-      this.console.error(chalk.yellow('  → Array size is too large or negative'));
+      this.console.error(pc.yellow('  → Array size is too large or negative'));
     }
 
-    this.console.error(chalk.gray(`  ${error}`));
+    this.console.error(pc.gray(`  ${error}`));
   }
 
   private async saveSession(command: string): Promise<void> {
@@ -991,12 +991,12 @@ export class PromptsReplManager implements ReplManagerInterface {
       };
 
       await this.fileSystem.writeFile(filename, JSON.stringify(dataToSave, null, 2));
-      this.console.log(chalk.green(`✅ Session saved to: ${filename}`));
+      this.console.log(pc.green(`✅ Session saved to: ${filename}`));
 
       // Note: stats functionality would need to be added to FileSystemProvider if needed
       // For now, we'll skip the size display
     } catch (error) {
-      this.console.error(chalk.red('❌ Failed to save session:'), error);
+      this.console.error(pc.red('❌ Failed to save session:'), error);
     }
   }
 
@@ -1005,8 +1005,8 @@ export class PromptsReplManager implements ReplManagerInterface {
     const filename = parts[1];
 
     if (!filename) {
-      this.console.error(chalk.red('❌ Please specify a filename'));
-      this.console.log(chalk.gray('  Usage: .load <filename>'));
+      this.console.error(pc.red('❌ Please specify a filename'));
+      this.console.log(pc.gray('  Usage: .load <filename>'));
       return;
     }
 
@@ -1016,23 +1016,23 @@ export class PromptsReplManager implements ReplManagerInterface {
 
       if (session.data) {
         this.currentData = session.data;
-        this.console.log(chalk.green(`✅ Session loaded from: ${filename}`));
+        this.console.log(pc.green(`✅ Session loaded from: ${filename}`));
 
         if (session.timestamp) {
-          this.console.log(chalk.gray(`  Saved at: ${session.timestamp}`));
+          this.console.log(pc.gray(`  Saved at: ${session.timestamp}`));
         }
 
-        this.console.log(chalk.cyan('  Data is now available as $'));
+        this.console.log(pc.cyan('  Data is now available as $'));
       } else {
-        this.console.error(chalk.yellow('⚠️  No data found in session file'));
+        this.console.error(pc.yellow('⚠️  No data found in session file'));
       }
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-        this.console.error(chalk.red(`❌ File not found: ${filename}`));
+        this.console.error(pc.red(`❌ File not found: ${filename}`));
       } else if (error instanceof SyntaxError) {
-        this.console.error(chalk.red('❌ Invalid JSON file'));
+        this.console.error(pc.red('❌ Invalid JSON file'));
       } else {
-        this.console.error(chalk.red('❌ Failed to load session:'), error);
+        this.console.error(pc.red('❌ Failed to load session:'), error);
       }
     }
   }
@@ -1102,16 +1102,16 @@ export class PromptsReplManager implements ReplManagerInterface {
   */
 
   private showConfig(): void {
-    this.console.log(chalk.cyan('\nCurrent configuration:'));
-    this.console.log(chalk.gray('  History file:'), this.historyFile || '.jsq_history');
-    this.console.log(chalk.gray('  Autocomplete:'), 'Enabled');
+    this.console.log(pc.cyan('\nCurrent configuration:'));
+    this.console.log(pc.gray('  History file:'), this.historyFile || '.jsq_history');
+    this.console.log(pc.gray('  Autocomplete:'), 'Enabled');
 
     if (this.currentData !== null) {
       const dataType = Array.isArray(this.currentData) ? 'Array' : typeof this.currentData;
       const dataSize = JSON.stringify(this.currentData).length;
-      this.console.log(chalk.gray('  Current data:'), `${dataType} (${dataSize} bytes)`);
+      this.console.log(pc.gray('  Current data:'), `${dataType} (${dataSize} bytes)`);
     } else {
-      this.console.log(chalk.gray('  Current data:'), 'None');
+      this.console.log(pc.gray('  Current data:'), 'None');
     }
   }
 

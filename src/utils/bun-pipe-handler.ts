@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { mkdtemp, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import chalk from 'chalk';
+import pc from 'picocolors';
 import type { JsqOptions } from '@/types/cli';
 import { OutputFormatter } from './output-formatter';
 import { detectRuntime } from './runtime';
@@ -218,8 +218,8 @@ export async function handleBunPipeRepl(options: JsqOptions): Promise<boolean> {
   }
 
   // パイプ入力があった場合、データを表示してREPLの使い方を案内
-  console.log(chalk.cyan('Welcome to jsq REPL (Pipe Mode) 🚀'));
-  console.log(chalk.gray('Piped data has been loaded:'));
+  console.log(pc.cyan('Welcome to jsq REPL (Pipe Mode) 🚀'));
+  console.log(pc.gray('Piped data has been loaded:'));
   console.log();
 
   try {
@@ -230,12 +230,12 @@ export async function handleBunPipeRepl(options: JsqOptions): Promise<boolean> {
   }
 
   console.log();
-  console.log(chalk.yellow('ℹ️  To start interactive REPL with this data:'));
-  console.log(chalk.gray('   Save the data to a file and run:'));
-  console.log(chalk.green('   jsq --file data.json'));
+  console.log(pc.yellow('ℹ️  To start interactive REPL with this data:'));
+  console.log(pc.gray('   Save the data to a file and run:'));
+  console.log(pc.green('   jsq --file data.json'));
   console.log();
-  console.log(chalk.gray('Or evaluate expressions directly:'));
-  console.log(chalk.green(`   echo '${options.stdinData}' | jsq '$.name'`));
+  console.log(pc.gray('Or evaluate expressions directly:'));
+  console.log(pc.green(`   echo '${options.stdinData}' | jsq '$.name'`));
 
   return true; // 処理完了
 }
