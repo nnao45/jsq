@@ -52,7 +52,17 @@ if (typeof Lodash === 'undefined') {
 // Apply all methods to Lodash prototype
 if (typeof globalThis.lodashMethods !== 'undefined' && typeof globalThis.Lodash !== 'undefined') {
   Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
-    globalThis.Lodash.prototype[name] = fn;
+    // Create a wrapper function to override toString
+    const prototypeMethod = function(...args) {
+      return fn.apply(this, args);
+    };
+    
+    // Override toString to display [native code] like built-in functions
+    prototypeMethod.toString = function() {
+      return 'function bound ' + name + '() {[native code]}';
+    };
+    
+    globalThis.Lodash.prototype[name] = prototypeMethod;
   });
 }
 
@@ -62,60 +72,49 @@ globalThis.createLodash = function(value) {
     return value;
   }
   
-  // Create lodash instance
+  // Create lodash instance without proxy
   const lodash = new globalThis.Lodash(value);
   
-  // Create proxy to handle property access
-  return new Proxy(lodash, {
-    get(target, prop, receiver) {
-      // Check if it's a lodash method first
-      if (prop in target) {
-        const value = target[prop];
-        if (typeof value === 'function') {
-          return value.bind(target);
-        }
-        return value;
+  // Add property access directly to the instance
+  if (value !== null && value !== undefined && typeof value === 'object') {
+    // For arrays, add numeric indices
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        Object.defineProperty(lodash, i, {
+          get() {
+            return this._value[i];
+          },
+          set(val) {
+            this._value[i] = val;
+          },
+          enumerable: true,
+          configurable: true
+        });
       }
-      
-      // Handle numeric indices for arrays
-      if (typeof prop === 'string' && !isNaN(Number(prop))) {
-        const index = Number(prop);
-        if (Array.isArray(target._value) && index >= 0 && index < target._value.length) {
-          return target._value[index];
-        }
-      }
-      
-      // Check wrapped value properties
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object' && prop in target._value) {
-        const valueFromData = target._value[prop];
-        
-        // Return the property value, wrapping it if it's an object
-        if (valueFromData !== null && valueFromData !== undefined && typeof valueFromData === 'object') {
-          return globalThis.createLodash(valueFromData);
-        }
-        return valueFromData;
-      }
-      
-      return undefined;
-    },
-    
-    set(target, prop, value) {
-      // Allow setting properties on the wrapped value
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
-        target._value[prop] = value;
-        return true;
-      }
-      return false;
-    },
-    
-    has(target, prop) {
-      if (prop in target) return true;
-      if (target._value !== null && target._value !== undefined && typeof target._value === 'object') {
-        return prop in target._value;
-      }
-      return false;
     }
-  });
+    
+    // For objects, add property access
+    for (const key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key) && !(key in lodash)) {
+        Object.defineProperty(lodash, key, {
+          get() {
+            const val = this._value[key];
+            if (val !== null && val !== undefined && typeof val === 'object') {
+              return globalThis.createLodash(val);
+            }
+            return val;
+          },
+          set(val) {
+            this._value[key] = val;
+          },
+          enumerable: true,
+          configurable: true
+        });
+      }
+    }
+  }
+  
+  return lodash;
 };
 
 // Set up _ for direct use (always override)
@@ -134,7 +133,7 @@ globalThis._ = function(value) {
 
 // Add static methods to _ (like _.chunk, _.filter, etc)
 Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
-  globalThis._[name] = function(...args) {
+  const staticMethod = function(...args) {
     // Special handling for pure utility functions that don't operate on data
     if (name === 'range') {
       // _.range(end) or _.range(start, end, step)
@@ -178,6 +177,22 @@ Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
       return results;
     }
     
+    // Type checking functions - operate directly on first argument
+    if (name === 'isArray' || name === 'isObject' || name === 'isString' || 
+        name === 'isNumber' || name === 'isFunction' || name === 'isNull' || 
+        name === 'isUndefined') {
+      if (args.length === 0) return false;
+      let value = args[0];
+      // Auto-unwrap SmartDollar/ChainableWrapper instances
+      if (value && typeof value === 'object') {
+        if (value.__isSmartDollar || value.__isChainableWrapper) {
+          value = value.valueOf();
+        }
+      }
+      const wrapped = new globalThis.Lodash(value);
+      return wrapped[name]();
+    }
+    
     // For static methods, wrap the first argument
     if (args.length > 0) {
       let dataToWrap = args[0];
@@ -198,6 +213,13 @@ Object.entries(globalThis.lodashMethods).forEach(([name, fn]) => {
     // For methods that don't need arguments
     return fn.call({_value: undefined, constructor: globalThis.Lodash});
   };
+  
+  // Override toString to display [native code] like built-in functions
+  staticMethod.toString = function() {
+    return 'function bound ' + name + '() {[native code]}';
+  };
+  
+  globalThis._[name] = staticMethod;
 });
 `;
 }

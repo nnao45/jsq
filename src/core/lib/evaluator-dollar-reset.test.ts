@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { JsqOptions } from '@/types/cli';
-import type { ApplicationContext } from '../application-context';
+import { ApplicationContext, createApplicationContext } from '../application-context';
 import { ExpressionEvaluator } from './evaluator';
 
 describe('Evaluator - $ evaluation after reset', () => {
@@ -20,20 +20,18 @@ describe('Evaluator - $ evaluation after reset', () => {
       prompts: true,
     } as JsqOptions;
 
-    appContext = {
-      expressionCache: new Map(),
-      options,
-      chainableWrapper: null,
-      securityManager: null,
-      inputReader: null,
-      outputHandler: null,
-      evaluator: null,
-      replManager: null,
-      exitHandler: null,
-      mode: 'pipe',
-    } as unknown as ApplicationContext;
+    appContext = createApplicationContext();
 
     evaluator = new ExpressionEvaluator(options, appContext);
+  });
+
+  afterEach(async () => {
+    if (evaluator) {
+      await evaluator.dispose();
+    }
+    if (appContext) {
+      await appContext.dispose();
+    }
   });
 
   it('should return null when $ is evaluated with null data', async () => {

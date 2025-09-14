@@ -5,6 +5,7 @@ node_modules
 bin/jsq
 bin/jsq-bun
 bin/jsq-deno
+.jsq_history
 
 # Large test files (keep sample files, ignore generated large files)
 assets/big-test.jsonl

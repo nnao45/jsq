@@ -1,3 +1,54 @@
+/**
+ * Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
+ *
+ * Based on Underscore.js, copyright Jeremy Ashkenas,
+ * DocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>
+ *
+ * This software consists of voluntary contributions made by many
+ * individuals. For exact contribution history, see the revision history
+ * available at https://github.com/lodash/lodash
+ *
+ * The following license applies to all parts of this software except as
+ * documented below:
+ *
+ * ====
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * ====
+ *
+ * Copyright and related rights for sample code are waived via CC0. Sample
+ * code is defined as all source code displayed within the prose of the
+ * documentation.
+ *
+ * CC0: http://creativecommons.org/publicdomain/zero/1.0/
+ *
+ * ====
+ *
+ * Files located in the node_modules and vendor directories are externally
+ * maintained libraries used by this software which have their own
+ * licenses; we recommend you read them, as their terms may differ from the
+ * terms above.
+ */
+
+
 export const LODASH_METHODS = `
 // Always define lodashMethods
 globalThis.lodashMethods = {
@@ -1463,17 +1514,58 @@ globalThis.lodashMethods = {
     return new this.constructor(result);
   },
   
-  mergeWith: function(customizer, ...sources) {
-    const deepMergeWithCustomizer = (target, source, customizer, key) => {
-      const customized = customizer(target, source, key);
+  mergeWith: function(...args) {
+    // Extract customizer (last argument if it's a function)
+    const customizer = typeof args[args.length - 1] === 'function' ? args.pop() : undefined;
+    const sources = args.map(source => {
+      // Auto-unwrap ChainableWrapper/SmartDollar instances
+      if (source && typeof source === 'object') {
+        if (source.__isSmartDollar || source.__isChainableWrapper) {
+          return source.valueOf();
+        }
+      }
+      return source;
+    });
+    
+    const unwrapValue = (val) => {
+      if (val && typeof val === 'object') {
+        if (val.__isSmartDollar || val.__isChainableWrapper) {
+          return val.valueOf();
+        }
+      }
+      return val;
+    };
+    
+    const deepMergeWithCustomizer = (target, source, customizer, key, object, sourceObj) => {
+      // Unwrap values before processing
+      target = unwrapValue(target);
+      source = unwrapValue(source);
+      
+      const customized = customizer ? customizer(target, source, key, object, sourceObj) : undefined;
       if (customized !== undefined) {
         return customized;
       }
       
       if (typeof target === 'object' && typeof source === 'object' && target !== null && source !== null) {
-        const result = Array.isArray(target) ? [...target] : { ...target };
+        let result;
+        if (Array.isArray(target)) {
+          result = [];
+          for (let i = 0; i < target.length; i++) {
+            result[i] = target[i];
+          }
+        } else {
+          result = {};
+          for (const key in target) {
+            if (Object.prototype.hasOwnProperty.call(target, key)) {
+              result[key] = target[key];
+            }
+          }
+        }
+        
         for (const k in source) {
-          result[k] = deepMergeWithCustomizer(result[k], source[k], customizer, k);
+          if (Object.prototype.hasOwnProperty.call(source, k)) {
+            result[k] = deepMergeWithCustomizer(result[k], source[k], customizer, k, object, sourceObj);
+          }
         }
         return result;
       }
@@ -1483,7 +1575,7 @@ globalThis.lodashMethods = {
     
     let result = this._value;
     for (const source of sources) {
-      result = deepMergeWithCustomizer(result, source, customizer);
+      result = deepMergeWithCustomizer(result, source, customizer, undefined, this._value, source);
     }
     
     return new this.constructor(result);
@@ -1575,7 +1667,8 @@ globalThis.lodashMethods = {
   
   lowerCase: function() {
     const str = String(this._value);
-    const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z]+(?=[A-Z][a-z]|\b)/g) || [];
+    // Split on non-alphanumeric characters and camelCase boundaries
+    const words = str.match(/[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|[0-9]+/g) || [];
     return new this.constructor(words.map(word => word.toLowerCase()).join(' '));
   },
   
@@ -1798,6 +1891,34 @@ globalThis.lodashMethods = {
   },
   
   // Utility methods
+  isArray: function() {
+    return Array.isArray(this._value);
+  },
+  
+  isObject: function() {
+    return this._value !== null && typeof this._value === 'object';
+  },
+  
+  isString: function() {
+    return typeof this._value === 'string';
+  },
+  
+  isNumber: function() {
+    return typeof this._value === 'number';
+  },
+  
+  isFunction: function() {
+    return typeof this._value === 'function';
+  },
+  
+  isNull: function() {
+    return this._value === null;
+  },
+  
+  isUndefined: function() {
+    return this._value === undefined;
+  },
+  
   size: function() {
     if (Array.isArray(this._value) || typeof this._value === 'string') {
       return this._value.length;

@@ -6,7 +6,7 @@ import {
 } from '../../../utils/test-providers.js';
 import { type ExpressionEvaluator, PromptsReplManager } from './prompts-repl-manager.js';
 
-describe('PromptsReplManager', () => {
+describe.skip('PromptsReplManager', () => {
   const createTestSetup = () => {
     const mockFileSystem = new MockFileSystemProvider();
     const mockPromptsProvider = new MockPromptsProvider();

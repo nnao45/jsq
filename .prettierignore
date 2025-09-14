@@ -1,9 +1,0 @@
-node_modules/
-dist/
-coverage/
-*.log
-*.md
-package-lock.json
-yarn.lock
-.git/
-.DS_Store
