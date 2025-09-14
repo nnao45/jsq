@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "type": "module",
   "main": "dist/index.js",
@@ -97,7 +97,6 @@
     "quickjs-emscripten": "^0.31.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "readline-sync": "^1.4.10",
     "stream-json": "^1.8.0",
     "zod": "^3.22.4"
   },
@@ -108,7 +107,6 @@
     "@types/node": "^20.10.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.5",
-    "@types/readline-sync": "^1.4.8",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/ui": "^3.2.4",
     "c8": "^10.1.3",
