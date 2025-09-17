@@ -163,10 +163,10 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
     
     .sidebar {
       position: sticky;
-      top: 4rem;
+      top: 0;
       left: 0;
       width: 280px;
-      height: calc(100vh - 4rem);
+      height: 100vh;
       background: var(--surface);
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
@@ -175,6 +175,8 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       
       @media (max-width: 1024px) {
         position: fixed;
+        top: 0;
+        height: 100vh;
         transform: translateX(-100%);
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
         
@@ -2039,7 +2041,9 @@ squareAdd(3)  // 10`,
         this.activeMethod = castClosestElement.method;
         this.activeSection = castClosestElement.section;
         
-        if (castClosestElement.category && !this.expandedCategories.has(castClosestElement.category)) {
+        if (castClosestElement.category) {
+          // Clear all expanded categories and only expand the current one
+          this.expandedCategories.clear();
           this.expandedCategories.add(castClosestElement.category);
         }
       }
