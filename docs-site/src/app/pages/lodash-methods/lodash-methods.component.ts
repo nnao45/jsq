@@ -166,7 +166,7 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       top: 0;
       left: 0;
       width: 280px;
-      height: 100vh;
+      height: 100%;
       background: var(--surface);
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
