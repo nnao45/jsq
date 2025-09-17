@@ -1,5 +1,5 @@
+import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Readable } from 'stream';
 import {
   MockConsoleProvider,
   MockFileSystemProvider,
@@ -15,7 +15,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
 
   beforeEach(() => {
     mockConsole = new MockConsoleProvider();
-    
+
     mockEvaluator = {
       evaluate: vi.fn(async (expression: string, currentData: any, lastResult?: any) => {
         if (expression === '$') {
@@ -38,7 +38,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
   it('should preserve initial piped data in $ after assignment and empty line', async () => {
     const initialData = { value: 45 };
     inputStream = new Readable({
-      read() {}
+      read() {},
     });
 
     manager = new PromptsReplManager({
@@ -54,14 +54,14 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
 
     // Start the REPL
     const startPromise = manager.start();
-    
+
     // Wait for the REPL to be ready
     await new Promise(resolve => setTimeout(resolve, 50));
 
     // Simulate user input: check initial $
     inputStream.push('$\n');
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     // Check that $ returns the initial data
     expect(mockEvaluator.evaluate).toHaveBeenCalledWith('$', initialData, initialData);
     expect(mockConsole.logs.some(log => log.join(' ').includes('{"value":45}'))).toBe(true);
@@ -70,9 +70,13 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
     // Simulate assignment: $ = $.value
     inputStream.push('$ = $.value\n');
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     // Check that the assignment was evaluated
-    expect(mockEvaluator.evaluate).toHaveBeenCalledWith('$ = $.value', initialData, expect.anything());
+    expect(mockEvaluator.evaluate).toHaveBeenCalledWith(
+      '$ = $.value',
+      initialData,
+      expect.anything()
+    );
     expect(mockConsole.logs.some(log => log.join(' ').includes('45'))).toBe(true);
     mockConsole.logs = [];
 
@@ -83,7 +87,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
     // Now check $ again - it should still be the initial data, not null
     inputStream.push('$\n');
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     // $ should be called with initialData, not null
     const lastCall = vi.mocked(mockEvaluator.evaluate).mock.calls.slice(-1)[0];
     expect(lastCall[0]).toBe('$');
@@ -98,7 +102,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
   it('should reset to initial data after multiple empty lines', async () => {
     const initialData = [1, 2, 3];
     inputStream = new Readable({
-      read() {}
+      read() {},
     });
 
     manager = new PromptsReplManager({
@@ -133,7 +137,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
     // Check $ again - should still be initial data
     inputStream.push('$\n');
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     const lastCall = vi.mocked(mockEvaluator.evaluate).mock.calls.slice(-1)[0];
     expect(lastCall[1]).toEqual(initialData);
     expect(mockConsole.logs.some(log => log.join(' ').includes('[1,2,3]'))).toBe(true);
@@ -145,7 +149,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
 
   it('should handle null initial data correctly', async () => {
     inputStream = new Readable({
-      read() {}
+      read() {},
     });
 
     manager = new PromptsReplManager({
@@ -176,7 +180,7 @@ describe('PromptsReplManager - $ variable reset behavior', () => {
     // Check $ again - should still be null
     inputStream.push('$\n');
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     const lastCall = vi.mocked(mockEvaluator.evaluate).mock.calls.slice(-1)[0];
     expect(lastCall[1]).toBe(null);
     expect(mockConsole.logs.some(log => log.join(' ').includes('null'))).toBe(true);

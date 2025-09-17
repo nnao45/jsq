@@ -485,153 +485,156 @@ export class PromptsReplManager implements ReplManagerInterface {
       if (this.ignoringKeypress) {
         return;
       }
-        
-        // Handle Tab key explicitly for autocomplete
-        if (key && key.name === 'tab' && !key.ctrl && !key.meta) {
-          // Prevent default tab behavior by removing any tab character that was inserted
-          let currentLine = this.rl.line || '';
-          const currentCursor = this.rl.cursor || 0;
 
-          // If a tab character was inserted, remove it
-          if (currentLine.includes('\t')) {
-            currentLine = currentLine.replace(/\t/g, '');
-            this.rl.line = currentLine;
-            this.rl.cursor = Math.min(currentCursor, currentLine.length);
+      // Handle Tab key explicitly for autocomplete
+      if (key && key.name === 'tab' && !key.ctrl && !key.meta) {
+        // Prevent default tab behavior by removing any tab character that was inserted
+        let currentLine = this.rl.line || '';
+        const currentCursor = this.rl.cursor || 0;
+
+        // If a tab character was inserted, remove it
+        if (currentLine.includes('\t')) {
+          currentLine = currentLine.replace(/\t/g, '');
+          this.rl.line = currentLine;
+          this.rl.cursor = Math.min(currentCursor, currentLine.length);
+        }
+
+        // Check if we should use cached completions (for cycling)
+        const shouldUseCached =
+          this.completionState?.isActive &&
+          this.completionState.lastLine === currentLine &&
+          this.completionState.lastCompletions.length > 1;
+
+        if (shouldUseCached && this.completionState) {
+          // Use cached completions for cycling
+          const completions = this.completionState.lastCompletions;
+          this.completionState.currentIndex =
+            (this.completionState.currentIndex + 1) % completions.length;
+          const selectedCompletion = completions[this.completionState.currentIndex];
+          const applied = this.applyCompletion(this.completionState.lastPrefix, selectedCompletion);
+          this.rl.line = applied;
+          this.rl.cursor = applied.length;
+          this.completionState.lastLine = applied;
+
+          // Show which completion we're on (on the same line)
+          // Note: showCompletionStatus will handle the line refresh
+          // this.showCompletionStatus(this.completionState.currentIndex + 1, completions.length, selectedCompletion);
+
+          // Trigger immediate evaluation after cycling through completions
+          if (this.realTimeEvaluation && applied.trim()) {
+            setTimeout(async () => {
+              await this.performImmediateEvaluation(applied);
+            }, 50);
           }
 
-          // Check if we should use cached completions (for cycling)
-          const shouldUseCached =
-            this.completionState?.isActive &&
-            this.completionState.lastLine === currentLine &&
-            this.completionState.lastCompletions.length > 1;
-
-          if (shouldUseCached && this.completionState) {
-            // Use cached completions for cycling
-            const completions = this.completionState.lastCompletions;
-            this.completionState.currentIndex =
-              (this.completionState.currentIndex + 1) % completions.length;
-            const selectedCompletion = completions[this.completionState.currentIndex];
-            const applied = this.applyCompletion(
-              this.completionState.lastPrefix,
-              selectedCompletion
-            );
-            this.rl.line = applied;
-            this.rl.cursor = applied.length;
-            this.completionState.lastLine = applied;
-
-            // Show which completion we're on (on the same line)
-            // Note: showCompletionStatus will handle the line refresh
-            // this.showCompletionStatus(this.completionState.currentIndex + 1, completions.length, selectedCompletion);
-
-            // Trigger immediate evaluation after cycling through completions
-            if (this.realTimeEvaluation && applied.trim()) {
-              setTimeout(async () => {
-                await this.performImmediateEvaluation(applied);
-              }, 50);
-            }
-
-            return;
-          }
-
-          // Manually trigger completion
-          const completions = await this.getSuggestions(currentLine);
-
-          if (completions.length === 0) {
-            this.completionState = null;
-            return;
-          }
-
-          if (completions.length === 1) {
-            // Single completion - apply it directly
-            const applied = this.applyCompletion(currentLine, completions[0]);
-            this.rl.line = applied;
-            this.rl.cursor = applied.length;
-            // We need to manually refresh the line without causing a newline
-            this.refreshCurrentLine();
-            this.completionState = null;
-
-            // Trigger immediate evaluation after tab completion
-            if (this.realTimeEvaluation && applied.trim()) {
-              setTimeout(async () => {
-                await this.performImmediateEvaluation(applied);
-              }, 50);
-            }
-          } else {
-            // Multiple completions - setup for cycling
-            this.completionState = {
-              lastCompletions: completions,
-              currentIndex: 0,
-              lastPrefix: currentLine,
-              lastCursorPos: currentCursor,
-              lastLine: currentLine,
-              isActive: true,
-            };
-
-            // Apply first completion immediately
-            const firstCompletion = completions[0];
-            const applied = this.applyCompletion(currentLine, firstCompletion);
-            this.rl.line = applied;
-            this.rl.cursor = applied.length;
-            this.completionState.lastLine = applied;
-
-            // Show status message (on the same line)
-            // Note: showCompletionStatus will handle the line refresh
-            // this.showCompletionStatus(1, completions.length, firstCompletion, true);
-
-            // Trigger immediate evaluation for first completion
-            if (this.realTimeEvaluation && applied.trim()) {
-              setTimeout(async () => {
-                await this.performImmediateEvaluation(applied);
-              }, 50);
-            }
-          }
           return;
         }
 
-        // Reset completion state on any other key
-        if ((key && key.name !== 'tab') || (!key && char)) {
+        // Manually trigger completion
+        const completions = await this.getSuggestions(currentLine);
+
+        if (completions.length === 0) {
           this.completionState = null;
-          // Clear any completion status display
-          this.clearCompletionStatus();
-          // Clear the timer as well
-          if (this.completionStatusTimer) {
-            clearTimeout(this.completionStatusTimer);
-            this.completionStatusTimer = undefined;
-          }
-        }
-
-        // Handle Ctrl+R for showing last result in pager
-        if (key && key.ctrl && key.name === 'r') {
-          await this.showLastResultInPager();
           return;
         }
 
-        if (!key || key.name === 'return' || key.name === 'tab' || (key.ctrl && key.name !== 'r') || key.meta) {
-          // Clear preview line on return key
-          if (key && key.name === 'return') {
-            this.clearPreviewLine();
-            this.hasPreviewLine = false;
+        if (completions.length === 1) {
+          // Single completion - apply it directly
+          const applied = this.applyCompletion(currentLine, completions[0]);
+          this.rl.line = applied;
+          this.rl.cursor = applied.length;
+          // We need to manually refresh the line without causing a newline
+          this.refreshCurrentLine();
+          this.completionState = null;
+
+          // Trigger immediate evaluation after tab completion
+          if (this.realTimeEvaluation && applied.trim()) {
+            setTimeout(async () => {
+              await this.performImmediateEvaluation(applied);
+            }, 50);
           }
-          return;
-        }
+        } else {
+          // Multiple completions - setup for cycling
+          this.completionState = {
+            lastCompletions: completions,
+            currentIndex: 0,
+            lastPrefix: currentLine,
+            lastCursorPos: currentCursor,
+            lastLine: currentLine,
+            isActive: true,
+          };
 
-        // Update current input
-        currentInput = this.rl.line || '';
+          // Apply first completion immediately
+          const firstCompletion = completions[0];
+          const applied = this.applyCompletion(currentLine, firstCompletion);
+          this.rl.line = applied;
+          this.rl.cursor = applied.length;
+          this.completionState.lastLine = applied;
 
-        // Debounce immediate evaluation
-        if (evaluationTimer) {
-          clearTimeout(evaluationTimer);
-        }
+          // Show status message (on the same line)
+          // Note: showCompletionStatus will handle the line refresh
+          // this.showCompletionStatus(1, completions.length, firstCompletion, true);
 
-        if (this.realTimeEvaluation && currentInput.trim()) {
-          evaluationTimer = setTimeout(async () => {
-            // Ensure we're still on the same line and the input hasn't changed
-            const currentLineNow = this.rl.line || '';
-            if (currentLineNow === currentInput && currentInput.trim()) {
-              await this.performImmediateEvaluation(currentInput);
-            }
-          }, 100);
+          // Trigger immediate evaluation for first completion
+          if (this.realTimeEvaluation && applied.trim()) {
+            setTimeout(async () => {
+              await this.performImmediateEvaluation(applied);
+            }, 50);
+          }
         }
+        return;
+      }
+
+      // Reset completion state on any other key
+      if ((key && key.name !== 'tab') || (!key && char)) {
+        this.completionState = null;
+        // Clear any completion status display
+        this.clearCompletionStatus();
+        // Clear the timer as well
+        if (this.completionStatusTimer) {
+          clearTimeout(this.completionStatusTimer);
+          this.completionStatusTimer = undefined;
+        }
+      }
+
+      // Handle Ctrl+R for showing last result in pager
+      if (key?.ctrl && key.name === 'r') {
+        await this.showLastResultInPager();
+        return;
+      }
+
+      if (
+        !key ||
+        key.name === 'return' ||
+        key.name === 'tab' ||
+        (key.ctrl && key.name !== 'r') ||
+        key.meta
+      ) {
+        // Clear preview line on return key
+        if (key && key.name === 'return') {
+          this.clearPreviewLine();
+          this.hasPreviewLine = false;
+        }
+        return;
+      }
+
+      // Update current input
+      currentInput = this.rl.line || '';
+
+      // Debounce immediate evaluation
+      if (evaluationTimer) {
+        clearTimeout(evaluationTimer);
+      }
+
+      if (this.realTimeEvaluation && currentInput.trim()) {
+        evaluationTimer = setTimeout(async () => {
+          // Ensure we're still on the same line and the input hasn't changed
+          const currentLineNow = this.rl.line || '';
+          if (currentLineNow === currentInput && currentInput.trim()) {
+            await this.performImmediateEvaluation(currentInput);
+          }
+        }, 100);
+      }
     };
 
     // Real-time evaluation on keypress
@@ -1184,7 +1187,7 @@ export class PromptsReplManager implements ReplManagerInterface {
       // 画面をクリアして再描画
       process.stdout.write('\x1b[2J\x1b[H');
       this.rl.prompt();
-      
+
       // 保存された行を復元
       if (savedLine) {
         this.rl.line = savedLine;

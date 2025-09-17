@@ -1,17 +1,21 @@
 import * as readline from 'node:readline';
 
+type TTYStream = NodeJS.ReadStream & {
+  isRaw?: boolean;
+  setRawMode?: (mode: boolean) => void;
+};
+
 export class Pager {
   private lines: string[];
   private currentLine: number = 0;
   private terminalRows: number;
   private terminalCols: number;
-  private inputStream: NodeJS.ReadStream;
-  
+  private inputStream: TTYStream;
+
   // 検索モード関連
   private isSearchMode: boolean = false;
   private searchQuery: string = '';
   private searchResults: Array<{ line: number; column: number }> = [];
-  private currentSearchIndex: number = -1;
 
   constructor(content: string, inputStream?: NodeJS.ReadStream) {
     this.terminalRows = process.stdout.rows || 24;
@@ -57,24 +61,27 @@ export class Pager {
     // コンテンツを表示
     displayLines.forEach((line, index) => {
       const actualLineNumber = this.currentLine + index;
-      
+
       // この行に検索結果があるかチェック
       if (this.searchResults.length > 0 && this.searchQuery.length > 0) {
         const resultsInLine = this.searchResults.filter(r => r.line === actualLineNumber);
-        
+
         if (resultsInLine.length > 0) {
           // ハイライト付きで表示
           let highlightedLine = '';
           let lastIndex = 0;
-          
+
           resultsInLine.forEach(result => {
             highlightedLine += line.substring(lastIndex, result.column);
             highlightedLine += '\x1b[43m\x1b[30m'; // 黄色背景、黒文字
-            highlightedLine += line.substring(result.column, result.column + this.searchQuery.length);
+            highlightedLine += line.substring(
+              result.column,
+              result.column + this.searchQuery.length
+            );
             highlightedLine += '\x1b[0m'; // リセット
             lastIndex = result.column + this.searchQuery.length;
           });
-          
+
           highlightedLine += line.substring(lastIndex);
           console.log(highlightedLine);
         } else {
@@ -103,7 +110,9 @@ export class Pager {
           : 100;
       const status = this.currentLine + displayRows >= this.lines.length ? '(END)' : `${percent}%`;
 
-      process.stdout.write(`\x1b[7m-- ${status} -- (q to quit, j/k or arrows to scroll, / to search)\x1b[0m`);
+      process.stdout.write(
+        `\x1b[7m-- ${status} -- (q to quit, j/k or arrows to scroll, / to search)\x1b[0m`
+      );
     }
   }
 
@@ -134,7 +143,9 @@ export class Pager {
     for (let i = 0; i < this.lines.length; i++) {
       const line = this.lines[i];
       let index = 0;
-      while ((index = line.indexOf(this.searchQuery, index)) !== -1) {
+      while (true) {
+        index = line.indexOf(this.searchQuery, index);
+        if (index === -1) break;
         this.searchResults.push({ line: i, column: index });
         index += this.searchQuery.length;
       }
@@ -142,7 +153,6 @@ export class Pager {
 
     // 最初の検索結果にジャンプ
     if (this.searchResults.length > 0) {
-      this.currentSearchIndex = 0;
       this.jumpToSearchResult(0);
     }
   }
@@ -156,22 +166,25 @@ export class Pager {
   }
 
   async show(): Promise<void> {
-    
     // Store the current raw mode state
     let wasRawMode = false;
     if (this.inputStream.isTTY && 'isRaw' in this.inputStream) {
-      wasRawMode = (this.inputStream as any).isRaw;
+      wasRawMode = (this.inputStream as TTYStream).isRaw ?? false;
     }
-    
+
     // Raw modeを有効化
-    if (this.inputStream.isTTY && 'setRawMode' in this.inputStream && typeof this.inputStream.setRawMode === 'function') {
-      (this.inputStream as any).setRawMode(true);
+    if (
+      this.inputStream.isTTY &&
+      'setRawMode' in this.inputStream &&
+      typeof this.inputStream.setRawMode === 'function'
+    ) {
+      (this.inputStream as TTYStream).setRawMode?.(true);
     }
 
     // Clear any existing keypress listeners before setting up our own
     const existingListeners = this.inputStream.listeners('keypress');
     this.inputStream.removeAllListeners('keypress');
-    
+
     readline.emitKeypressEvents(this.inputStream);
 
     // 初期描画
@@ -181,35 +194,34 @@ export class Pager {
       const cleanup = () => {
         // Remove our handler
         this.inputStream.removeListener('keypress', keyHandler);
-        
+
         // Restore existing listeners
-        existingListeners.forEach((listener: any) => {
-          this.inputStream.on('keypress', listener);
+        existingListeners.forEach(listener => {
+          this.inputStream.on('keypress', listener as (str: string, key: readline.Key) => void);
         });
       };
-      
+
       const keyHandler = (str: string, key: readline.Key) => {
         if (this.isSearchMode) {
           // 検索モード中のキーハンドリング
           if (!key) return;
-          
+
           switch (key.name) {
             case 'escape':
               // 検索モードを終了
               this.isSearchMode = false;
               this.searchQuery = '';
               this.searchResults = [];
-              this.currentSearchIndex = -1;
               this.drawContent();
               break;
-              
+
             case 'return':
             case 'enter':
               // 検索を実行して検索モードを終了
               this.performSearch();
               this.isSearchMode = false;
               break;
-              
+
             case 'backspace':
               // 一文字削除
               if (this.searchQuery.length > 0) {
@@ -217,7 +229,7 @@ export class Pager {
                 this.drawContent();
               }
               break;
-              
+
             default:
               // 通常の文字入力
               if (str && str.length === 1 && !key.ctrl && !key.meta) {
@@ -236,15 +248,19 @@ export class Pager {
           case 'q':
           case 'escape':
             // raw modeを先に戻す
-            if (this.inputStream.isTTY && 'setRawMode' in this.inputStream && typeof this.inputStream.setRawMode === 'function') {
-              (this.inputStream as any).setRawMode(wasRawMode);
+            if (
+              this.inputStream.isTTY &&
+              'setRawMode' in this.inputStream &&
+              typeof this.inputStream.setRawMode === 'function'
+            ) {
+              (this.inputStream as TTYStream).setRawMode?.(wasRawMode);
             }
-            
+
             this.clearScreen();
-            
+
             // クリーンアップして終了
             cleanup();
-            
+
             resolve();
             break;
 
@@ -280,7 +296,7 @@ export class Pager {
               this.drawContent();
             }
             break;
-            
+
           default:
             // / キーで検索モードに入る
             if (str === '/') {
