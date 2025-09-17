@@ -163,15 +163,15 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
     
     .sidebar {
       position: sticky;
-      top: 0;
+      top: 4rem;
       left: 0;
       width: 280px;
-      height: 100%;
+      height: calc(100vh - 4rem);
       background: var(--surface);
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
       transition: transform 0.3s ease;
-      z-index: 100;
+      z-index: 40;
       
       @media (max-width: 1024px) {
         position: fixed;
