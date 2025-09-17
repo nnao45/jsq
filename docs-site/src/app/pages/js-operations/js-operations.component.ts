@@ -165,6 +165,7 @@ $.users.map(u => u.name.toUpperCase())</code></pre>
       max-width: 1400px;
       margin: 0 auto;
       position: relative;
+      min-height: 100vh;
     }
     
     .sidebar {

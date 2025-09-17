@@ -159,6 +159,7 @@ _(users).filter(u => u.active).sortBy('age').value()</code></pre>
       max-width: 1400px;
       margin: 0 auto;
       position: relative;
+      min-height: 100vh;
     }
     
     .sidebar {
