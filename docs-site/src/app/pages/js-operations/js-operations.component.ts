@@ -177,7 +177,7 @@ $.users.map(u => u.name.toUpperCase())</code></pre>
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
       transition: transform 0.3s ease;
-      z-index: 40;
+      z-index: 100;
       
       @media (max-width: 1024px) {
         position: fixed;
