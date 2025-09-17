@@ -66,6 +66,10 @@ jobs:
           touch docs-site/dist/jsq-docs/browser/.nojekyll
           echo "GitHub Pages will not process this site with Jekyll" > docs-site/dist/jsq-docs/browser/.nojekyll
           
+      - name: Create 404.html for SPA support
+        run: |
+          cp docs-site/dist/jsq-docs/browser/index.html docs-site/dist/jsq-docs/browser/404.html
+          
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
