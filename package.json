@@ -1,6 +1,6 @@
 {
   "name": "@nnao45/jsq",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "JavaScript-Powered JSON Query CLI Tool",
   "type": "module",
   "main": "dist/index.js",
