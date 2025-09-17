@@ -5,10 +5,18 @@ export class Pager {
   private currentLine: number = 0;
   private terminalRows: number;
   private terminalCols: number;
+  private inputStream: NodeJS.ReadStream;
+  
+  // 検索モード関連
+  private isSearchMode: boolean = false;
+  private searchQuery: string = '';
+  private searchResults: Array<{ line: number; column: number }> = [];
+  private currentSearchIndex: number = -1;
 
-  constructor(content: string) {
+  constructor(content: string, inputStream?: NodeJS.ReadStream) {
     this.terminalRows = process.stdout.rows || 24;
     this.terminalCols = process.stdout.columns || 80;
+    this.inputStream = inputStream || process.stdin;
 
     // コンテンツを行に分割して、長い行は折り返す
     this.lines = this.splitIntoLines(content);
@@ -47,8 +55,34 @@ export class Pager {
     const displayLines = this.lines.slice(this.currentLine, endLine);
 
     // コンテンツを表示
-    displayLines.forEach(line => {
-      console.log(line);
+    displayLines.forEach((line, index) => {
+      const actualLineNumber = this.currentLine + index;
+      
+      // この行に検索結果があるかチェック
+      if (this.searchResults.length > 0 && this.searchQuery.length > 0) {
+        const resultsInLine = this.searchResults.filter(r => r.line === actualLineNumber);
+        
+        if (resultsInLine.length > 0) {
+          // ハイライト付きで表示
+          let highlightedLine = '';
+          let lastIndex = 0;
+          
+          resultsInLine.forEach(result => {
+            highlightedLine += line.substring(lastIndex, result.column);
+            highlightedLine += '\x1b[43m\x1b[30m'; // 黄色背景、黒文字
+            highlightedLine += line.substring(result.column, result.column + this.searchQuery.length);
+            highlightedLine += '\x1b[0m'; // リセット
+            lastIndex = result.column + this.searchQuery.length;
+          });
+          
+          highlightedLine += line.substring(lastIndex);
+          console.log(highlightedLine);
+        } else {
+          console.log(line);
+        }
+      } else {
+        console.log(line);
+      }
     });
 
     // 空行で埋める
@@ -58,13 +92,19 @@ export class Pager {
     }
 
     // ステータス行を表示
-    const percent =
-      this.lines.length > 0
-        ? Math.round(((this.currentLine + displayRows) / this.lines.length) * 100)
-        : 100;
-    const status = this.currentLine + displayRows >= this.lines.length ? '(END)' : `${percent}%`;
+    if (this.isSearchMode) {
+      // 検索モード時の表示
+      process.stdout.write(`\x1b[7m/${this.searchQuery}\x1b[0m`);
+    } else {
+      // 通常モード時の表示
+      const percent =
+        this.lines.length > 0
+          ? Math.round(((this.currentLine + displayRows) / this.lines.length) * 100)
+          : 100;
+      const status = this.currentLine + displayRows >= this.lines.length ? '(END)' : `${percent}%`;
 
-    process.stdout.write(`\x1b[7m-- ${status} -- (q to quit, j/k or arrows to scroll)\x1b[0m`);
+      process.stdout.write(`\x1b[7m-- ${status} -- (q to quit, j/k or arrows to scroll, / to search)\x1b[0m`);
+    }
   }
 
   private scrollUp(lines: number = 1) {
@@ -86,30 +126,125 @@ export class Pager {
     this.scrollDown(this.terminalRows - 2);
   }
 
-  async show(): Promise<void> {
-    // Raw modeを有効化
-    if (process.stdin.isTTY && process.stdin.setRawMode) {
-      process.stdin.setRawMode(true);
+  private performSearch() {
+    this.searchResults = [];
+    if (this.searchQuery.length === 0) return;
+
+    // 全ての行を検索
+    for (let i = 0; i < this.lines.length; i++) {
+      const line = this.lines[i];
+      let index = 0;
+      while ((index = line.indexOf(this.searchQuery, index)) !== -1) {
+        this.searchResults.push({ line: i, column: index });
+        index += this.searchQuery.length;
+      }
     }
 
-    readline.emitKeypressEvents(process.stdin);
+    // 最初の検索結果にジャンプ
+    if (this.searchResults.length > 0) {
+      this.currentSearchIndex = 0;
+      this.jumpToSearchResult(0);
+    }
+  }
+
+  private jumpToSearchResult(index: number) {
+    if (index >= 0 && index < this.searchResults.length) {
+      const result = this.searchResults[index];
+      this.currentLine = Math.max(0, result.line - Math.floor((this.terminalRows - 1) / 2));
+      this.drawContent();
+    }
+  }
+
+  async show(): Promise<void> {
+    
+    // Store the current raw mode state
+    let wasRawMode = false;
+    if (this.inputStream.isTTY && 'isRaw' in this.inputStream) {
+      wasRawMode = (this.inputStream as any).isRaw;
+    }
+    
+    // Raw modeを有効化
+    if (this.inputStream.isTTY && 'setRawMode' in this.inputStream && typeof this.inputStream.setRawMode === 'function') {
+      (this.inputStream as any).setRawMode(true);
+    }
+
+    // Clear any existing keypress listeners before setting up our own
+    const existingListeners = this.inputStream.listeners('keypress');
+    this.inputStream.removeAllListeners('keypress');
+    
+    readline.emitKeypressEvents(this.inputStream);
 
     // 初期描画
     this.drawContent();
 
     return new Promise(resolve => {
-      const keyHandler = (_str: string, key: readline.Key) => {
+      const cleanup = () => {
+        // Remove our handler
+        this.inputStream.removeListener('keypress', keyHandler);
+        
+        // Restore existing listeners
+        existingListeners.forEach((listener: any) => {
+          this.inputStream.on('keypress', listener);
+        });
+      };
+      
+      const keyHandler = (str: string, key: readline.Key) => {
+        if (this.isSearchMode) {
+          // 検索モード中のキーハンドリング
+          if (!key) return;
+          
+          switch (key.name) {
+            case 'escape':
+              // 検索モードを終了
+              this.isSearchMode = false;
+              this.searchQuery = '';
+              this.searchResults = [];
+              this.currentSearchIndex = -1;
+              this.drawContent();
+              break;
+              
+            case 'return':
+            case 'enter':
+              // 検索を実行して検索モードを終了
+              this.performSearch();
+              this.isSearchMode = false;
+              break;
+              
+            case 'backspace':
+              // 一文字削除
+              if (this.searchQuery.length > 0) {
+                this.searchQuery = this.searchQuery.slice(0, -1);
+                this.drawContent();
+              }
+              break;
+              
+            default:
+              // 通常の文字入力
+              if (str && str.length === 1 && !key.ctrl && !key.meta) {
+                this.searchQuery += str;
+                this.drawContent();
+              }
+              break;
+          }
+          return;
+        }
+
+        // 通常モード中のキーハンドリング
         if (!key) return;
 
         switch (key.name) {
           case 'q':
           case 'escape':
-            // クリーンアップして終了
-            process.stdin.removeListener('keypress', keyHandler);
-            if (process.stdin.isTTY && process.stdin.setRawMode) {
-              process.stdin.setRawMode(false);
+            // raw modeを先に戻す
+            if (this.inputStream.isTTY && 'setRawMode' in this.inputStream && typeof this.inputStream.setRawMode === 'function') {
+              (this.inputStream as any).setRawMode(wasRawMode);
             }
+            
             this.clearScreen();
+            
+            // クリーンアップして終了
+            cleanup();
+            
             resolve();
             break;
 
@@ -145,10 +280,19 @@ export class Pager {
               this.drawContent();
             }
             break;
+            
+          default:
+            // / キーで検索モードに入る
+            if (str === '/') {
+              this.isSearchMode = true;
+              this.searchQuery = '';
+              this.drawContent();
+            }
+            break;
         }
       };
 
-      process.stdin.on('keypress', keyHandler);
+      this.inputStream.on('keypress', keyHandler);
     });
   }
 }

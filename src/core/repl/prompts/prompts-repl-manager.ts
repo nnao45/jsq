@@ -66,6 +66,7 @@ export class PromptsReplManager implements ReplManagerInterface {
   private shouldExit = false;
   private currentData: unknown = null;
   private lastResult: unknown;
+  private initialData: unknown = null;
   private historyFile?: string;
   private inputStream?: ExtendedReadStream;
   private fileSystem: FileSystemProvider;
@@ -89,11 +90,16 @@ export class PromptsReplManager implements ReplManagerInterface {
     lastLine: string;
     isActive: boolean;
   } | null = null;
+  private ignoringKeypress = false;
+  private keypressHandler?: (char: string, key: Key) => Promise<void>;
 
   constructor(options: PromptsReplOptions) {
     this.evaluator = options.evaluator;
     this.historyFile = options.historyFile;
-    this.currentData = options.initialData || null;
+    this.initialData = options.initialData || null;
+    this.currentData = this.initialData;
+    // 初期データがある場合は、それをlastResultにも設定
+    this.lastResult = options.initialData || undefined;
     this.inputStream = options.inputStream;
     this.fileSystem = options.fileSystem || new DefaultFileSystemProvider();
     this.promptsProvider = options.promptsProvider || new DefaultPromptsProvider();
@@ -425,8 +431,8 @@ export class PromptsReplManager implements ReplManagerInterface {
           this.console.error(pc.red('Error:'), error);
         }
       } else {
-        // Empty line - reset current data to prevent showing previous results
-        this.currentData = null;
+        // Empty line - reset current data to initial data
+        this.currentData = this.initialData;
       }
 
       if (!this.shouldExit && this.rl) {
@@ -473,9 +479,13 @@ export class PromptsReplManager implements ReplManagerInterface {
       }
     });
 
-    // Real-time evaluation on keypress
-    if (this.inputStream && typeof this.inputStream.on === 'function') {
-      this.inputStream.on('keypress', async (char: string, key: Key) => {
+    // Define keypress handler function
+    this.keypressHandler = async (char: string, key: Key) => {
+      // Ignore keypress events if flag is set
+      if (this.ignoringKeypress) {
+        return;
+      }
+        
         // Handle Tab key explicitly for autocomplete
         if (key && key.name === 'tab' && !key.ctrl && !key.meta) {
           // Prevent default tab behavior by removing any tab character that was inserted
@@ -596,7 +606,7 @@ export class PromptsReplManager implements ReplManagerInterface {
           return;
         }
 
-        if (!key || key.name === 'return' || key.name === 'tab' || key.ctrl || key.meta) {
+        if (!key || key.name === 'return' || key.name === 'tab' || (key.ctrl && key.name !== 'r') || key.meta) {
           // Clear preview line on return key
           if (key && key.name === 'return') {
             this.clearPreviewLine();
@@ -622,7 +632,11 @@ export class PromptsReplManager implements ReplManagerInterface {
             }
           }, 100);
         }
-      });
+    };
+
+    // Real-time evaluation on keypress
+    if (this.inputStream && typeof this.inputStream.on === 'function') {
+      this.inputStream.on('keypress', this.keypressHandler);
     }
 
     this.rl.prompt();
@@ -1161,25 +1175,28 @@ export class PromptsReplManager implements ReplManagerInterface {
       noColor: false,
     });
 
-    // 画面をクリア
-    this.console.log('\x1b[2J\x1b[H');
-
-    // Pagerで表示
-    const pager = new Pager(formattedResult);
+    // Pagerで表示（Pager側でkeypressハンドラーの管理を行う）
+    const pager = new Pager(formattedResult, this.inputStream);
     await pager.show();
 
     // REPLの画面を再描画
     if (this.rl) {
-      // Clear screen and redraw
-      this.rl.write(null, { ctrl: true, name: 'l' });
+      // 画面をクリアして再描画
+      process.stdout.write('\x1b[2J\x1b[H');
       this.rl.prompt();
-      // Restore the saved line
+      
+      // 保存された行を復元
       if (savedLine) {
-        this.rl.write(savedLine);
-        // Move cursor to the saved position
+        this.rl.line = savedLine;
+        this.rl.cursor = savedCursor;
+        // プロンプトと現在の入力を再描画
+        process.stdout.write(savedLine);
+        // カーソル位置を復元
         const moveBack = savedLine.length - savedCursor;
         if (moveBack > 0) {
-          this.rl.write(null, { ctrl: true, name: 'b', sequence: '\x1b[D'.repeat(moveBack) });
+          for (let i = 0; i < moveBack; i++) {
+            process.stdout.write('\x1b[D'); // カーソルを左に移動
+          }
         }
       }
     }
