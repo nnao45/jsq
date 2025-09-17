@@ -993,7 +993,7 @@ export class ReplManager {
     this.io.output.write('\x1b[2J\x1b[H');
 
     // Pagerで表示
-    const pager = new Pager(formattedResult);
+    const pager = new Pager(formattedResult, this.io.input);
     await pager.show();
 
     // REPLの画面を再描画

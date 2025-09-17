@@ -88,6 +88,76 @@ describe('Integration Tests', () => {
       expect(JSON.parse(result.stdout)).toBe('Alice');
     }, 10000);
 
+    it('should process hyphenated properties with $ syntax', async () => {
+      const input = '{"theme-command": "dark", "user-id": 123, "is-active": true}';
+      const expression = '$.theme-command';
+
+      const result = await runJsq(expression, input);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('dark');
+    }, 10000);
+
+    it('should process hyphenated properties with dot notation', async () => {
+      const input = '{"theme-command": "dark", "user-id": 123, "is-active": true}';
+      const expression = '.theme-command';
+
+      const result = await runJsq(expression, input);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('dark');
+    }, 10000);
+
+    it('should process nested hyphenated properties', async () => {
+      const input = JSON.stringify({
+        'theme-settings': {
+          'dark-mode': true,
+          'font-size': 16,
+          'color-scheme': {
+            'primary-color': '#007bff',
+            'secondary-color': '#6c757d',
+          },
+        },
+      });
+      const expression = '.theme-settings.color-scheme.primary-color';
+
+      const result = await runJsq(expression, input);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('#007bff');
+    }, 10000);
+
+    it('should process properties starting with numbers', async () => {
+      const input = JSON.stringify({
+        '5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28': 'uuid-value',
+        '123-test': 'number-start',
+        'normal-prop': 'normal-value',
+      });
+      const expression = '$.5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28';
+
+      const result = await runJsq(expression, input);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('uuid-value');
+    }, 10000);
+
+    it('should process nested properties with numbers', async () => {
+      const input = JSON.stringify({
+        data: {
+          '5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28': {
+            '123e4567-e89b-12d3-a456-426614174000': 'nested-uuid',
+          },
+        },
+      });
+      const expression =
+        '$.data.5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28.123e4567-e89b-12d3-a456-426614174000';
+
+      const result = await runJsq(expression, input);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toBe('nested-uuid');
+    }, 10000);
+
     it('should process array operations', async () => {
       const input = JSON.stringify([
         { name: 'Alice', age: 30 },

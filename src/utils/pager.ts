@@ -1,4 +1,5 @@
 import * as readline from 'node:readline';
+import type { InputProvider } from '@/types/repl';
 
 type TTYStream = NodeJS.ReadStream & {
   isRaw?: boolean;
@@ -7,41 +8,53 @@ type TTYStream = NodeJS.ReadStream & {
 
 export class Pager {
   private lines: string[];
+  private coloredLines: string[];
   private currentLine: number = 0;
   private terminalRows: number;
   private terminalCols: number;
-  private inputStream: TTYStream;
+  private inputStream: InputProvider | TTYStream;
 
   // 検索モード関連
   private isSearchMode: boolean = false;
   private searchQuery: string = '';
   private searchResults: Array<{ line: number; column: number }> = [];
+  private currentSearchIndex: number = 0;
 
-  constructor(content: string, inputStream?: NodeJS.ReadStream) {
+  constructor(content: string, inputStream?: InputProvider | NodeJS.ReadStream) {
     this.terminalRows = process.stdout.rows || 24;
     this.terminalCols = process.stdout.columns || 80;
     this.inputStream = inputStream || process.stdin;
 
     // コンテンツを行に分割して、長い行は折り返す
-    this.lines = this.splitIntoLines(content);
-  }
-
-  private splitIntoLines(content: string): string[] {
     const rawLines = content.split('\n');
-    const wrappedLines: string[] = [];
+    this.lines = [];
+    this.coloredLines = [];
 
     for (const line of rawLines) {
-      if (line.length <= this.terminalCols) {
-        wrappedLines.push(line);
+      // プレーンテキスト版（エスケープコードを削除）
+      const plainLine = line.replace(new RegExp(`${String.fromCharCode(0x1b)}\\[[^m]*m`, 'g'), '');
+
+      if (plainLine.length <= this.terminalCols) {
+        this.lines.push(plainLine);
+        this.coloredLines.push(line);
       } else {
-        // 長い行を複数行に分割
-        for (let i = 0; i < line.length; i += this.terminalCols) {
-          wrappedLines.push(line.substring(i, i + this.terminalCols));
+        // 長い行を複数行に分割（プレーンテキストベースで計算）
+        let plainIndex = 0;
+        let coloredIndex = 0;
+
+        while (plainIndex < plainLine.length) {
+          const plainChunk = plainLine.substring(plainIndex, plainIndex + this.terminalCols);
+          this.lines.push(plainChunk);
+
+          // 対応する色付きチャンクを見つける
+          const coloredChunk = this.extractColoredChunk(line, coloredIndex, plainChunk.length);
+          this.coloredLines.push(coloredChunk.text);
+          coloredIndex = coloredChunk.endIndex;
+
+          plainIndex += this.terminalCols;
         }
       }
     }
-
-    return wrappedLines;
   }
 
   private clearScreen() {
@@ -61,6 +74,7 @@ export class Pager {
     // コンテンツを表示
     displayLines.forEach((line, index) => {
       const actualLineNumber = this.currentLine + index;
+      const coloredLine = this.coloredLines[actualLineNumber] || line;
 
       // この行に検索結果があるかチェック
       if (this.searchResults.length > 0 && this.searchQuery.length > 0) {
@@ -70,25 +84,70 @@ export class Pager {
           // ハイライト付きで表示
           let highlightedLine = '';
           let lastIndex = 0;
+          let coloredLastIndex = 0;
 
           resultsInLine.forEach(result => {
-            highlightedLine += line.substring(lastIndex, result.column);
-            highlightedLine += '\x1b[43m\x1b[30m'; // 黄色背景、黒文字
-            highlightedLine += line.substring(
+            // プレーンテキストの位置から、色付きテキスト内の対応する位置を見つける
+            const beforeMatch = line.substring(lastIndex, result.column);
+            const coloredBeforeMatch = this.extractColoredSubstring(
+              coloredLine,
+              coloredLastIndex,
+              beforeMatch.length
+            );
+            highlightedLine += coloredBeforeMatch.text;
+            coloredLastIndex = coloredBeforeMatch.endIndex;
+
+            // 現在フォーカスしてる検索結果かチェック
+            const isCurrentResult =
+              this.searchResults[this.currentSearchIndex].line === actualLineNumber &&
+              this.searchResults[this.currentSearchIndex].column === result.column;
+
+            if (isCurrentResult) {
+              // 現在フォーカス中: オレンジ背景、白文字
+              highlightedLine += '\x1b[43m\x1b[37m';
+            } else {
+              // 他の検索結果: オレンジ背景、黒文字
+              highlightedLine += '\x1b[43m\x1b[30m';
+            }
+
+            const matchText = line.substring(
               result.column,
               result.column + this.searchQuery.length
             );
+            const coloredMatch = this.extractColoredSubstring(
+              coloredLine,
+              coloredLastIndex,
+              matchText.length
+            );
+
+            // マッチ部分のテキストを抽出（エスケープコードは除く）
+            const plainMatch = coloredMatch.text.replace(
+              new RegExp(`${String.fromCharCode(0x1b)}\\[[^m]*m`, 'g'),
+              ''
+            );
+            highlightedLine += plainMatch;
             highlightedLine += '\x1b[0m'; // リセット
+
+            coloredLastIndex = coloredMatch.endIndex;
             lastIndex = result.column + this.searchQuery.length;
           });
 
-          highlightedLine += line.substring(lastIndex);
+          // 残りの部分
+          const remaining = line.substring(lastIndex);
+          if (remaining) {
+            const coloredRemaining = this.extractColoredSubstring(
+              coloredLine,
+              coloredLastIndex,
+              remaining.length
+            );
+            highlightedLine += coloredRemaining.text;
+          }
           console.log(highlightedLine);
         } else {
-          console.log(line);
+          console.log(coloredLine);
         }
       } else {
-        console.log(line);
+        console.log(coloredLine);
       }
     });
 
@@ -110,8 +169,14 @@ export class Pager {
           : 100;
       const status = this.currentLine + displayRows >= this.lines.length ? '(END)' : `${percent}%`;
 
+      // 検索結果情報
+      let searchInfo = '';
+      if (this.searchResults.length > 0 && this.searchQuery.length > 0) {
+        searchInfo = ` [${this.currentSearchIndex + 1}/${this.searchResults.length}]`;
+      }
+
       process.stdout.write(
-        `\x1b[7m-- ${status} -- (q to quit, j/k or arrows to scroll, / to search)\x1b[0m`
+        `\x1b[7m-- ${status}${searchInfo} -- (q to quit, j/k or arrows to scroll, / to search, n/N for next/prev)\x1b[0m`
       );
     }
   }
@@ -137,6 +202,7 @@ export class Pager {
 
   private performSearch() {
     this.searchResults = [];
+    this.currentSearchIndex = 0;
     if (this.searchQuery.length === 0) return;
 
     // 全ての行を検索
@@ -159,10 +225,84 @@ export class Pager {
 
   private jumpToSearchResult(index: number) {
     if (index >= 0 && index < this.searchResults.length) {
+      this.currentSearchIndex = index;
       const result = this.searchResults[index];
       this.currentLine = Math.max(0, result.line - Math.floor((this.terminalRows - 1) / 2));
       this.drawContent();
     }
+  }
+
+  private nextSearchResult() {
+    if (this.searchResults.length > 0) {
+      const nextIndex = (this.currentSearchIndex + 1) % this.searchResults.length;
+      this.jumpToSearchResult(nextIndex);
+    }
+  }
+
+  private previousSearchResult() {
+    if (this.searchResults.length > 0) {
+      const prevIndex =
+        (this.currentSearchIndex - 1 + this.searchResults.length) % this.searchResults.length;
+      this.jumpToSearchResult(prevIndex);
+    }
+  }
+
+  private extractColoredSubstring(
+    coloredText: string,
+    startIndex: number,
+    plainLength: number
+  ): { text: string; endIndex: number } {
+    let result = '';
+    let currentIndex = startIndex;
+    let plainCount = 0;
+
+    while (currentIndex < coloredText.length && plainCount < plainLength) {
+      if (coloredText[currentIndex] === '\x1b' && coloredText[currentIndex + 1] === '[') {
+        // エスケープシーケンスを探す
+        const endMatch = coloredText.indexOf('m', currentIndex);
+        if (endMatch !== -1) {
+          result += coloredText.substring(currentIndex, endMatch + 1);
+          currentIndex = endMatch + 1;
+          continue;
+        }
+      }
+
+      result += coloredText[currentIndex];
+      plainCount++;
+      currentIndex++;
+    }
+
+    return { text: result, endIndex: currentIndex };
+  }
+
+  private extractColoredChunk(
+    coloredText: string,
+    startIndex: number,
+    plainLength: number
+  ): { text: string; endIndex: number } {
+    let result = '';
+    let currentIndex = startIndex;
+    let plainCount = 0;
+    let currentEscapeSequence = '';
+
+    while (currentIndex < coloredText.length && plainCount < plainLength) {
+      if (coloredText[currentIndex] === '\x1b' && coloredText[currentIndex + 1] === '[') {
+        // エスケープシーケンスを探す
+        const endMatch = coloredText.indexOf('m', currentIndex);
+        if (endMatch !== -1) {
+          currentEscapeSequence = coloredText.substring(currentIndex, endMatch + 1);
+          result += currentEscapeSequence;
+          currentIndex = endMatch + 1;
+          continue;
+        }
+      }
+
+      result += coloredText[currentIndex];
+      plainCount++;
+      currentIndex++;
+    }
+
+    return { text: result, endIndex: currentIndex };
   }
 
   async show(): Promise<void> {
@@ -182,10 +322,16 @@ export class Pager {
     }
 
     // Clear any existing keypress listeners before setting up our own
-    const existingListeners = this.inputStream.listeners('keypress');
-    this.inputStream.removeAllListeners('keypress');
+    let existingListeners: unknown[] = [];
+    if ('listeners' in this.inputStream) {
+      existingListeners = this.inputStream.listeners('keypress');
+      this.inputStream.removeAllListeners('keypress');
+    }
 
-    readline.emitKeypressEvents(this.inputStream);
+    // Only emit keypress events for NodeJS.ReadStream
+    if ('read' in this.inputStream) {
+      readline.emitKeypressEvents(this.inputStream as NodeJS.ReadStream);
+    }
 
     // 初期描画
     this.drawContent();
@@ -193,12 +339,18 @@ export class Pager {
     return new Promise(resolve => {
       const cleanup = () => {
         // Remove our handler
-        this.inputStream.removeListener('keypress', keyHandler);
+        if ('removeListener' in this.inputStream) {
+          this.inputStream.removeListener('keypress', keyHandler);
+        } else if ('off' in this.inputStream) {
+          (this.inputStream as InputProvider).off('keypress', keyHandler);
+        }
 
         // Restore existing listeners
-        existingListeners.forEach(listener => {
-          this.inputStream.on('keypress', listener as (str: string, key: readline.Key) => void);
-        });
+        if ('on' in this.inputStream) {
+          existingListeners.forEach(listener => {
+            this.inputStream.on('keypress', listener as (str: string, key: readline.Key) => void);
+          });
+        }
       };
 
       const keyHandler = (str: string, key: readline.Key) => {
@@ -212,6 +364,7 @@ export class Pager {
               this.isSearchMode = false;
               this.searchQuery = '';
               this.searchResults = [];
+              this.currentSearchIndex = 0;
               this.drawContent();
               break;
 
@@ -297,8 +450,19 @@ export class Pager {
             }
             break;
 
+          case 'n':
+            // nキー: 次の検索結果へ、Shift+n: 前の検索結果へ
+            if (this.searchResults.length > 0) {
+              if (key.shift) {
+                this.previousSearchResult();
+              } else {
+                this.nextSearchResult();
+              }
+            }
+            break;
+
           default:
-            // / キーで検索モードに入る
+            // / キーで検索モードに入る（常に新しい検索）
             if (str === '/') {
               this.isSearchMode = true;
               this.searchQuery = '';

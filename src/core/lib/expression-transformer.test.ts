@@ -135,5 +135,50 @@ describe('Expression Transformer Tests', () => {
       // First the pipe transformation happens, then hyphenated properties
       expect(result).toContain('["theme-command"]');
     });
+
+    it('should transform dot notation starting with . (no $)', () => {
+      const result = transformExpression('.theme-command');
+      expect(result).toBe('data["theme-command"]');
+    });
+
+    it('should transform nested dot notation starting with .', () => {
+      const result = transformExpression('.users.theme-settings');
+      expect(result).toBe('data.users["theme-settings"]');
+    });
+
+    it('should handle properties starting with numbers', () => {
+      const result = transformExpression('$.s1mAccessCache.5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28');
+      expect(result).toBe('$.s1mAccessCache["5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28"]');
+    });
+
+    it('should handle UUID-like properties', () => {
+      const result = transformExpression('$.cache.123e4567-e89b-12d3-a456-426614174000');
+      expect(result).toBe('$.cache["123e4567-e89b-12d3-a456-426614174000"]');
+    });
+
+    it('should handle multiple hyphens in dot notation starting with .', () => {
+      const result = transformExpression('.very-long-property-name');
+      expect(result).toBe('data["very-long-property-name"]');
+    });
+
+    it('should not transform standalone .', () => {
+      const result = transformExpression('.');
+      expect(result).toBe('data');
+    });
+
+    it('should handle properties starting with numbers', () => {
+      const result = transformExpression('$.5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28');
+      expect(result).toBe('$["5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28"]');
+    });
+
+    it('should handle nested properties starting with numbers', () => {
+      const result = transformExpression('$.data.5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28');
+      expect(result).toBe('$.data["5d3c73bd-0e6b-4e9e-9d0b-e84ab8c5f28"]');
+    });
+
+    it('should handle UUID-like properties', () => {
+      const result = transformExpression('$.123e4567-e89b-12d3-a456-426614174000');
+      expect(result).toBe('$["123e4567-e89b-12d3-a456-426614174000"]');
+    });
   });
 });

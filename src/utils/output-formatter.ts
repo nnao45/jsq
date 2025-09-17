@@ -165,7 +165,7 @@ export class OutputFormatter {
         if (keyMatch && !inString) {
           // Extract just the key part (without the colon)
           const keyPart = keyMatch[0].substring(0, keyMatch[0].lastIndexOf(':'));
-          result += pc.whiteBright(keyPart);
+          result += pc.green(keyPart);
           i += keyPart.length - 1;
           continue;
         }
@@ -173,7 +173,7 @@ export class OutputFormatter {
         // Otherwise, it's a string value
         const stringMatch = remainingText.match(/^"([^"\\]|\\.)*"/);
         if (stringMatch) {
-          result += pc.green(stringMatch[0]);
+          result += pc.magenta(stringMatch[0]);
           i += stringMatch[0].length - 1;
           continue;
         }
@@ -183,7 +183,7 @@ export class OutputFormatter {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
         if (numberMatch) {
-          result += pc.cyanBright(numberMatch[0]);
+          result += pc.blue(numberMatch[0]);
           i += numberMatch[0].length - 1;
           continue;
         }

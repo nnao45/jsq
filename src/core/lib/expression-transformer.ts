@@ -59,6 +59,11 @@ export function transformExpression(
   else if (trimmed === '.') {
     result = 'data';
   }
+  // Handle expressions starting with '.' (e.g., .property, .theme-command)
+  else if (trimmed.startsWith('.') && trimmed.length > 1) {
+    // Replace leading . with data
+    result = `data${trimmed}`;
+  }
   // Handle standalone '$' - for null/undefined data, return the data directly
   // For other data types, return $ as is and let the evaluator handle it
   else if (trimmed === '$') {
@@ -656,11 +661,13 @@ function splitBySemicolon(expression: string): string[] {
 /**
  * Transform property access with hyphens from dot notation to bracket notation
  * e.g., $.foo.bar-baz -> $.foo["bar-baz"]
+ * Also handles properties starting with numbers, e.g., $.5abc-def -> $["5abc-def"]
  */
 function transformHyphenatedProperties(expression: string): string {
   // Regular expression to match property access with hyphens
   // Matches patterns like .property-name where property-name contains hyphens
-  const hyphenatedPropertyRegex = /\.([a-zA-Z_$][\w$]*(?:-[\w$]+)+)(?=\.|[^\w$-]|$)/g;
+  // Now also matches properties starting with numbers
+  const hyphenatedPropertyRegex = /\.([a-zA-Z0-9_$][\w$]*(?:-[\w$]+)+)(?=\.|[^\w$-]|$)/g;
 
   return expression.replace(hyphenatedPropertyRegex, (_match, propertyName) => {
     return `["${propertyName}"]`;
