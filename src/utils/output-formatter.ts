@@ -183,7 +183,7 @@ export class OutputFormatter {
         // Numbers
         const numberMatch = remainingText.match(/^-?\d+\.?\d*([eE][+-]?\d+)?/);
         if (numberMatch) {
-          result += pc.blue(numberMatch[0]);
+          result += pc.cyanBright(numberMatch[0]);
           i += numberMatch[0].length - 1;
           continue;
         }
