@@ -446,7 +446,7 @@ export class PromptsReplManager implements ReplManagerInterface {
 
       if (currentLine.trim() === '') {
         // Check for double Ctrl+C within 300ms
-        if (now - this.lastSigintTime < 300) {
+        if (now - this.lastSigintTime < 1000) {
           // Exit on double Ctrl+C
           this.shouldExit = true;
           if (this.rl) this.rl.close();
