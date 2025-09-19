@@ -186,14 +186,20 @@ describe('Variable Pipeline with SmartDollar Integration', () => {
 
   it('should execute variable pipeline with newline correctly', async () => {
     const data = { users: [{ age: 25 }, { age: 30 }] };
-    const result = await evaluator.evaluate('const ages = $.users.pluck("age") |\nages.sum()', data);
+    const result = await evaluator.evaluate(
+      'const ages = $.users.pluck("age") |\nages.sum()',
+      data
+    );
 
     expect(result).toBe(55);
   });
 
   it('should execute variable pipeline with newline and indentation correctly', async () => {
     const data = { users: [{ age: 25 }, { age: 30 }] };
-    const result = await evaluator.evaluate('const ages = $.users.pluck("age") |\n  ages.sum()', data);
+    const result = await evaluator.evaluate(
+      'const ages = $.users.pluck("age") |\n  ages.sum()',
+      data
+    );
 
     expect(result).toBe(55);
   });
