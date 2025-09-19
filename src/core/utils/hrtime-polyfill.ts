@@ -5,9 +5,8 @@ export function hrtime(previousTimestamp?: [number, number]): [number, number] {
   }
 
   // ブラウザではperformance.now()を使う
-  const nowInMs = typeof performance !== 'undefined' && performance.now
-    ? performance.now()
-    : Date.now();
+  const nowInMs =
+    typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
 
   const nowInNs = nowInMs * 1e6;
   const seconds = Math.floor(nowInNs / 1e9);
@@ -20,15 +19,15 @@ export function hrtime(previousTimestamp?: [number, number]): [number, number] {
   // 差分計算
   const prevSeconds = previousTimestamp[0];
   const prevNanoseconds = previousTimestamp[1];
-  
+
   let diffSeconds = seconds - prevSeconds;
   let diffNanoseconds = nanoseconds - prevNanoseconds;
-  
+
   // ナノ秒がマイナスの場合は調整
   if (diffNanoseconds < 0) {
     diffSeconds--;
     diffNanoseconds += 1e9;
   }
-  
+
   return [diffSeconds, diffNanoseconds];
 }

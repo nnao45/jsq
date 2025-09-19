@@ -6,6 +6,7 @@ import type {
 } from 'quickjs-emscripten';
 import type { VMContext, VMOptions, VMResult, VMSandboxConfig } from '../../../../types/sandbox';
 import type { ApplicationContext } from '../../../application-context';
+import { hrtime } from '../../../utils/hrtime-polyfill';
 import type {
   // SerializedValue,
   EvalOptions,
@@ -15,7 +16,6 @@ import type {
   VMExecutionContext,
 } from '../../interfaces/VMEngine';
 import { isProcessExiting } from '../../quickjs-gc-workaround';
-import { hrtime } from '../../../utils/hrtime-polyfill';
 import { QuickJSMarshaller } from './QuickJSMarshaller';
 
 export class QuickJSExecutionContext implements VMExecutionContext {
