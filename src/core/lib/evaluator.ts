@@ -129,10 +129,16 @@ export class ExpressionEvaluator {
       const result = await this.executeExpression(transformedExpression, secureContext);
       return this.unwrapResult(result);
     } catch (error) {
-      // Re-throw security errors as-is, wrap others
+      // Re-throw security errors as-is
       if (error instanceof Error && error.message.includes('Security validation failed')) {
         throw error;
       }
+
+      // Check if it's a SandboxError with CPU_LIMIT code
+      if (error instanceof Error && 'code' in error && error.code === 'CPU_LIMIT') {
+        throw new Error(`CPU time limit exceeded`);
+      }
+
       throw new Error(
         `Expression evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -402,10 +408,12 @@ export class ExpressionEvaluator {
     try {
       const timeout = this.securityManager.getTimeout();
       const memoryLimit = this.securityManager.getMemoryLimit();
+      const cpuLimit = this.securityManager.getCpuLimit();
 
       const vmOptions: VMOptions = {
         ...(timeout !== undefined && { timeout }),
         ...(memoryLimit !== undefined && { memoryLimit }),
+        ...(cpuLimit !== undefined && { cpuLimit }),
         allowedGlobals: this.securityManager.getSecurityContext().level.allowedGlobals,
         allowNetwork: this.securityManager.getSecurityContext().level.allowNetwork,
       };
@@ -452,6 +460,11 @@ export class ExpressionEvaluator {
         // Check if it's a QuickJS initialization error
         if (error.message.includes('QuickJS initialization failed')) {
           throw error; // Re-throw the descriptive error as-is
+        }
+
+        // Check if it's a SandboxError with CPU_LIMIT code
+        if ('code' in error && error.code === 'CPU_LIMIT') {
+          throw error; // Re-throw CPU limit errors as-is
         }
 
         // Extract simple error message

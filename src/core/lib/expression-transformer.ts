@@ -505,17 +505,19 @@ function transformSingleVariableDeclaration(expression: string): string {
   if (hasAwait) {
     return `(async () => { 
       let ${varName} = ${initialValue.trim()}; 
-      if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
+      // Only unwrap ChainableWrapper if it's not a SmartDollar instance
+      if (${varName} && typeof ${varName} === 'object' && !${varName}.__isSmartDollar && ('value' in ${varName} || 'valueOf' in ${varName})) {
         ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
       }
       return ${pipelineExpr.trim()}; 
     })()`;
   } else {
     // Create a regular IIFE (Immediately Invoked Function Expression) to scope the variable
-    // Also unwrap ChainableWrapper values using valueOf() or .value if available
+    // Also unwrap ChainableWrapper values using valueOf() or .value if available, but not SmartDollar instances
     return `(() => { 
       let ${varName} = ${initialValue.trim()}; 
-      if (${varName} && typeof ${varName} === 'object' && ('value' in ${varName} || 'valueOf' in ${varName})) {
+      // Only unwrap ChainableWrapper if it's not a SmartDollar instance
+      if (${varName} && typeof ${varName} === 'object' && !${varName}.__isSmartDollar && ('value' in ${varName} || 'valueOf' in ${varName})) {
         ${varName} = ${varName}.value !== undefined ? ${varName}.value : ${varName}.valueOf();
       }
       return ${pipelineExpr.trim()}; 

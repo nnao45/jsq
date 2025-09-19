@@ -1001,5 +1001,14 @@ export class ReplManager {
     this.io.output.cursorTo(0);
     this.io.output.write(this.prompt + savedInput);
     this.io.output.cursorTo(this.prompt.length + savedCursorPosition);
+
+    // 保存された入力がある場合は即座に評価
+    if (savedInput.trim().length > 0) {
+      // 改行を出力
+      this.io.output.write('\n');
+
+      // 入力を評価
+      await this.handleEnter();
+    }
   }
 }

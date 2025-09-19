@@ -81,13 +81,44 @@ describeWithVM('VM CLI Resource Limits', () => {
       // Create a simpler computation that returns a value - single expression
       const code = `(() => { let count = 0; for (let i = 0; i < 1000; i++) { count++; } return count; })()`;
 
-      // QuickJSはCPUタイムリミットを直接サポートしないため、
-      // 現在の実装では単にコードを実行して結果を返す
+      // This computation should complete quickly
       const result = await evaluator.evaluate(code, {});
       expect(result).toBe(1000);
       await evaluator.dispose();
       await appContext.dispose();
     });
+
+    testWithVM(
+      'should enforce CPU limit and throw error',
+      async () => {
+        const options: JsqOptions = {
+          cpuLimit: 10, // 10ms limit - very short
+          verbose: true,
+        };
+
+        const appContext = createApplicationContext();
+        const evaluator = new ExpressionEvaluator(options, appContext);
+
+        // Create CPU-intensive code that should exceed the limit
+        const code = `
+        (() => {
+          let result = 0;
+          // Very large loop that will consume significant CPU time
+          for (let i = 0; i < 100000000; i++) {
+            result += Math.sqrt(i);
+          }
+          return result;
+        })()
+      `;
+
+        // This should throw a CPU limit error
+        await expect(evaluator.evaluate(code, {})).rejects.toThrow(/cpu time limit|CPU_LIMIT/i);
+
+        await evaluator.dispose();
+        await appContext.dispose();
+      },
+      30000
+    ); // 30秒のタイムアウト
 
     testWithVM('should work with default CPU limit', async () => {
       const options: JsqOptions = {

@@ -300,6 +300,13 @@ export class QuickJSEngine implements VMEngine {
   private activeContexts: QuickJSExecutionContext[] = [];
   private appContext: ApplicationContext;
 
+  // CPU time tracking
+  private cpuTimeLimit?: number;
+  private cpuTimeUsed: number = 0;
+  private lastCheckTime?: [number, number];
+  private executionStartTime?: [number, number];
+  private shouldInterrupt: boolean = false;
+
   constructor(appContext: ApplicationContext) {
     this.appContext = appContext;
   }
@@ -313,6 +320,12 @@ export class QuickJSEngine implements VMEngine {
     // メモリ制限を設定（MB to bytes）
     if (config.memoryLimit) {
       this.runtime.setMemoryLimit(config.memoryLimit * 1024 * 1024);
+    }
+
+    // CPU時間制限を設定
+    if (config.cpuLimit) {
+      this.cpuTimeLimit = config.cpuLimit;
+      this.setupCpuTimeInterruptHandler();
     }
 
     // 最大スタック制限 - Use a reasonable fixed size instead of scaling with memory
@@ -386,8 +399,24 @@ export class QuickJSEngine implements VMEngine {
       timeoutId = setTimeout(() => {}, options.timeout);
     }
 
+    // CPU時間トラッキング開始
+    if (this.cpuTimeLimit) {
+      this.startCpuTimeTracking();
+    }
+
     try {
       const result = await context.eval(code);
+
+      // Check if execution was interrupted due to CPU limit
+      if (this.shouldInterrupt) {
+        const cpuTimeUsed = this.stopCpuTimeTracking();
+        const error = new Error(
+          `CPU time limit exceeded: ${cpuTimeUsed.toFixed(2)}ms > ${this.cpuTimeLimit}ms`
+        ) as Error & { code?: string };
+        error.code = 'CPU_LIMIT';
+        throw error;
+      }
+
       const executionTime = performance.now() - startTime;
 
       return {
@@ -395,9 +424,22 @@ export class QuickJSEngine implements VMEngine {
         executionTime,
         memoryUsed: this.getMemoryUsage().used,
       };
+    } catch (error) {
+      // Stop CPU tracking on error
+      if (this.cpuTimeLimit) {
+        this.stopCpuTimeTracking();
+      }
+
+      // Re-throw the error
+      throw error;
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
+      }
+
+      // Ensure CPU tracking is stopped
+      if (this.cpuTimeLimit) {
+        this.stopCpuTimeTracking();
       }
     }
   }
@@ -508,5 +550,59 @@ export class QuickJSEngine implements VMEngine {
     }
     this.quickjs = null;
     this.config = null;
+  }
+
+  private setupCpuTimeInterruptHandler(): void {
+    if (!this.runtime || !this.cpuTimeLimit) return;
+
+    // Set interrupt handler that checks CPU time
+    this.runtime.setInterruptHandler(() => {
+      if (!this.lastCheckTime || !this.cpuTimeLimit) return false;
+
+      // Calculate elapsed CPU time since last check
+      const currentTime = process.hrtime();
+      const elapsedTime = this.calculateElapsedTime(this.lastCheckTime, currentTime);
+
+      // Update last check time
+      this.lastCheckTime = currentTime;
+
+      // Add to total CPU time used
+      this.cpuTimeUsed += elapsedTime;
+
+      // Check if CPU limit exceeded
+      if (this.cpuTimeUsed > this.cpuTimeLimit) {
+        this.shouldInterrupt = true;
+        return true; // Interrupt execution
+      }
+
+      return false; // Continue execution
+    });
+  }
+
+  private calculateElapsedTime(start: [number, number], end: [number, number]): number {
+    // Calculate difference in nanoseconds and convert to milliseconds
+    const seconds = end[0] - start[0];
+    const nanoseconds = end[1] - start[1];
+    return seconds * 1000 + nanoseconds / 1000000;
+  }
+
+  private startCpuTimeTracking(): void {
+    this.cpuTimeUsed = 0;
+    this.shouldInterrupt = false;
+    this.executionStartTime = process.hrtime();
+    this.lastCheckTime = this.executionStartTime;
+  }
+
+  private stopCpuTimeTracking(): number {
+    if (!this.executionStartTime) return 0;
+
+    const endTime = process.hrtime();
+    const totalCpuTime = this.calculateElapsedTime(this.executionStartTime, endTime);
+
+    // Reset tracking state
+    this.executionStartTime = undefined;
+    this.lastCheckTime = undefined;
+
+    return totalCpuTime;
   }
 }

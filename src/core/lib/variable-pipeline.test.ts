@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createApplicationContext } from '../application-context';
+import type { JsqOptions } from '../../types/cli';
+import { type ApplicationContext, createApplicationContext } from '../application-context';
+import { ExpressionEvaluator } from './evaluator';
 import { ExpressionTransformer } from './expression-transformer';
 
 describe('Variable Pipeline Declaration', () => {
@@ -94,5 +96,82 @@ describe('Variable Pipeline Declaration', () => {
       // Should be transformed by regular pipe logic, not variable pipeline
       expect(result).not.toContain('(() => {');
     });
+
+    it('should handle variable declaration with method chain followed by pipe', () => {
+      const expr = 'const ages = $.users.pluck("age") | ages.sum()';
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
+
+      expect(result).toContain('(() => {');
+      expect(result).toContain('let ages = $.users.pluck("age");');
+      expect(result).toContain('return ages.sum();');
+    });
+
+    it('should handle multiple method chains in variable pipeline', () => {
+      const expr =
+        'const filtered = $.users.filter(u => u.active).map(u => u.name) | filtered.join(", ")';
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
+
+      expect(result).toContain('(() => {');
+      expect(result).toContain('let filtered = $.users.filter(u => u.active).map(u => u.name);');
+      expect(result).toContain('return filtered.join(", ");');
+    });
+  });
+});
+
+describe('Variable Pipeline with SmartDollar Integration', () => {
+  let evaluator: ExpressionEvaluator;
+  let appContext: ApplicationContext;
+
+  beforeEach(() => {
+    const options: JsqOptions = {
+      verbose: false,
+      stream: false,
+    };
+    appContext = createApplicationContext();
+    evaluator = new ExpressionEvaluator(options, appContext);
+  });
+
+  afterEach(async () => {
+    await evaluator.dispose();
+    await appContext.dispose();
+  });
+
+  it('should execute variable pipeline with pluck and sum correctly', async () => {
+    const data = { users: [{ age: 25 }, { age: 30 }] };
+    const result = await evaluator.evaluate('const ages = $.users.pluck("age") | ages.sum()', data);
+
+    expect(result).toBe(55);
+  });
+
+  it('should execute variable pipeline with filter, pluck, and sum correctly', async () => {
+    const data = {
+      users: [
+        { name: 'Alice', age: 25, active: true },
+        { name: 'Bob', age: 30, active: false },
+        { name: 'Charlie', age: 35, active: true },
+      ],
+    };
+    const result = await evaluator.evaluate(
+      'const activeAges = $.users.filter(u => u.active).pluck("age") | activeAges.sum()',
+      data
+    );
+
+    expect(result).toBe(60); // 25 + 35
+  });
+
+  it('should execute variable pipeline with multiple operations', async () => {
+    const data = {
+      orders: [
+        { product: 'A', quantity: 2, price: 10 },
+        { product: 'B', quantity: 1, price: 20 },
+        { product: 'C', quantity: 3, price: 5 },
+      ],
+    };
+    const result = await evaluator.evaluate(
+      'const totals = $.orders.map(o => o.quantity * o.price) | totals.sum()',
+      data
+    );
+
+    expect(result).toBe(55); // 20 + 20 + 15
   });
 });

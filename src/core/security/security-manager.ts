@@ -137,6 +137,10 @@ export class SecurityManager {
     return this.context.level.memoryLimit;
   }
 
+  getCpuLimit(): number | undefined {
+    return this.context.level.cpuLimit;
+  }
+
   getVMConfig(): VMSandboxConfig | undefined {
     return this.context.vmConfig;
   }

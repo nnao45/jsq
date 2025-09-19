@@ -36,6 +36,10 @@ export class VMSandboxQuickJS {
     this.config = {
       memoryLimit: this.validatePositiveNumber(options.memoryLimit, 128),
       timeout: this.validatePositiveNumber(options.timeout, 30000),
+      cpuLimit:
+        options.cpuLimit !== undefined
+          ? this.validatePositiveNumber(options.cpuLimit, 0)
+          : undefined,
       enableAsync: options.enableAsync ?? true,
       enableGenerators: options.enableGenerators ?? false,
       enableProxies: options.enableProxies ?? false,
@@ -604,6 +608,8 @@ export class VMSandboxQuickJS {
       message = error.message;
       if (error.name === 'TimeoutError') {
         code = 'TIMEOUT';
+      } else if ('code' in error && error.code === 'CPU_LIMIT') {
+        code = 'CPU_LIMIT';
       }
     } else if (typeof error === 'string') {
       message = error;
@@ -613,6 +619,16 @@ export class VMSandboxQuickJS {
 
     if (lowerMessage.includes('timeout') || lowerMessage.includes('timed out')) {
       code = 'TIMEOUT';
+    } else if (
+      lowerMessage.includes('cpu time limit') ||
+      lowerMessage.includes('cpu limit') ||
+      lowerMessage.includes('interrupted')
+    ) {
+      code = 'CPU_LIMIT';
+      // Improve error message for QuickJS interrupts
+      if (lowerMessage === 'interrupted' && this.config?.cpuLimit) {
+        message = `CPU time limit exceeded (limit: ${this.config.cpuLimit}ms)`;
+      }
     } else if (lowerMessage.includes('memory')) {
       code = 'MEMORY_LIMIT';
     } else if (lowerMessage.includes('syntax')) {
