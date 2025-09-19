@@ -15,6 +15,7 @@ import type {
   VMExecutionContext,
 } from '../../interfaces/VMEngine';
 import { isProcessExiting } from '../../quickjs-gc-workaround';
+import { hrtime } from '../../../utils/hrtime-polyfill';
 import { QuickJSMarshaller } from './QuickJSMarshaller';
 
 export class QuickJSExecutionContext implements VMExecutionContext {
@@ -560,7 +561,7 @@ export class QuickJSEngine implements VMEngine {
       if (!this.lastCheckTime || !this.cpuTimeLimit) return false;
 
       // Calculate elapsed CPU time since last check
-      const currentTime = process.hrtime();
+      const currentTime = hrtime();
       const elapsedTime = this.calculateElapsedTime(this.lastCheckTime, currentTime);
 
       // Update last check time
@@ -589,14 +590,14 @@ export class QuickJSEngine implements VMEngine {
   private startCpuTimeTracking(): void {
     this.cpuTimeUsed = 0;
     this.shouldInterrupt = false;
-    this.executionStartTime = process.hrtime();
+    this.executionStartTime = hrtime();
     this.lastCheckTime = this.executionStartTime;
   }
 
   private stopCpuTimeTracking(): number {
     if (!this.executionStartTime) return 0;
 
-    const endTime = process.hrtime();
+    const endTime = hrtime();
     const totalCpuTime = this.calculateElapsedTime(this.executionStartTime, endTime);
 
     // Reset tracking state
