@@ -27,10 +27,12 @@ export function transformExpression(
     result = expression;
   }
   // Also skip transformation for multi-line variable declarations that don't use semicolon as separator
+  // BUT not if it's a variable pipeline declaration
   else if (
     trimmed.includes('\n') &&
     /^\s*(const|let|var)\s+/.test(trimmed) &&
-    !isUsingSemicolonAsSeparator(trimmed)
+    !isUsingSemicolonAsSeparator(trimmed) &&
+    !hasVariablePipelineDeclaration(trimmed)
   ) {
     result = expression;
   }
@@ -412,8 +414,9 @@ function hasVariablePipelineDeclaration(expression: string): boolean {
 
   // Match patterns like "const varName = value | ..." or "let varName = value | ..."
   // Also handle multiple consecutive declarations: "const a = ... | const b = ... | ..."
+  // Use the 's' flag to allow . to match newlines
   const singleDeclarationPattern =
-    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/;
+    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/s;
 
   return singleDeclarationPattern.test(trimmed);
 }
@@ -449,7 +452,7 @@ function transformMultipleVariableDeclarations(expression: string): string {
   // Parse each variable declaration
   while (true) {
     const declMatch = remaining.match(
-      /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.*)$/
+      /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.*)$/s
     );
     if (!declMatch) {
       // No more variable declarations, the rest is the final expression
@@ -484,8 +487,9 @@ function transformMultipleVariableDeclarations(expression: string): string {
 
 function transformSingleVariableDeclaration(expression: string): string {
   // Extract parts: declaration type, variable name, initial value, pipeline expression
+  // Use the 's' flag to allow . to match newlines
   const match = expression.match(
-    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/
+    /^(const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^|]+)\s*\|\s*(.+)$/s
   );
 
   if (!match) {

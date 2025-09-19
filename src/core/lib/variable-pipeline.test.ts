@@ -115,6 +115,15 @@ describe('Variable Pipeline Declaration', () => {
       expect(result).toContain('let filtered = $.users.filter(u => u.active).map(u => u.name);');
       expect(result).toContain('return filtered.join(", ");');
     });
+
+    it('should handle variable pipeline with newline', () => {
+      const expr = 'const ages = $.users.pluck("age") |\nages.sum()';
+      const result = ExpressionTransformer.transform(expr, appContext.expressionCache);
+
+      expect(result).toContain('(() => {');
+      expect(result).toContain('let ages = $.users.pluck("age");');
+      expect(result).toContain('return ages.sum();');
+    });
   });
 });
 
@@ -173,5 +182,19 @@ describe('Variable Pipeline with SmartDollar Integration', () => {
     );
 
     expect(result).toBe(55); // 20 + 20 + 15
+  });
+
+  it('should execute variable pipeline with newline correctly', async () => {
+    const data = { users: [{ age: 25 }, { age: 30 }] };
+    const result = await evaluator.evaluate('const ages = $.users.pluck("age") |\nages.sum()', data);
+
+    expect(result).toBe(55);
+  });
+
+  it('should execute variable pipeline with newline and indentation correctly', async () => {
+    const data = { users: [{ age: 25 }, { age: 30 }] };
+    const result = await evaluator.evaluate('const ages = $.users.pluck("age") |\n  ages.sum()', data);
+
+    expect(result).toBe(55);
   });
 });
