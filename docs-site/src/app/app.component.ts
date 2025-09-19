@@ -9,7 +9,7 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ZardButtonComponent],
   template: `
     <div class="min-h-screen flex flex-col bg-background text-foreground">
-      <nav class="bg-muted border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-opacity-80">
+      <nav class="bg-muted border-b border-border fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-opacity-80">
         <div class="container mx-auto px-6 flex items-center justify-between h-16">
           <div class="flex items-center">
             <a routerLink="/" class="flex items-center gap-2 no-underline">
@@ -66,7 +66,7 @@ import { ZardButtonComponent } from '@shared/components/button/button.component'
         </div>
       </nav>
       
-      <main class="flex-1 py-8">
+      <main class="flex-1 py-8 pt-24">
         <router-outlet></router-outlet>
       </main>
       
