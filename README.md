@@ -1,11 +1,12 @@
 [![NPM](https://nodei.co/npm/@nnao45/jsq.png)](https://www.npmjs.com/package/@nnao45/jsq)
 
 
-[![npm](https://img.shields.io/npm/v/@nnao45/jsq.svg)](https://www.npmjs.com/package/@nnao45/jsq)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-nnao45.github.io%2Fjsq-blue)](https://nnao45.github.io/jsq)
+[![platform](https://img.shields.io/badge/platform-%20osx%20|%20linux-orange.svg)]()
 
 # jsq - JavaScript-Powered JSON Query CLI
+
 
 [🇯🇵 日本語](README.ja.md) | 🇺🇸 **English** | [📚 Documentation](https://nnao45.github.io/jsq)
 
@@ -15,7 +16,7 @@ jsq is a secure, jQuery/Lodash-style JSON processor with 110+ built-in methods, 
 
 ```bash
 # 🔗 jQuery-style chaining with 110+ built-in methods  
-cat data.json | jsq '$.users.filter(u => u.active).pluck("name").uniq()'
+cat data.json | jsq '$.users.filter(u => u.active).pluck("name").uniq().upperCase()'
 
 # 🎨 Beautiful interactive REPL with real-time evaluation
 curl -H "Accept: application/json" https://api.example.com/data | jsq
@@ -59,6 +60,14 @@ echo '{"users": [{"name": "Alice", "active": true}]}' | jsq
 | **Interactive REPL** | Beautiful real-time evaluation with tab completion   |
 | **Secure VM Isolation** | Safe execution by default                            |
 | **Multi-Runtime Support** | Works with Node.js, Bun, Deno and WASM               |
+
+## 🔧 Dependencies
+
+| Runtime | Version Requirement |
+|---------|-------------------|
+| **Node.js** | ≥ v20.9.0 (LTS) |
+| **Bun** (experimental) | ≥ v1.2.0 |
+| **Deno** (experimental) | ≥ v2.1 (LTS) |
 
 ## 📚 Documentation
 

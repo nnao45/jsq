@@ -1660,15 +1660,26 @@ globalThis.lodashMethods = {
   
   upperCase: function() {
     const str = String(this._value);
-    const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z]+(?=[A-Z][a-z]|\b)/g) || [];
-    return new this.constructor(words.map(word => word.toUpperCase()).join(' '));
+    // 単語境界で分割するが、URL記号は保持
+    const result = str
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase境界
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // 連続する大文字の境界
+      .replace(/([a-zA-Z])([0-9])/g, '$1 $2') // 文字と数字の境界
+      .replace(/([0-9])([a-zA-Z])/g, '$1 $2') // 数字と文字の境界
+      .toUpperCase();
+    return new this.constructor(result);
   },
   
   lowerCase: function() {
     const str = String(this._value);
-    // Split on non-alphanumeric characters and camelCase boundaries
-    const words = str.match(/[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|[0-9]+/g) || [];
-    return new this.constructor(words.map(word => word.toLowerCase()).join(' '));
+    // 単語境界で分割するが、URL記号は保持
+    const result = str
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase境界
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // 連続する大文字の境界
+      .replace(/([a-zA-Z])([0-9])/g, '$1 $2') // 文字と数字の境界
+      .replace(/([0-9])([a-zA-Z])/g, '$1 $2') // 数字と文字の境界
+      .toLowerCase();
+    return new this.constructor(result);
   },
   
   pad: function(length, chars) {

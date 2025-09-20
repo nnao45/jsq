@@ -169,11 +169,11 @@ $.users.map(u => u.name.toUpperCase())</code></pre>
     }
     
     .sidebar {
-      position: sticky;
-      top: 0;
+      position: fixed;
+      top: 4rem;
       left: 0;
       width: 280px;
-      height: 100vh;
+      height: calc(100vh - 4rem);
       background: var(--surface);
       border-right: 1px solid var(--border-color);
       overflow-y: auto;
